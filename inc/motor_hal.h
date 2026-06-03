@@ -131,6 +131,11 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
                           float position, float velocity,
                           float kp, float kd, float torque);
 
+/** 通用 PDO 控制 (指定模式) */
+int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,
+                       motor_mode_t mode,
+                       int16_t target1, uint16_t target2, int16_t feedforward);
+
 /** 停止运动 */
 int motor_hal_stop(motor_hal_t *hal, uint8_t node_id);
 

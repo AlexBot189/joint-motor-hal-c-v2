@@ -328,46 +328,25 @@ int motor_hal_fault_reset(motor_hal_t *hal, uint8_t node_id)
 
 int motor_hal_set_position(motor_hal_t *hal, uint8_t node_id, float angle_deg)
 {
-    if (!hal || !hal->drv) return -ENODEV;
-
+    int16_t counts = motor_deg_to_counts(angle_deg);
     motor_node_t *m = _find_motor(hal, node_id);
     if (!m) return -ENOENT;
-    if (!m->enabled) return -EAGAIN;
-
-    int16_t counts = motor_deg_to_counts(angle_deg);
-    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_POS,
-                  true, true, false,
-                  counts, m->config.profile_accel, 0);
-    return 0;
+    return motor_hal_ctrl_raw(hal, node_id, MOTOR_MODE_PROFILE_POS,
+                              counts, m->config.profile_accel, 0);
 }
 
 int motor_hal_set_velocity(motor_hal_t *hal, uint8_t node_id, float rpm_motor)
 {
-    if (!hal || !hal->drv) return -ENODEV;
-
     motor_node_t *m = _find_motor(hal, node_id);
     if (!m) return -ENOENT;
-    if (!m->enabled) return -EAGAIN;
-
-    int16_t speed = (int16_t)rpm_motor;
-    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_VEL,
-                  true, true, false,
-                  speed, m->config.profile_accel, 0);
-    return 0;
+    return motor_hal_ctrl_raw(hal, node_id, MOTOR_MODE_PROFILE_VEL,
+                              (int16_t)rpm_motor, m->config.profile_accel, 0);
 }
 
 int motor_hal_set_torque(motor_hal_t *hal, uint8_t node_id, int16_t current_ma)
 {
-    if (!hal || !hal->drv) return -ENODEV;
-
-    motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return -ENOENT;
-    if (!m->enabled) return -EAGAIN;
-
-    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_CURRENT,
-                  true, true, false,
-                  current_ma, 0, 0);
-    return 0;
+    return motor_hal_ctrl_raw(hal, node_id, MOTOR_MODE_CURRENT,
+                              current_ma, 0, 0);
 }
 
 int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
@@ -389,6 +368,21 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     pdo_mit_send(hal->drv, node_id, MOTOR_MODE_MIT,
                  true, true, false,
                  pos, vel, kp_v, kd_v, torq);
+    return 0;
+}
+
+int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,
+                       motor_mode_t mode,
+                       int16_t target1, uint16_t target2, int16_t feedforward)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) return -ENOENT;
+    if (!m->enabled) return -EAGAIN;
+
+    pdo_ctrl_send(hal->drv, node_id, mode, true, true, false,
+                  target1, target2, feedforward);
     return 0;
 }
 
