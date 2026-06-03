@@ -5,7 +5,7 @@
  * 覆盖:
  *   CANFD 初始化 (仲裁1M + 数据5M)
  *   双电机启动 (Bootup检测 → 心跳配置 → 关看门狗 → DS402使能)
- *   5ms 周期 SYNC 触发反馈
+ *   5ms 控制周期 (PDO 自动触发反馈, 不需要 SYNC)
  *   实时控制 (位置/速度/电流, 参数动态传入)
  *   故障处理 (EMCY + 反馈错误码)
  *   安全停机
@@ -34,7 +34,6 @@
 #define RIGHT_NODE_ID       2
 
 #define CTRL_INTERVAL_US    5000      /* 控制周期 5ms (200Hz) */
-#define FEEDBACK_SYNC_US    5000      /* SYNC 间隔 5ms (触发反馈) */
 #define STARTUP_TIMEOUT_MS  5000
 
 /* ================================================================
@@ -361,7 +360,6 @@ int main(void)
 
     uint64_t t_start  = now_us();
     uint64_t last_ctrl = t_start;
-    uint64_t last_sync = t_start;
     uint64_t last_print = t_start;
 
     memset(&g_left,  0, sizeof(g_left));
@@ -404,12 +402,6 @@ int main(void)
              * // MIT 阻抗:
              * motor_hal_mit_control(hal, LEFT_NODE_ID, 30.0f, 0.0f, 0.5f, 0.1f, 0.0f);
              */
-        }
-
-        /* ── 5ms SYNC 触发反馈 ── */
-        if (now - last_sync >= FEEDBACK_SYNC_US) {
-            last_sync = now;
-            motor_hal_sync(hal);  /* 发 SYNC (0x080) → 驱动板立即上报反馈 */
         }
 
         /* ── 打印反馈 (低频) ── */
