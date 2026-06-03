@@ -542,6 +542,13 @@ int motor_hal_read_pid(motor_hal_t *hal, uint8_t node_id, motor_pid_t *pid)
     return 0;
 }
 
+int motor_hal_sdo_read_u32(motor_hal_t *hal, uint8_t node_id,
+                           uint16_t index, uint8_t subidx, uint32_t *value)
+{
+    if (!hal || !hal->drv || !value) return -EINVAL;
+    return sdo_read_simple(hal->drv, node_id, index, subidx, value);
+}
+
 /* =====================================================
  * 公共 API: 反馈缓存
  * ===================================================== */

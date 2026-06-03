@@ -164,6 +164,10 @@ int32_t motor_hal_get_velocity(motor_hal_t *hal, uint8_t node_id);
 int32_t motor_hal_get_current(motor_hal_t *hal, uint8_t node_id);
 int motor_hal_read_pid(motor_hal_t *hal, uint8_t node_id, motor_pid_t *pid);
 
+/** 通用 SDO 读 (读取任意对象字典, 返回 uint32) */
+int motor_hal_sdo_read_u32(motor_hal_t *hal, uint8_t node_id,
+                           uint16_t index, uint8_t subidx, uint32_t *value);
+
 /* ============================================================================
  * 反馈缓存
  * ============================================================================ */
