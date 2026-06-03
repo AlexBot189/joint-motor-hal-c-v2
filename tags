@@ -1,0 +1,612 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	535;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	538;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	541;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	544;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	547;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	551;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	553;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	555;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	559;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	562;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	565;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	570;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	573;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	576;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	581;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	584;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	587;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	590;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	593;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	596;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	599;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	602;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	605;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	608;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	611;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	616;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	619;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	622;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	625;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	628;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	631;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	636;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	639;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	642;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	645;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	648;"	d	file:
+ARCHITECTURE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	652;"	d	file:
+CANFD_MAX_DLC	./inc/motor_hal_types.h	48;"	d
+CANOPEN_FRAMES_H	./inc/canopen_frames.h	11;"	d
+CAN_DRIVER_INTERNAL_H	./src/can_driver_internal.h	6;"	d
+CMAKE_BINARY_DIR	./build/Makefile	/^CMAKE_BINARY_DIR = \/home\/workspace\/08-agent\/openclaw\/sw-zhangsan\/workspace-sw-zhangsan\/motor_hal_c\/build$/;"	m
+CMAKE_COMMAND	./build/Makefile	/^CMAKE_COMMAND = \/usr\/bin\/cmake$/;"	m
+CMAKE_SOURCE_DIR	./build/Makefile	/^CMAKE_SOURCE_DIR = \/home\/workspace\/08-agent\/openclaw\/sw-zhangsan\/workspace-sw-zhangsan\/motor_hal_c$/;"	m
+COB_BOOTUP_BASE	./inc/motor_hal_types.h	66;"	d
+COB_EMCY_BASE	./inc/motor_hal_types.h	63;"	d
+COB_FEEDBACK_BASE	./inc/motor_hal_types.h	72;"	d
+COB_MULTI_CTRL	./inc/motor_hal_types.h	71;"	d
+COB_NMT	./inc/motor_hal_types.h	61;"	d
+COB_PDO_CTRL_BASE	./inc/motor_hal_types.h	69;"	d
+COB_PDO_MIT_BASE	./inc/motor_hal_types.h	70;"	d
+COB_RPDO1_BASE	./inc/motor_hal_types.h	68;"	d
+COB_SDO_RX_BASE	./inc/motor_hal_types.h	65;"	d
+COB_SDO_TX_BASE	./inc/motor_hal_types.h	64;"	d
+COB_SYNC	./inc/motor_hal_types.h	62;"	d
+COB_TPDO1_BASE	./inc/motor_hal_types.h	67;"	d
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	109;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	117;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	123;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	129;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	138;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	147;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	161;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	168;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	175;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	182;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	190;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	197;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	204;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	212;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	220;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	225;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	232;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	240;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	256;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	25;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	265;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	268;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	271;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	274;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	289;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	304;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	311;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	325;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	335;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	353;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	362;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	376;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	393;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	396;"	d	file:
+COMPILER_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	71;"	d	file:
+COMPILER_VERSION	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	242;"	d	file:
+COMPILER_VERSION_INTERNAL	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	249;"	d	file:
+COMPILER_VERSION_INTERNAL	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	251;"	d	file:
+COMPILER_VERSION_INTERNAL	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	308;"	d	file:
+COMPILER_VERSION_INTERNAL	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	367;"	d	file:
+COMPILER_VERSION_INTERNAL	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	372;"	d	file:
+COMPILER_VERSION_INTERNAL_STR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	236;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	110;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	118;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	125;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	131;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	140;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	150;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	155;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	163;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	170;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	177;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	183;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	192;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	199;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	205;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	213;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	221;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	227;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	233;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	244;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	259;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	277;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	282;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	293;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	305;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	315;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	326;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	337;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	356;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	35;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	364;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	369;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	378;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	383;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	43;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	83;"	d	file:
+COMPILER_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	87;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	111;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	119;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	126;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	132;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	141;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	151;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	156;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	164;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	171;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	178;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	184;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	193;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	200;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	206;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	214;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	222;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	228;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	234;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	245;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	260;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	278;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	283;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	294;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	306;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	316;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	328;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	338;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	357;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	365;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	36;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	370;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	379;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	384;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	44;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	84;"	d	file:
+COMPILER_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	88;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	113;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	120;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	134;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	143;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	152;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	157;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	165;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	172;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	179;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	185;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	194;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	201;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	208;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	216;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	229;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	235;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	246;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	261;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	279;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	284;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	295;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	307;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	317;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	331;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	342;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	345;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	358;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	366;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	371;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	380;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	385;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	38;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	40;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	47;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	85;"	d	file:
+COMPILER_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	89;"	d	file:
+COMPILER_VERSION_TWEAK	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	186;"	d	file:
+COMPILER_VERSION_TWEAK	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	301;"	d	file:
+COMPILER_VERSION_TWEAK	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	349;"	d	file:
+COMPILER_VERSION_TWEAK	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	51;"	d	file:
+CW_DISABLE_OP	./inc/motor_hal_types.h	138;"	d
+CW_DISABLE_VOLTAGE	./inc/motor_hal_types.h	136;"	d
+CW_ENABLE_OP	./inc/motor_hal_types.h	139;"	d
+CW_FAULT_RESET	./inc/motor_hal_types.h	140;"	d
+CW_NEW_SET_POINT	./inc/motor_hal_types.h	141;"	d
+CW_QUICK_STOP	./inc/motor_hal_types.h	137;"	d
+CW_SHUTDOWN	./inc/motor_hal_types.h	134;"	d
+CW_STOP	./inc/motor_hal_types.h	142;"	d
+CW_SWITCH_ON	./inc/motor_hal_types.h	135;"	d
+C_VERSION	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	739;"	d	file:
+C_VERSION	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	741;"	d	file:
+C_VERSION	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	744;"	d	file:
+C_VERSION	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	746;"	d	file:
+C_VERSION	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	748;"	d	file:
+C_VERSION	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	750;"	d	file:
+C_VERSION	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	752;"	d	file:
+DEC	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	656;"	d	file:
+ENCODER_LOAD_RES	./inc/motor_hal_types.h	30;"	d
+ENCODER_MOTOR_RES	./inc/motor_hal_types.h	29;"	d
+EQUALS	./build/Makefile	/^EQUALS = =$/;"	m
+ERR_CURRENT_SAMPLE	./inc/motor_hal_types.h	181;"	d
+ERR_ELEC_ANGLE_FAIL	./inc/motor_hal_types.h	186;"	d
+ERR_ENCODER_FAULT	./inc/motor_hal_types.h	188;"	d
+ERR_ENCODER_TIMEOUT	./inc/motor_hal_types.h	184;"	d
+ERR_NEG_LIMIT	./inc/motor_hal_types.h	183;"	d
+ERR_OVERLOAD	./inc/motor_hal_types.h	180;"	d
+ERR_OVER_MAX_SPEED	./inc/motor_hal_types.h	185;"	d
+ERR_OVER_TEMP	./inc/motor_hal_types.h	178;"	d
+ERR_OVER_VOLTAGE	./inc/motor_hal_types.h	176;"	d
+ERR_POS_ERROR_LARGE	./inc/motor_hal_types.h	187;"	d
+ERR_POS_LIMIT	./inc/motor_hal_types.h	182;"	d
+ERR_STALL	./inc/motor_hal_types.h	179;"	d
+ERR_UNDER_VOLTAGE	./inc/motor_hal_types.h	177;"	d
+HEX	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	667;"	d	file:
+ID_VOID_MAIN	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	6;"	d	file:
+LOAD_ANGLE_MAX	./inc/motor_hal_types.h	34;"	d
+LOAD_ANGLE_MIN	./inc/motor_hal_types.h	33;"	d
+LOAD_POS_MAX	./inc/motor_hal_types.h	32;"	d
+LOAD_POS_MIN	./inc/motor_hal_types.h	31;"	d
+MOTOR_BOOTUP_TIMEOUT_MS	./inc/motor_hal_types.h	41;"	d
+MOTOR_ENABLE_STEP_MS	./inc/motor_hal_types.h	42;"	d
+MOTOR_HAL_H	./inc/motor_hal.h	27;"	d
+MOTOR_HAL_MAX_MOTORS	./inc/motor_hal_types.h	37;"	d
+MOTOR_HAL_TYPES_H	./inc/motor_hal_types.h	11;"	d
+MOTOR_MODE_CSP	./inc/motor_hal_types.h	/^    MOTOR_MODE_CSP           = 3,  \/* CSP: 循环同步位置 *\/$/;"	e	enum:__anon5
+MOTOR_MODE_CSV	./inc/motor_hal_types.h	/^    MOTOR_MODE_CSV           = 4,  \/* CSV: 循环同步速度 *\/$/;"	e	enum:__anon5
+MOTOR_MODE_CURRENT	./inc/motor_hal_types.h	/^    MOTOR_MODE_CURRENT       = 5,  \/* 电流环 *\/$/;"	e	enum:__anon5
+MOTOR_MODE_MIT	./inc/motor_hal_types.h	/^    MOTOR_MODE_MIT           = 6,  \/* MIT: 阻抗控制 *\/$/;"	e	enum:__anon5
+MOTOR_MODE_PROFILE_POS	./inc/motor_hal_types.h	/^    MOTOR_MODE_PROFILE_POS   = 1,  \/* PP:  轮廓位置 *\/$/;"	e	enum:__anon5
+MOTOR_MODE_PROFILE_VEL	./inc/motor_hal_types.h	/^    MOTOR_MODE_PROFILE_VEL   = 2,  \/* PV:  轮廓速度 *\/$/;"	e	enum:__anon5
+MOTOR_SDO_TIMEOUT_MS	./inc/motor_hal_types.h	40;"	d
+MOTOR_STATE_FAULT	./inc/motor_hal_types.h	/^    MOTOR_STATE_FAULT           = 6,$/;"	e	enum:__anon6
+MOTOR_STATE_NOT_READY	./inc/motor_hal_types.h	/^    MOTOR_STATE_NOT_READY       = 0,$/;"	e	enum:__anon6
+MOTOR_STATE_OP_ENABLED	./inc/motor_hal_types.h	/^    MOTOR_STATE_OP_ENABLED      = 4,$/;"	e	enum:__anon6
+MOTOR_STATE_QUICK_STOP	./inc/motor_hal_types.h	/^    MOTOR_STATE_QUICK_STOP      = 5,$/;"	e	enum:__anon6
+MOTOR_STATE_READY_TO_SW_ON	./inc/motor_hal_types.h	/^    MOTOR_STATE_READY_TO_SW_ON  = 2,$/;"	e	enum:__anon6
+MOTOR_STATE_SWITCHED_ON	./inc/motor_hal_types.h	/^    MOTOR_STATE_SWITCHED_ON     = 3,$/;"	e	enum:__anon6
+MOTOR_STATE_SWITCH_ON_DIS	./inc/motor_hal_types.h	/^    MOTOR_STATE_SWITCH_ON_DIS   = 1,$/;"	e	enum:__anon6
+MOTOR_STATE_UNKNOWN	./inc/motor_hal_types.h	/^    MOTOR_STATE_UNKNOWN         = 99,$/;"	e	enum:__anon6
+NMT_CMD_PRE_OP	./inc/motor_hal_types.h	93;"	d
+NMT_CMD_RESET_COMM	./inc/motor_hal_types.h	95;"	d
+NMT_CMD_RESET_NODE	./inc/motor_hal_types.h	94;"	d
+NMT_CMD_START	./inc/motor_hal_types.h	91;"	d
+NMT_CMD_STOP	./inc/motor_hal_types.h	92;"	d
+OD_CANFD_BAUD	./inc/motor_hal_types.h	220;"	d
+OD_CONTROLWORD	./inc/motor_hal_types.h	224;"	d
+OD_CURRENT_ACTUAL	./inc/motor_hal_types.h	231;"	d
+OD_CURRENT_I	./inc/motor_hal_types.h	213;"	d
+OD_CURRENT_P	./inc/motor_hal_types.h	212;"	d
+OD_FIRMWARE_VER	./inc/motor_hal_types.h	242;"	d
+OD_HARDWARE_VER	./inc/motor_hal_types.h	241;"	d
+OD_HEARTBEAT	./inc/motor_hal_types.h	239;"	d
+OD_MANUFACTURER	./inc/motor_hal_types.h	240;"	d
+OD_MAX_CURRENT	./inc/motor_hal_types.h	218;"	d
+OD_MODE_OF_OP	./inc/motor_hal_types.h	226;"	d
+OD_MODE_OF_OP_DISP	./inc/motor_hal_types.h	227;"	d
+OD_MOTOR_MODEL	./inc/motor_hal_types.h	243;"	d
+OD_NODE_ID	./inc/motor_hal_types.h	210;"	d
+OD_POSITION_ACTUAL	./inc/motor_hal_types.h	228;"	d
+OD_POSITION_I	./inc/motor_hal_types.h	217;"	d
+OD_POSITION_P	./inc/motor_hal_types.h	216;"	d
+OD_POS_LIMIT	./inc/motor_hal_types.h	238;"	d
+OD_PROFILE_ACCEL	./inc/motor_hal_types.h	236;"	d
+OD_PROFILE_DECEL	./inc/motor_hal_types.h	237;"	d
+OD_PROFILE_VEL	./inc/motor_hal_types.h	235;"	d
+OD_SAVE_FLASH	./inc/motor_hal_types.h	219;"	d
+OD_STATUSWORD	./inc/motor_hal_types.h	225;"	d
+OD_TARGET_POS	./inc/motor_hal_types.h	232;"	d
+OD_TARGET_TORQUE	./inc/motor_hal_types.h	234;"	d
+OD_TARGET_VELOCITY	./inc/motor_hal_types.h	233;"	d
+OD_TORQUE_ACTUAL	./inc/motor_hal_types.h	230;"	d
+OD_VELOCITY_ACTUAL	./inc/motor_hal_types.h	229;"	d
+OD_VELOCITY_I	./inc/motor_hal_types.h	215;"	d
+OD_VELOCITY_P	./inc/motor_hal_types.h	214;"	d
+OD_WATCHDOG_LIMIT	./inc/motor_hal_types.h	221;"	d
+OD_ZERO_POSITION	./inc/motor_hal_types.h	211;"	d
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	421;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	424;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	427;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	430;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	433;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	436;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	439;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	442;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	445;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	448;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	451;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	454;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	457;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	460;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	463;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	466;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	469;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	472;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	475;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	478;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	481;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	484;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	487;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	490;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	493;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	497;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	500;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	503;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	506;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	509;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	512;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	517;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	520;"	d	file:
+PLATFORM_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	524;"	d	file:
+RM	./build/Makefile	/^RM = \/usr\/bin\/cmake -E rm -f$/;"	m
+SDO_CC_ABORT	./inc/motor_hal_types.h	85;"	d
+SDO_CC_DOWNLOAD_1B	./inc/motor_hal_types.h	78;"	d
+SDO_CC_DOWNLOAD_2B	./inc/motor_hal_types.h	79;"	d
+SDO_CC_DOWNLOAD_4B	./inc/motor_hal_types.h	80;"	d
+SDO_CC_UPLOAD_REQ	./inc/motor_hal_types.h	81;"	d
+SDO_CC_UPLOAD_RSP_1B	./inc/motor_hal_types.h	82;"	d
+SDO_CC_UPLOAD_RSP_2B	./inc/motor_hal_types.h	83;"	d
+SDO_CC_UPLOAD_RSP_4B	./inc/motor_hal_types.h	84;"	d
+SDO_CLIENT_INTERNAL_H	./src/sdo_client_internal.h	6;"	d
+SHELL	./build/Makefile	/^SHELL = \/bin\/sh$/;"	m
+SIMULATE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	27;"	d	file:
+SIMULATE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	291;"	d	file:
+SIMULATE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	30;"	d	file:
+SIMULATE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	313;"	d	file:
+SIMULATE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	73;"	d	file:
+SIMULATE_ID	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	76;"	d	file:
+SIMULATE_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	298;"	d	file:
+SIMULATE_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	320;"	d	file:
+SIMULATE_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	55;"	d	file:
+SIMULATE_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	59;"	d	file:
+SIMULATE_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	61;"	d	file:
+SIMULATE_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	93;"	d	file:
+SIMULATE_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	97;"	d	file:
+SIMULATE_VERSION_MAJOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	99;"	d	file:
+SIMULATE_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	102;"	d	file:
+SIMULATE_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	299;"	d	file:
+SIMULATE_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	321;"	d	file:
+SIMULATE_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	56;"	d	file:
+SIMULATE_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	64;"	d	file:
+SIMULATE_VERSION_MINOR	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	94;"	d	file:
+SIMULATE_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	105;"	d	file:
+SIMULATE_VERSION_PATCH	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	67;"	d	file:
+STRINGIFY	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	417;"	d	file:
+STRINGIFY_HELPER	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	416;"	d	file:
+SW_FAULT	./inc/motor_hal_types.h	115;"	d
+SW_FAULT_STATE	./inc/motor_hal_types.h	130;"	d
+SW_INTERNAL_LIMIT	./inc/motor_hal_types.h	121;"	d
+SW_NOT_READY	./inc/motor_hal_types.h	125;"	d
+SW_ON_DISABLED	./inc/motor_hal_types.h	126;"	d
+SW_OP_ENABLED	./inc/motor_hal_types.h	129;"	d
+SW_QUICK_STOP	./inc/motor_hal_types.h	117;"	d
+SW_QUICK_STOP_STATE	./inc/motor_hal_types.h	131;"	d
+SW_READY_TO_SW_ON	./inc/motor_hal_types.h	127;"	d
+SW_STATE_MASK	./inc/motor_hal_types.h	122;"	d
+SW_SWITCHED_ON	./inc/motor_hal_types.h	128;"	d
+SW_SWITCH_ON_DISABLED	./inc/motor_hal_types.h	118;"	d
+SW_TARGET_REACHED	./inc/motor_hal_types.h	120;"	d
+SW_VOLTAGE_ENABLED	./inc/motor_hal_types.h	116;"	d
+SW_WARNING	./inc/motor_hal_types.h	119;"	d
+__has_include	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	17;"	d	file:
+_find_motor	./src/motor_hal.c	/^static motor_node_t* _find_motor(motor_hal_t *hal, uint8_t node_id)$/;"	f	file:
+_now_us	./examples/dual_motor.c	/^static uint64_t _now_us(void) {$/;"	f	file:
+_now_us	./examples/mit_control.c	/^static uint64_t _now_us(void) {$/;"	f	file:
+_now_us	./examples/single_motor.c	/^static uint64_t _now_us(void) {$/;"	f	file:
+_now_us	./src/canopen_frames.c	/^static uint64_t _now_us(void) {$/;"	f	file:
+_sdo_wait_response	./src/sdo_client.c	/^static int _sdo_wait_response(can_driver_t *drv, uint8_t node,$/;"	f	file:
+_set_state	./src/motor_hal.c	/^static void _set_state(motor_hal_t *hal __attribute__((unused)), motor_node_t *m, motor_state_t new_state)$/;"	f	file:
+angle_deg	./examples/dual_motor.c	/^    float angle_deg;$/;"	m	struct:__anon1	file:
+auto_enable	./inc/motor_hal_types.h	/^    bool     auto_enable;         \/* startup 自动使能 *\/$/;"	m	struct:__anon8
+bootup_received	./src/motor_hal.c	/^    bool        bootup_received;$/;"	m	struct:__anon3	file:
+bootup_timeout_ms	./inc/motor_hal_types.h	/^    int      bootup_timeout_ms;   \/* 启动超时 *\/$/;"	m	struct:__anon8
+cached_fb	./src/motor_hal.c	/^    motor_feedback_t cached_fb;$/;"	m	struct:__anon3	file:
+can_driver_close	./src/can_driver.c	/^void can_driver_close(can_driver_t *drv)$/;"	f
+can_driver_fd	./src/can_driver.c	/^int can_driver_fd(can_driver_t *drv)$/;"	f
+can_driver_iface	./src/can_driver.c	/^const char* can_driver_iface(can_driver_t *drv)$/;"	f
+can_driver_open	./src/can_driver.c	/^int can_driver_open(const char *iface, uint32_t arb_bitrate __attribute__((unused)), uint32_t data_bitrate __attribute__((unused)),$/;"	f
+can_driver_recv	./src/can_driver.c	/^int can_driver_recv(can_driver_t *drv, canfd_frame_t *frame, int timeout_ms)$/;"	f
+can_driver_send	./src/can_driver.c	/^int can_driver_send(can_driver_t *drv, const canfd_frame_t *frame)$/;"	f
+can_driver_set_filter	./src/can_driver.c	/^int can_driver_set_filter(can_driver_t *drv, uint32_t can_id, uint32_t can_mask)$/;"	f
+can_driver_stats	./src/can_driver.c	/^void can_driver_stats(can_driver_t *drv, uint64_t *tx, uint64_t *rx,$/;"	f
+can_driver_t	./src/can_driver.c	/^} can_driver_t;$/;"	t	typeref:struct:__anon2	file:
+can_driver_t	./src/can_driver_internal.h	/^typedef struct can_driver_s can_driver_t;$/;"	t	typeref:struct:can_driver_s
+canfd_frame_t	./inc/motor_hal_types.h	/^} canfd_frame_t;$/;"	t	typeref:struct:__anon4
+canopen_custom_pdo_build	./src/canopen_frames.c	/^void canopen_custom_pdo_build(uint8_t node, motor_mode_t mode,$/;"	f
+canopen_extract_node	./inc/canopen_frames.h	/^static inline uint8_t canopen_extract_node(uint32_t can_id, uint32_t base) {$/;"	f
+canopen_func_code	./inc/canopen_frames.h	/^static inline uint32_t canopen_func_code(uint32_t can_id) {$/;"	f
+canopen_is_bootup	./inc/canopen_frames.h	/^static inline bool canopen_is_bootup(uint32_t can_id, uint8_t data0) {$/;"	f
+canopen_is_emcy	./inc/canopen_frames.h	/^static inline bool canopen_is_emcy(uint32_t can_id) {$/;"	f
+canopen_mit_pdo_build	./src/canopen_frames.c	/^void canopen_mit_pdo_build(uint8_t node, motor_mode_t mode,$/;"	f
+canopen_multi_ctrl_build	./src/canopen_frames.c	/^void canopen_multi_ctrl_build(const multi_axis_cmd_t *cmds, uint8_t count,$/;"	f
+canopen_nmt_build	./src/canopen_frames.c	/^void canopen_nmt_build(uint8_t cmd, uint8_t node, canfd_frame_t *f)$/;"	f
+canopen_parse_feedback	./src/canopen_frames.c	/^void canopen_parse_feedback(const canfd_frame_t *f, motor_feedback_t *fb)$/;"	f
+canopen_sdo_parse_response	./src/canopen_frames.c	/^bool canopen_sdo_parse_response(const canfd_frame_t *f,$/;"	f
+canopen_sdo_read_build	./src/canopen_frames.c	/^void canopen_sdo_read_build(uint8_t node, uint16_t index, uint8_t subidx,$/;"	f
+canopen_sdo_write_build	./src/canopen_frames.c	/^void canopen_sdo_write_build(uint8_t node, uint16_t index, uint8_t subidx,$/;"	f
+canopen_sync_build	./src/canopen_frames.c	/^void canopen_sync_build(canfd_frame_t *f)$/;"	f
+clear_error	./inc/motor_hal_types.h	/^    bool      clear_error;$/;"	m	struct:__anon10
+config	./src/motor_hal.c	/^    motor_config_t config;$/;"	m	struct:__anon3	file:
+const	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	10;"	d	file:
+current_a	./examples/dual_motor.c	/^    float current_a;$/;"	m	struct:__anon1	file:
+current_i	./inc/motor_hal_types.h	/^    uint16_t current_i;$/;"	m	struct:__anon9
+current_iq	./inc/motor_hal_types.h	/^    int16_t  current_iq;        \/* Iq 电流 (mA) *\/$/;"	m	struct:__anon7
+current_p	./inc/motor_hal_types.h	/^    uint16_t current_p;$/;"	m	struct:__anon9
+data	./inc/motor_hal_types.h	/^    uint8_t  data[CANFD_MAX_DLC];    \/* 数据 *\/$/;"	m	struct:__anon4
+disable_watchdog	./inc/motor_hal_types.h	/^    bool     disable_watchdog;    \/* 上电关闭看门狗 *\/$/;"	m	struct:__anon8
+dlc	./inc/motor_hal_types.h	/^    uint8_t  dlc;                    \/* 数据长度 *\/$/;"	m	struct:__anon4
+drv	./src/motor_hal.c	/^    can_driver_t *drv;$/;"	m	struct:motor_hal	file:
+enable	./inc/motor_hal_types.h	/^    bool      enable;$/;"	m	struct:__anon10
+enabled	./src/motor_hal.c	/^    bool        enabled;$/;"	m	struct:__anon3	file:
+err_cb	./src/motor_hal.c	/^    motor_error_cb_t    err_cb;$/;"	m	struct:__anon3	file:
+err_ctx	./src/motor_hal.c	/^    void               *err_ctx;$/;"	m	struct:__anon3	file:
+error_code	./inc/motor_hal_types.h	/^    uint16_t error_code;        \/* 错误码 *\/$/;"	m	struct:__anon7
+fb_cb	./src/motor_hal.c	/^    motor_feedback_cb_t fb_cb;$/;"	m	struct:__anon3	file:
+fb_ctx	./src/motor_hal.c	/^    void               *fb_ctx;$/;"	m	struct:__anon3	file:
+fb_lock	./src/motor_hal.c	/^    pthread_mutex_t fb_lock;$/;"	m	struct:__anon3	file:
+feedback_brake_released	./src/feedback_parser.c	/^bool feedback_brake_released(const motor_feedback_t *fb) {$/;"	f
+feedback_error_string	./src/feedback_parser.c	/^const char* feedback_error_string(uint16_t err) {$/;"	f
+feedback_has_error	./src/feedback_parser.c	/^bool feedback_has_error(const motor_feedback_t *fb) {$/;"	f
+feedback_is_enabled	./src/feedback_parser.c	/^bool feedback_is_enabled(const motor_feedback_t *fb) {$/;"	f
+feedback_parse_raw	./src/feedback_parser.c	/^void feedback_parse_raw(const canfd_frame_t *f, motor_feedback_t *out)$/;"	f
+feedback_target_reached	./src/feedback_parser.c	/^bool feedback_target_reached(const motor_feedback_t *fb) {$/;"	f
+feedforward	./inc/motor_hal_types.h	/^    int16_t   feedforward;$/;"	m	struct:__anon10
+g_left	./examples/dual_motor.c	/^} g_left, g_right;$/;"	v	typeref:struct:__anon1	file:
+g_right	./examples/dual_motor.c	/^} g_left, g_right;$/;"	v	typeref:struct:__anon1	file:
+g_running	./examples/dual_motor.c	/^static volatile int g_running = 1;$/;"	v	file:
+g_running	./examples/mit_control.c	/^static volatile int g_running = 1;$/;"	v	file:
+g_running	./examples/single_motor.c	/^static volatile int g_running = 1;$/;"	v	file:
+has_error	./examples/dual_motor.c	/^    bool  has_error;$/;"	m	struct:__anon1	file:
+heartbeat_disable_watchdog	./src/heartbeat.c	/^void heartbeat_disable_watchdog(can_driver_t *drv, uint8_t node)$/;"	f
+heartbeat_feed	./src/heartbeat.c	/^void heartbeat_feed(can_driver_t *drv)$/;"	f
+heartbeat_ms	./inc/motor_hal_types.h	/^    uint32_t heartbeat_ms;        \/* 心跳周期 (默认 2000) *\/$/;"	m	struct:__anon8
+heartbeat_set_period	./src/heartbeat.c	/^void heartbeat_set_period(can_driver_t *drv, uint8_t node, uint32_t ms)$/;"	f
+id	./inc/motor_hal_types.h	/^    uint32_t id;                     \/* 11-bit 标准帧 ID *\/$/;"	m	struct:__anon4
+iface	./src/can_driver.c	/^    char     iface[16];$/;"	m	struct:__anon2	file:
+info_arch	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_arch = "INFO" ":" "arch[" ARCHITECTURE_ID "]";$/;"	v
+info_compiler	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_compiler = "INFO" ":" "compiler[" COMPILER_ID "]";$/;"	v
+info_cray	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const *info_cray = "INFO" ":" "compiler_wrapper[CrayPrgEnv]";$/;"	v
+info_language_extensions_default	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^const char* info_language_extensions_default = "INFO" ":" "extensions_default["$/;"	v
+info_language_standard_default	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^const char* info_language_standard_default =$/;"	v
+info_platform	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_platform = "INFO" ":" "platform[" PLATFORM_ID "]";$/;"	v
+info_simulate	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_simulate = "INFO" ":" "simulate[" SIMULATE_ID "]";$/;"	v
+info_simulate_version	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const info_simulate_version[] = {$/;"	v
+info_version	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const info_version[] = {$/;"	v
+info_version	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_version = "INFO" ":" "compiler_version[" COMPILER_VERSION "]";$/;"	v
+info_version_internal	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const info_version_internal[] = {$/;"	v
+info_version_internal	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_version_internal = "INFO" ":" "compiler_version_internal[" COMPILER_VERSION_INTERNAL_STR "]";$/;"	v
+initialized	./src/motor_hal.c	/^    bool          initialized;$/;"	m	struct:motor_hal	file:
+is_fd	./inc/motor_hal_types.h	/^    bool     is_fd;                  \/* FD 帧标志 *\/$/;"	m	struct:__anon4
+last_fb_us	./src/motor_hal.c	/^    uint64_t last_fb_us;$/;"	m	struct:__anon3	file:
+lock	./src/motor_hal.c	/^    pthread_mutex_t lock;$/;"	m	struct:motor_hal	file:
+main	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^int main(argc, argv) int argc; char *argv[];$/;"	f
+main	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^void main() {}$/;"	f
+main	./examples/dual_motor.c	/^int main(void)$/;"	f
+main	./examples/mit_control.c	/^int main(void)$/;"	f
+main	./examples/single_motor.c	/^int main(void)$/;"	f
+mode	./inc/motor_hal_types.h	/^    motor_mode_t mode;$/;"	m	struct:__anon10
+mode	./inc/motor_hal_types.h	/^    uint8_t  mode;              \/* 当前控制模式 *\/$/;"	m	struct:__anon7
+motor_config_t	./inc/motor_hal_types.h	/^} motor_config_t;$/;"	t	typeref:struct:__anon8
+motor_count	./src/motor_hal.c	/^    int             motor_count;$/;"	m	struct:motor_hal	file:
+motor_counts_to_deg	./inc/motor_hal.h	/^static inline float motor_counts_to_deg(int16_t counts) {$/;"	f
+motor_deg_to_counts	./inc/motor_hal.h	/^static inline int16_t motor_deg_to_counts(float degrees) {$/;"	f
+motor_error_cb_t	./inc/motor_hal_types.h	/^typedef void (*motor_error_cb_t)(uint8_t node_id, uint16_t error_code, void *ctx);$/;"	t
+motor_feedback_cb_t	./inc/motor_hal_types.h	/^typedef void (*motor_feedback_cb_t)(uint8_t node_id, const motor_feedback_t *fb, void *ctx);$/;"	t
+motor_feedback_t	./inc/motor_hal_types.h	/^} motor_feedback_t;$/;"	t	typeref:struct:__anon7
+motor_hal	./src/motor_hal.c	/^struct motor_hal {$/;"	s	file:
+motor_hal_add_motor	./src/motor_hal.c	/^int motor_hal_add_motor(motor_hal_t *hal, const motor_config_t *cfg)$/;"	f
+motor_hal_create	./src/motor_hal.c	/^motor_hal_t* motor_hal_create(void)$/;"	f
+motor_hal_destroy	./src/motor_hal.c	/^void motor_hal_destroy(motor_hal_t *hal)$/;"	f
+motor_hal_disable	./src/motor_hal.c	/^int motor_hal_disable(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_disable_watchdog	./src/motor_hal.c	/^int motor_hal_disable_watchdog(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_enable	./src/motor_hal.c	/^int motor_hal_enable(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_fault_reset	./src/motor_hal.c	/^int motor_hal_fault_reset(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_get_current	./src/motor_hal.c	/^int32_t motor_hal_get_current(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_get_feedback	./src/motor_hal.c	/^int motor_hal_get_feedback(motor_hal_t *hal, uint8_t node_id, motor_feedback_t *fb)$/;"	f
+motor_hal_get_position	./src/motor_hal.c	/^int32_t motor_hal_get_position(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_get_state	./src/motor_hal.c	/^motor_state_t motor_hal_get_state(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_get_statusword	./src/motor_hal.c	/^uint16_t motor_hal_get_statusword(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_get_velocity	./src/motor_hal.c	/^int32_t motor_hal_get_velocity(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_init	./src/motor_hal.c	/^int motor_hal_init(motor_hal_t *hal, const char *iface,$/;"	f
+motor_hal_mit_control	./src/motor_hal.c	/^int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,$/;"	f
+motor_hal_multi_ctrl	./src/motor_hal.c	/^void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_t count)$/;"	f
+motor_hal_nmt_broadcast	./src/motor_hal.c	/^void motor_hal_nmt_broadcast(motor_hal_t *hal, uint8_t cmd)$/;"	f
+motor_hal_poll	./src/motor_hal.c	/^void motor_hal_poll(motor_hal_t *hal, int timeout_ms)$/;"	f
+motor_hal_read_pid	./src/motor_hal.c	/^int motor_hal_read_pid(motor_hal_t *hal, uint8_t node_id, motor_pid_t *pid)$/;"	f
+motor_hal_remove_motor	./src/motor_hal.c	/^void motor_hal_remove_motor(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_save_flash	./src/motor_hal.c	/^int motor_hal_save_flash(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_set_accel_decel	./src/motor_hal.c	/^int motor_hal_set_accel_decel(motor_hal_t *hal, uint8_t node_id,$/;"	f
+motor_hal_set_error_cb	./src/motor_hal.c	/^void motor_hal_set_error_cb(motor_hal_t *hal, uint8_t node_id,$/;"	f
+motor_hal_set_feedback_cb	./src/motor_hal.c	/^void motor_hal_set_feedback_cb(motor_hal_t *hal, uint8_t node_id,$/;"	f
+motor_hal_set_limits	./src/motor_hal.c	/^int motor_hal_set_limits(motor_hal_t *hal, uint8_t node_id, float pos_deg, float neg_deg)$/;"	f
+motor_hal_set_mode	./src/motor_hal.c	/^int motor_hal_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)$/;"	f
+motor_hal_set_pid	./src/motor_hal.c	/^int motor_hal_set_pid(motor_hal_t *hal, uint8_t node_id, const motor_pid_t *pid)$/;"	f
+motor_hal_set_position	./src/motor_hal.c	/^int motor_hal_set_position(motor_hal_t *hal, uint8_t node_id, float angle_deg)$/;"	f
+motor_hal_set_profile_velocity	./src/motor_hal.c	/^int motor_hal_set_profile_velocity(motor_hal_t *hal, uint8_t node_id, uint16_t rpm_out)$/;"	f
+motor_hal_set_state_cb	./src/motor_hal.c	/^void motor_hal_set_state_cb(motor_hal_t *hal, uint8_t node_id,$/;"	f
+motor_hal_set_torque	./src/motor_hal.c	/^int motor_hal_set_torque(motor_hal_t *hal, uint8_t node_id, int16_t current_ma)$/;"	f
+motor_hal_set_velocity	./src/motor_hal.c	/^int motor_hal_set_velocity(motor_hal_t *hal, uint8_t node_id, float rpm_motor)$/;"	f
+motor_hal_set_zero	./src/motor_hal.c	/^int motor_hal_set_zero(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_startup	./src/motor_hal.c	/^int motor_hal_startup(motor_hal_t *hal, uint8_t node_id, int timeout_ms __attribute__((unused)))$/;"	f
+motor_hal_stop	./src/motor_hal.c	/^int motor_hal_stop(motor_hal_t *hal, uint8_t node_id)$/;"	f
+motor_hal_sync	./src/motor_hal.c	/^void motor_hal_sync(motor_hal_t *hal)$/;"	f
+motor_hal_t	./inc/motor_hal.h	/^typedef struct motor_hal motor_hal_t;$/;"	t	typeref:struct:motor_hal
+motor_hal_wait_bootup	./src/motor_hal.c	/^int motor_hal_wait_bootup(motor_hal_t *hal, uint8_t node_id, int timeout_ms)$/;"	f
+motor_ma_to_a	./inc/motor_hal.h	/^static inline float motor_ma_to_a(int16_t ma) {$/;"	f
+motor_mode_t	./inc/motor_hal_types.h	/^} motor_mode_t;$/;"	t	typeref:enum:__anon5
+motor_node_t	./src/motor_hal.c	/^} motor_node_t;$/;"	t	typeref:struct:__anon3	file:
+motor_pid_t	./inc/motor_hal_types.h	/^} motor_pid_t;$/;"	t	typeref:struct:__anon9
+motor_startup_enable	./src/motor_hal_startup.c	/^int motor_startup_enable(can_driver_t *drv, uint8_t node_id)$/;"	f
+motor_startup_full	./src/motor_hal_startup.c	/^int motor_startup_full(can_driver_t *drv, const motor_config_t *cfg)$/;"	f
+motor_startup_wait_bootup	./src/motor_hal_startup.c	/^int motor_startup_wait_bootup(can_driver_t *drv, uint8_t node_id, int timeout_ms)$/;"	f
+motor_state_cb_t	./inc/motor_hal_types.h	/^typedef void (*motor_state_cb_t)(uint8_t node_id, motor_state_t old_state, motor_state_t new_state, void *ctx);$/;"	t
+motor_state_str	./inc/motor_hal_types.h	/^static inline const char* motor_state_str(motor_state_t s) {$/;"	f
+motor_state_t	./inc/motor_hal_types.h	/^} motor_state_t;$/;"	t	typeref:enum:__anon6
+motor_temp_to_c	./inc/motor_hal.h	/^static inline float motor_temp_to_c(int16_t raw) {$/;"	f
+motor_utils_counts_to_deg	./src/utils.c	/^float motor_utils_counts_to_deg(int16_t counts)$/;"	f
+motor_utils_deg_to_counts	./src/utils.c	/^int16_t motor_utils_deg_to_counts(float degrees)$/;"	f
+motor_utils_error_str	./src/utils.c	/^const char* motor_utils_error_str(uint16_t code)$/;"	f
+motor_utils_now_us	./src/utils.c	/^uint64_t motor_utils_now_us(void)$/;"	f
+motor_utils_sleep_ms	./src/utils.c	/^void motor_utils_sleep_ms(int ms)$/;"	f
+motors	./src/motor_hal.c	/^    motor_node_t    motors[MOTOR_HAL_MAX_MOTORS];$/;"	m	struct:motor_hal	file:
+multi_axis_cmd_t	./inc/motor_hal_types.h	/^} multi_axis_cmd_t;$/;"	t	typeref:struct:__anon10
+nmt_broadcast	./src/nmt_master.c	/^void nmt_broadcast(can_driver_t *drv, uint8_t cmd)$/;"	f
+nmt_pre_operational	./src/nmt_master.c	/^void nmt_pre_operational(can_driver_t *drv, uint8_t node)$/;"	f
+nmt_reset_comm	./src/nmt_master.c	/^void nmt_reset_comm(can_driver_t *drv, uint8_t node)$/;"	f
+nmt_reset_node	./src/nmt_master.c	/^void nmt_reset_node(can_driver_t *drv, uint8_t node)$/;"	f
+nmt_send	./src/nmt_master.c	/^void nmt_send(can_driver_t *drv, uint8_t cmd, uint8_t node)$/;"	f
+nmt_start	./src/nmt_master.c	/^void nmt_start(can_driver_t *drv, uint8_t node)$/;"	f
+nmt_stop	./src/nmt_master.c	/^void nmt_stop(can_driver_t *drv, uint8_t node)$/;"	f
+node_id	./inc/motor_hal_types.h	/^    uint8_t   node_id;$/;"	m	struct:__anon10
+node_id	./inc/motor_hal_types.h	/^    uint8_t  node_id;             \/* CAN节点 ID (1~127) *\/$/;"	m	struct:__anon8
+node_id	./src/motor_hal.c	/^    uint8_t     node_id;$/;"	m	struct:__anon3	file:
+on_fb	./examples/mit_control.c	/^static void on_fb(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	file:
+on_feedback	./examples/single_motor.c	/^static void on_feedback(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	file:
+on_left_fb	./examples/dual_motor.c	/^static void on_left_fb(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	file:
+on_right_fb	./examples/dual_motor.c	/^static void on_right_fb(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	file:
+pdo_ctrl_send	./src/pdo_handler.c	/^void pdo_ctrl_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,$/;"	f
+pdo_feedback_parse	./src/pdo_handler.c	/^void pdo_feedback_parse(const canfd_frame_t *f, motor_feedback_t *fb)$/;"	f
+pdo_mit_send	./src/pdo_handler.c	/^void pdo_mit_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,$/;"	f
+pdo_multi_send	./src/pdo_handler.c	/^void pdo_multi_send(can_driver_t *drv, const multi_axis_cmd_t *cmds, uint8_t count)$/;"	f
+pdo_sync_send	./src/pdo_handler.c	/^void pdo_sync_send(can_driver_t *drv)$/;"	f
+pos_limit_neg	./inc/motor_hal_types.h	/^    float    pos_limit_neg;       \/* 负限位 (度) *\/$/;"	m	struct:__anon8
+pos_limit_pos	./inc/motor_hal_types.h	/^    float    pos_limit_pos;       \/* 正限位 (度) *\/$/;"	m	struct:__anon8
+position	./inc/motor_hal_types.h	/^    int16_t  position;          \/* 负载端位置 (-32768~32767, 映射 -180°~180°) *\/$/;"	m	struct:__anon7
+position_i	./inc/motor_hal_types.h	/^    uint16_t position_i;$/;"	m	struct:__anon9
+position_p	./inc/motor_hal_types.h	/^    uint16_t position_p;$/;"	m	struct:__anon9
+profile_accel	./inc/motor_hal_types.h	/^    uint16_t profile_accel;       \/* 加速度 RPM\/s (电机端, 0~10000) *\/$/;"	m	struct:__anon8
+profile_decel	./inc/motor_hal_types.h	/^    uint16_t profile_decel;       \/* 减速度 RPM\/s (电机端, 0~10000) *\/$/;"	m	struct:__anon8
+profile_velocity	./inc/motor_hal_types.h	/^    uint16_t profile_velocity;    \/* 轨迹速度 RPM (输出端, 0~30) *\/$/;"	m	struct:__anon8
+qnxnto	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	/^char const* qnxnto = "INFO" ":" "qnxnto[]";$/;"	v
+release_brake	./inc/motor_hal_types.h	/^    bool      release_brake;$/;"	m	struct:__anon10
+rx_count	./src/can_driver.c	/^    uint64_t rx_count;$/;"	m	struct:__anon2	file:
+rx_err	./src/can_driver.c	/^    uint64_t rx_err;$/;"	m	struct:__anon2	file:
+sdo_read	./src/sdo_client.c	/^int sdo_read(can_driver_t *drv, uint8_t node,$/;"	f
+sdo_read_simple	./src/sdo_client.c	/^int sdo_read_simple(can_driver_t *drv, uint8_t node,$/;"	f
+sdo_write	./src/sdo_client.c	/^int sdo_write(can_driver_t *drv, uint8_t node,$/;"	f
+sdo_write_simple	./src/sdo_client.c	/^int sdo_write_simple(can_driver_t *drv, uint8_t node,$/;"	f
+sig_handler	./examples/dual_motor.c	/^static void sig_handler(int sig) { g_running = 0; }$/;"	f	file:
+sig_handler	./examples/mit_control.c	/^static void sig_handler(int sig) { g_running = 0; }$/;"	f	file:
+sig_handler	./examples/single_motor.c	/^static void sig_handler(int sig) { g_running = 0; }$/;"	f	file:
+sock_fd	./src/can_driver.c	/^    int      sock_fd;$/;"	m	struct:__anon2	file:
+state	./src/motor_hal.c	/^    motor_state_t state;$/;"	m	struct:__anon3	file:
+state_cb	./src/motor_hal.c	/^    motor_state_cb_t    state_cb;$/;"	m	struct:__anon3	file:
+state_ctx	./src/motor_hal.c	/^    void               *state_ctx;$/;"	m	struct:__anon3	file:
+status_byte	./inc/motor_hal_types.h	/^    uint8_t  status_byte;       \/* bit7:使能 bit6:抱闸 bit5:错误 bit4:到位 *\/$/;"	m	struct:__anon7
+target1	./inc/motor_hal_types.h	/^    int16_t   target1;$/;"	m	struct:__anon10
+target2	./inc/motor_hal_types.h	/^    uint16_t  target2;$/;"	m	struct:__anon10
+temp_c	./examples/dual_motor.c	/^    float temp_c;$/;"	m	struct:__anon1	file:
+temperature	./inc/motor_hal_types.h	/^    int16_t  temperature;       \/* 线圈温度 (0.1°C) *\/$/;"	m	struct:__anon7
+timestamp_us	./inc/motor_hal_types.h	/^    uint64_t timestamp_us;      \/* 接收时间戳 *\/$/;"	m	struct:__anon7
+tx_count	./src/can_driver.c	/^    uint64_t tx_count;$/;"	m	struct:__anon2	file:
+tx_err	./src/can_driver.c	/^    uint64_t tx_err;$/;"	m	struct:__anon2	file:
+velocity	./inc/motor_hal_types.h	/^    int16_t  velocity;          \/* 电机端速度 (RPM) *\/$/;"	m	struct:__anon7
+velocity_i	./inc/motor_hal_types.h	/^    uint16_t velocity_i;$/;"	m	struct:__anon9
+velocity_p	./inc/motor_hal_types.h	/^    uint16_t velocity_p;$/;"	m	struct:__anon9
+velocity_rpm	./examples/dual_motor.c	/^    float velocity_rpm;$/;"	m	struct:__anon1	file:
+volatile	./build/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c	11;"	d	file:

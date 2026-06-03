@@ -20,6 +20,7 @@ set(MOTOR_HAL_SOURCES
     src/nmt_master.c
     src/heartbeat.c
     src/pdo_handler.c
+    src/pdo_mapper.c
     src/feedback_parser.c
     src/motor_hal_startup.c
     src/utils.c
