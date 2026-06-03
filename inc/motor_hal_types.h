@@ -1,0 +1,302 @@
+/**
+ * @file motor_hal_types.h
+ * @brief 关节模组 HAL 层 - 类型与常量定义
+ *
+ * 适配: 无锡巨蟹智能驱动一体化通讯模组
+ * 协议: CANopen CiA 402 / CANFD
+ * 物理: CANFD 标准帧 11bit, 仲裁段1Mbps, 数据段5Mbps
+ */
+
+#ifndef MOTOR_HAL_TYPES_H
+#define MOTOR_HAL_TYPES_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ============================================================================
+ * 常量
+ * ============================================================================ */
+
+/** 编码器分辨率 */
+#define ENCODER_MOTOR_RES       (16384)   /* 电机端: 14bit */
+#define ENCODER_LOAD_RES        (65536)   /* 负载端: 16bit */
+#define LOAD_POS_MIN            (-32768)
+#define LOAD_POS_MAX            (32767)
+#define LOAD_ANGLE_MIN          (-180.0f)
+#define LOAD_ANGLE_MAX          (180.0f)
+
+/** 最大节点数 */
+#define MOTOR_HAL_MAX_MOTORS    (16)
+
+/** 默认超时 (ms) */
+#define MOTOR_SDO_TIMEOUT_MS    (200)
+#define MOTOR_BOOTUP_TIMEOUT_MS (3000)
+#define MOTOR_ENABLE_STEP_MS    (500)
+
+/* ============================================================================
+ * CANFD 帧
+ * ============================================================================ */
+
+#define CANFD_MAX_DLC (64)
+
+typedef struct {
+    uint32_t id;                     /* 11-bit 标准帧 ID */
+    uint8_t  dlc;                    /* 数据长度 */
+    uint8_t  data[CANFD_MAX_DLC];    /* 数据 */
+    bool     is_fd;                  /* FD 帧标志 */
+} canfd_frame_t;
+
+/* ============================================================================
+ * COB-ID 定义
+ * ============================================================================ */
+
+#define COB_NMT              (0x000)   /* 网络管理 */
+#define COB_SYNC             (0x080)   /* 同步报文 */
+#define COB_EMCY_BASE        (0x080)   /* 紧急报文: 0x080 + node_id */
+#define COB_SDO_TX_BASE      (0x600)   /* SDO 请求 (主→从) */
+#define COB_SDO_RX_BASE      (0x580)   /* SDO 应答 (从→主) */
+#define COB_BOOTUP_BASE      (0x700)   /* Bootup / Heartbeat */
+#define COB_TPDO1_BASE       (0x180)   /* 标准 TPDO1 */
+#define COB_RPDO1_BASE       (0x200)   /* 标准 RPDO1 */
+#define COB_PDO_CTRL_BASE    (0x100)   /* 自定义单轴 PDO */
+#define COB_PDO_MIT_BASE     (0x110)   /* MIT 模式 PDO */
+#define COB_MULTI_CTRL       (0x200)   /* 多轴广播 */
+#define COB_FEEDBACK_BASE    (0x300)   /* 反馈帧 */
+
+/* ============================================================================
+ * SDO 命令码
+ * ============================================================================ */
+
+#define SDO_CC_DOWNLOAD_1B    (0x2F)   /* 写 1 字节 */
+#define SDO_CC_DOWNLOAD_2B    (0x2B)   /* 写 2 字节 */
+#define SDO_CC_DOWNLOAD_4B    (0x23)   /* 写 4 字节 */
+#define SDO_CC_UPLOAD_REQ     (0x40)   /* 读请求 */
+#define SDO_CC_UPLOAD_RSP_1B  (0x4F)   /* 响应 1 字节 */
+#define SDO_CC_UPLOAD_RSP_2B  (0x4B)   /* 响应 2 字节 */
+#define SDO_CC_UPLOAD_RSP_4B  (0x43)   /* 响应 4 字节 */
+#define SDO_CC_ABORT          (0x80)   /* 错误响应 */
+
+/* ============================================================================
+ * NMT 命令码
+ * ============================================================================ */
+
+#define NMT_CMD_START         (0x01)
+#define NMT_CMD_STOP          (0x02)
+#define NMT_CMD_PRE_OP        (0x80)
+#define NMT_CMD_RESET_NODE    (0x81)
+#define NMT_CMD_RESET_COMM    (0x82)
+
+/* ============================================================================
+ * 控制模式 (Modes of Operation, 0x6060)
+ * ============================================================================ */
+
+typedef enum {
+    MOTOR_MODE_PROFILE_POS   = 1,  /* PP:  轮廓位置 */
+    MOTOR_MODE_PROFILE_VEL   = 2,  /* PV:  轮廓速度 */
+    MOTOR_MODE_CSP           = 3,  /* CSP: 循环同步位置 */
+    MOTOR_MODE_CSV           = 4,  /* CSV: 循环同步速度 */
+    MOTOR_MODE_CURRENT       = 5,  /* 电流环 */
+    MOTOR_MODE_MIT           = 6,  /* MIT: 阻抗控制 */
+} motor_mode_t;
+
+/* ============================================================================
+ * DS402 状态字 / 控制字
+ * ============================================================================ */
+
+/* Statusword (0x6041) bit 定义 */
+#define SW_FAULT              (0x0008)
+#define SW_VOLTAGE_ENABLED    (0x0010)
+#define SW_QUICK_STOP         (0x0020)
+#define SW_SWITCH_ON_DISABLED (0x0040)
+#define SW_WARNING            (0x0080)
+#define SW_TARGET_REACHED     (0x0400)
+#define SW_INTERNAL_LIMIT     (0x0800)
+#define SW_STATE_MASK         (0x006F)
+
+/* Statusword 组合值 */
+#define SW_NOT_READY          (0x0000)
+#define SW_ON_DISABLED        (0x0040)
+#define SW_READY_TO_SW_ON     (0x0021)
+#define SW_SWITCHED_ON        (0x0023)
+#define SW_OP_ENABLED         (0x0027)
+#define SW_FAULT_STATE        (0x0008)
+#define SW_QUICK_STOP_STATE   (0x0007)
+
+/* Controlword (0x6040) 命令值 */
+#define CW_SHUTDOWN           (0x0006)
+#define CW_SWITCH_ON          (0x0007)
+#define CW_DISABLE_VOLTAGE    (0x0000)
+#define CW_QUICK_STOP         (0x0002)
+#define CW_DISABLE_OP         (0x0007)
+#define CW_ENABLE_OP          (0x000F)
+#define CW_FAULT_RESET        (0x0080)
+#define CW_NEW_SET_POINT      (0x004F)
+#define CW_STOP               (0x000F)
+
+/* ============================================================================
+ * DS402 状态
+ * ============================================================================ */
+
+typedef enum {
+    MOTOR_STATE_NOT_READY       = 0,
+    MOTOR_STATE_SWITCH_ON_DIS   = 1,
+    MOTOR_STATE_READY_TO_SW_ON  = 2,
+    MOTOR_STATE_SWITCHED_ON     = 3,
+    MOTOR_STATE_OP_ENABLED      = 4,
+    MOTOR_STATE_QUICK_STOP      = 5,
+    MOTOR_STATE_FAULT           = 6,
+    MOTOR_STATE_UNKNOWN         = 99,
+} motor_state_t;
+
+static inline const char* motor_state_str(motor_state_t s) {
+    switch (s) {
+        case MOTOR_STATE_NOT_READY:      return "NOT_READY";
+        case MOTOR_STATE_SWITCH_ON_DIS:  return "SWITCH_ON_DISABLED";
+        case MOTOR_STATE_READY_TO_SW_ON: return "READY_TO_SWITCH_ON";
+        case MOTOR_STATE_SWITCHED_ON:    return "SWITCHED_ON";
+        case MOTOR_STATE_OP_ENABLED:     return "OPERATION_ENABLED";
+        case MOTOR_STATE_QUICK_STOP:     return "QUICK_STOP";
+        case MOTOR_STATE_FAULT:          return "FAULT";
+        default: return "UNKNOWN";
+    }
+}
+
+/* ============================================================================
+ * 错误码
+ * ============================================================================ */
+
+#define ERR_OVER_VOLTAGE      (0x0001)
+#define ERR_UNDER_VOLTAGE     (0x0002)
+#define ERR_OVER_TEMP         (0x0004)
+#define ERR_STALL             (0x0008)
+#define ERR_OVERLOAD          (0x0010)
+#define ERR_CURRENT_SAMPLE    (0x0020)
+#define ERR_POS_LIMIT         (0x0040)
+#define ERR_NEG_LIMIT         (0x0080)
+#define ERR_ENCODER_TIMEOUT   (0x0100)
+#define ERR_OVER_MAX_SPEED    (0x0200)
+#define ERR_ELEC_ANGLE_FAIL   (0x0400)
+#define ERR_POS_ERROR_LARGE   (0x1000)
+#define ERR_ENCODER_FAULT     (0x2000)
+
+/* ============================================================================
+ * 反馈数据
+ * ============================================================================ */
+
+typedef struct {
+    int16_t  position;          /* 负载端位置 (-32768~32767, 映射 -180°~180°) */
+    int16_t  velocity;          /* 电机端速度 (RPM) */
+    int16_t  current_iq;        /* Iq 电流 (mA) */
+    uint16_t error_code;        /* 错误码 */
+    int16_t  temperature;       /* 线圈温度 (0.1°C) */
+    uint8_t  mode;              /* 当前控制模式 */
+    uint8_t  status_byte;       /* bit7:使能 bit6:抱闸 bit5:错误 bit4:到位 */
+    uint64_t timestamp_us;      /* 接收时间戳 */
+} motor_feedback_t;
+
+/* ============================================================================
+ * 对象字典索引
+ * ============================================================================ */
+
+/* 厂商特定 */
+#define OD_NODE_ID            (0x2530)  /* 电机 ID */
+#define OD_ZERO_POSITION      (0x2531)  /* 零位标定 */
+#define OD_CURRENT_P          (0x2532)
+#define OD_CURRENT_I          (0x2533)
+#define OD_VELOCITY_P         (0x2534)
+#define OD_VELOCITY_I         (0x2535)
+#define OD_POSITION_P         (0x2536)
+#define OD_POSITION_I         (0x2537)
+#define OD_MAX_CURRENT        (0x2538)
+#define OD_SAVE_FLASH         (0x2539)
+#define OD_CANFD_BAUD         (0x2540)
+#define OD_WATCHDOG_LIMIT     (0x2650)  /* 看门狗/限位控制 */
+
+/* CiA 402 标准 */
+#define OD_CONTROLWORD        (0x6040)
+#define OD_STATUSWORD         (0x6041)
+#define OD_MODE_OF_OP         (0x6060)
+#define OD_MODE_OF_OP_DISP    (0x6061)
+#define OD_POSITION_ACTUAL    (0x6064)
+#define OD_VELOCITY_ACTUAL    (0x606C)
+#define OD_TORQUE_ACTUAL      (0x6077)
+#define OD_CURRENT_ACTUAL     (0x6078)
+#define OD_TARGET_POS         (0x607A)
+#define OD_TARGET_VELOCITY    (0x60FF)
+#define OD_TARGET_TORQUE      (0x6071)
+#define OD_PROFILE_VEL        (0x6081)
+#define OD_PROFILE_ACCEL      (0x6083)
+#define OD_PROFILE_DECEL      (0x6084)
+#define OD_POS_LIMIT          (0x607D)  /* sub0x01=负, sub0x02=正 */
+#define OD_HEARTBEAT          (0x1017)
+#define OD_MANUFACTURER       (0x1008)  /* 厂家名称 */
+#define OD_HARDWARE_VER       (0x1009)
+#define OD_FIRMWARE_VER       (0x100A)
+#define OD_MOTOR_MODEL        (0x1000)
+
+/* ============================================================================
+ * 电机配置
+ * ============================================================================ */
+
+typedef struct {
+    uint8_t  node_id;             /* CAN节点 ID (1~127) */
+    uint32_t heartbeat_ms;        /* 心跳周期 (默认 2000) */
+    uint16_t profile_accel;       /* 加速度 RPM/s (电机端, 0~10000) */
+    uint16_t profile_decel;       /* 减速度 RPM/s (电机端, 0~10000) */
+    uint16_t profile_velocity;    /* 轨迹速度 RPM (输出端, 0~30) */
+    float    pos_limit_pos;       /* 正限位 (度) */
+    float    pos_limit_neg;       /* 负限位 (度) */
+    bool     disable_watchdog;    /* 上电关闭看门狗 */
+    bool     auto_enable;         /* startup 自动使能 */
+    int      bootup_timeout_ms;   /* 启动超时 */
+} motor_config_t;
+
+/* ============================================================================
+ * PID 参数
+ * ============================================================================ */
+
+typedef struct {
+    uint16_t current_p;
+    uint16_t current_i;
+    uint16_t velocity_p;
+    uint16_t velocity_i;
+    uint16_t position_p;
+    uint16_t position_i;
+} motor_pid_t;
+
+/* ============================================================================
+ * 多轴广播命令
+ * ============================================================================ */
+
+typedef struct {
+    uint8_t   node_id;
+    motor_mode_t mode;
+    bool      enable;
+    bool      release_brake;
+    bool      clear_error;
+    int16_t   target1;
+    uint16_t  target2;
+    int16_t   feedforward;
+} multi_axis_cmd_t;
+
+/* ============================================================================
+ * 回调
+ * ============================================================================ */
+
+typedef void (*motor_feedback_cb_t)(uint8_t node_id, const motor_feedback_t *fb, void *ctx);
+typedef void (*motor_error_cb_t)(uint8_t node_id, uint16_t error_code, void *ctx);
+typedef void (*motor_state_cb_t)(uint8_t node_id, motor_state_t old_state, motor_state_t new_state, void *ctx);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* MOTOR_HAL_TYPES_H */
