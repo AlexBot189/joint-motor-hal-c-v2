@@ -85,22 +85,26 @@ bool canopen_sdo_parse_response(const canfd_frame_t *f,
         *out_subidx = f->data[3];
 
     switch (cmd) {
-        case SDO_CC_UPLOAD_RSP_1B:
+        case SDO_CC_UPLOAD_RSP_1B:  /* 0x4F */
             if (value) *value = f->data[4];
             return true;
-        case SDO_CC_UPLOAD_RSP_2B:
+        case SDO_CC_UPLOAD_RSP_2B:  /* 0x4B */
             if (value) *value = (uint32_t)f->data[4] | ((uint32_t)f->data[5] << 8);
             return true;
-        case SDO_CC_UPLOAD_RSP_4B:
+        case SDO_CC_UPLOAD_RSP_4B:  /* 0x43 */
+        case 0x41:                  /* 0x41: expedited 4B, e=0 variant (巨蟹固件) */
+        case 0x47:                  /* 0x47: expedited 3B, e=0 variant */
             if (value) {
                 *value = (uint32_t)f->data[4] | ((uint32_t)f->data[5] << 8)
                        | ((uint32_t)f->data[6] << 16) | ((uint32_t)f->data[7] << 24);
             }
             return true;
+        case 0x60:  /* SDO 写确认 (从站→主站) */
+            return true;
         case SDO_CC_DOWNLOAD_1B:
         case SDO_CC_DOWNLOAD_2B:
         case SDO_CC_DOWNLOAD_4B:
-            /* 写操作的确认帧: 数据区回显, 视为成功 */
+            /* 从站回显下载命令码 (某些驱动用这种方式确认) */
             return true;
         default:
             return false;

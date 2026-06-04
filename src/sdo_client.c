@@ -15,6 +15,17 @@
 #include <errno.h>
 #include <time.h>
 #include <pthread.h>
+#include <stdio.h>
+
+/* ---------- 诊断: hex dump ---------- */
+static void _dump_hex(const char *dir, const canfd_frame_t *f)
+{
+    fprintf(stderr, "[SDO %s] id=0x%03X dlc=%d :", dir, f->id, f->dlc);
+    for (int i = 0; i < f->dlc && i < 64; i++) {
+        fprintf(stderr, " %02X", f->data[i]);
+    }
+    fprintf(stderr, "\n");
+}
 
 /* =====================================================
  * SDO 响应队列 (全局, 接收线程写 → SDO客户端读)
@@ -86,7 +97,7 @@ void sdo_push_response(const canfd_frame_t *f)
 
 static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
                               uint8_t node,
-                              uint16_t expected_index __attribute__((unused)),
+                              uint16_t expected_index,
                               uint32_t *value, uint32_t *abort_code,
                               int timeout_ms)
 {
@@ -104,15 +115,33 @@ static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
     pthread_mutex_lock(&g_sdo_queue.mutex);
 
     while (1) {
-        /* 扫描队列, 找匹配节点 ID 的 SDO 响应 */
-        /* 注意: 可能有多帧在队列里, 需要匹配 COB-ID */
+        /* 扫描队列, 找匹配节点 ID + 对象索引的 SDO 响应 */
         int found = -1;
         for (int i = 0; i < g_sdo_queue.count; i++) {
             int idx = (g_sdo_queue.tail + i) % SDO_QUEUE_SIZE;
-            if (g_sdo_queue.frames[idx].id == expect_rx_id) {
+            if (g_sdo_queue.frames[idx].id != expect_rx_id)
+                continue;
+            /* 提取响应帧中的对象索引 (bytes 1-2, little-endian) */
+            uint16_t idx_in = (uint16_t)g_sdo_queue.frames[idx].data[1]
+                            | ((uint16_t)g_sdo_queue.frames[idx].data[2] << 8);
+            if (idx_in == expected_index) {
                 found = i;
                 break;
             }
+            /* 索引不匹配: 遗留帧(如过期 Abort), 丢弃并继续扫描 */
+            fprintf(stderr, "[SDO] queue: dropping stale frame idx=0x%04X for idx=0x%04X\n",
+                    idx_in, expected_index);
+            _dump_hex("DROP", &g_sdo_queue.frames[idx]);
+
+            /* 紧凑移除不匹配帧 */
+            for (int j = i; j < g_sdo_queue.count - 1; j++) {
+                int src = (g_sdo_queue.tail + j + 1) % SDO_QUEUE_SIZE;
+                int dst = (g_sdo_queue.tail + j) % SDO_QUEUE_SIZE;
+                memcpy(&g_sdo_queue.frames[dst], &g_sdo_queue.frames[src], sizeof(canfd_frame_t));
+            }
+            g_sdo_queue.head = (g_sdo_queue.head + SDO_QUEUE_SIZE - 1) % SDO_QUEUE_SIZE;
+            g_sdo_queue.count--;
+            i--;  /* 重新扫描当前位置 */
         }
 
         if (found >= 0) {
@@ -130,6 +159,9 @@ static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
             g_sdo_queue.count--;
 
             pthread_mutex_unlock(&g_sdo_queue.mutex);
+
+            /* 诊断: 打印 SDO 响应 */
+            _dump_hex("RX", &f);
 
             /* 解析响应 */
             uint16_t idx_resp = 0;
@@ -163,6 +195,7 @@ int sdo_write(can_driver_t *drv, uint8_t node,
     for (int attempt = 0; attempt <= retry_count; attempt++) {
         canfd_frame_t f;
         canopen_sdo_write_build(node, index, subidx, value, size_bytes, &f);
+        _dump_hex("TX", &f);
 
         if (can_driver_send(drv, &f) < 0) {
             last_err = -errno;
@@ -190,6 +223,7 @@ int sdo_read(can_driver_t *drv, uint8_t node,
     for (int attempt = 0; attempt <= retry_count; attempt++) {
         canfd_frame_t f;
         canopen_sdo_read_build(node, index, subidx, &f);
+        _dump_hex("TX", &f);
 
         if (can_driver_send(drv, &f) < 0) {
             last_err = -errno;

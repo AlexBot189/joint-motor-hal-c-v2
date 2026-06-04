@@ -23,6 +23,17 @@
 #include <errno.h>
 #include <pthread.h>
 #include <math.h>
+#include <stdio.h>
+
+/* ---------- 诊断: CAN 帧完整 hex dump ---------- */
+static void _dump_can_frame(const char *dir, const canfd_frame_t *f)
+{
+    fprintf(stderr, "[%s] id=0x%03X dlc=%d :", dir, f->id, f->dlc);
+    for (int i = 0; i < f->dlc && i < 64; i++) {
+        fprintf(stderr, " %02X", f->data[i]);
+    }
+    fprintf(stderr, "\n");
+}
 
 /* =====================================================
  * 内部: 前向声明拆分模块函数
@@ -644,6 +655,8 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
 {
     uint32_t func = canopen_func_code(f->id);
 
+    _dump_can_frame("recv", f);
+
     switch (func) {
     case 0x580: {  /* SDO 响应 → 入队, 等待 sdo_client 消费 */
         sdo_push_response(f);
@@ -654,7 +667,21 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
         if (canopen_is_bootup(f->id, f->data[0])) {
             uint8_t node = canopen_extract_node(f->id, COB_BOOTUP_BASE);
             motor_node_t *m = _find_motor(hal, node);
-            if (m) m->bootup_received = true;
+            if (m) {
+                m->bootup_received = true;
+                fprintf(stderr, "  → Bootup node=%d\n", node);
+            } else {
+                fprintf(stderr, "  → WARN: Bootup node=%d not registered\n", node);
+            }
+        } else {
+            const char *nmt_states[] = {
+                [0x00]="Boot", [0x04]="Stopped", [0x05]="Operational",
+                [0x7F]="Pre-Op"
+            };
+            const char *st = (f->data[0] < 4 || f->data[0] == 0x7F) ?
+                nmt_states[f->data[0] & 0x7F] : "?";
+            fprintf(stderr, "  → Heartbeat state=%s (0x%02X)\n",
+                    st ? st : "?", f->data[0]);
         }
         break;
     }
