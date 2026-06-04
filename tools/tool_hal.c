@@ -68,8 +68,19 @@ void tool_cleanup(void)
 int tool_register_motor(int node_id)
 {
     if (g_motor_count >= TOOL_MAX_MOTORS) return -1;
+    /* 避免重复注册 */
+    for (int i = 0; i < g_motor_count; i++) {
+        if (g_motor_ids[i] == node_id) return 0;
+    }
     g_motor_ids[g_motor_count++] = node_id;
     return 0;
+}
+
+int tool_motor_count(void) { return g_motor_count; }
+
+int tool_motor_id(int index) {
+    if (index < 0 || index >= g_motor_count) return -1;
+    return g_motor_ids[index];
 }
 
 /* ================================================================

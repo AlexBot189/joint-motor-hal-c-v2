@@ -278,6 +278,8 @@ int motor_hal_startup(motor_hal_t *hal, uint8_t node_id, int timeout_ms __attrib
     motor_node_t *m = _find_motor(hal, node_id);
     if (!m) return -ENOENT;
 
+    /* 用调用者传入的 timeout_ms 覆盖 cfg 中的默认值 */
+    m->config.bootup_timeout_ms = timeout_ms;
     int ret = motor_startup_full(hal->drv, &m->config, &m->bootup_received);
     if (ret == 0) {
         m->bootup_received = true;

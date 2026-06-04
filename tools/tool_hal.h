@@ -24,6 +24,8 @@ extern motor_hal_t *g_hal;
 int  tool_init(const char *iface);
 void tool_cleanup(void);
 int  tool_register_motor(int node_id);  /* 注册电机到广播列表 */
+int  tool_motor_count(void);            /* 已注册电机数量 */
+int  tool_motor_id(int index);          /* 获取第 index 个电机的 ID (-1=越界) */
 
 /* ================================================================
  * 控制封装 — ×100 换算 + id=0 广播支持

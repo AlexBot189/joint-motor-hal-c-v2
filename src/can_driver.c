@@ -121,7 +121,8 @@ int can_driver_send(can_driver_t *drv, const canfd_frame_t *frame)
 
     struct canfd_frame cfd;
     memset(&cfd, 0, sizeof(cfd));
-    cfd.can_id = frame->id | CAN_EFF_FLAG;
+    /* 11-bit 标准帧: 不加 CAN_EFF_FLAG */
+    cfd.can_id = frame->id & CAN_SFF_MASK;
     if (frame->is_fd) cfd.flags |= CANFD_BRS;
     cfd.len = frame->dlc;
     memcpy(cfd.data, frame->data, frame->dlc);
@@ -154,7 +155,7 @@ int can_driver_recv(can_driver_t *drv, canfd_frame_t *frame, int timeout_ms)
     int n = read(drv->sock_fd, &cfd, sizeof(cfd));
     if (n < 0) { drv->rx_err++; return -errno; }
 
-    frame->id    = cfd.can_id & CAN_EFF_MASK;
+    frame->id    = cfd.can_id & CAN_SFF_MASK;
     frame->dlc   = cfd.len;
     frame->is_fd = (cfd.flags & CANFD_BRS) != 0;
     memset(frame->data, 0, CANFD_MAX_DLC);
@@ -168,8 +169,9 @@ int can_driver_set_filter(can_driver_t *drv, uint32_t can_id, uint32_t can_mask)
 {
     if (!drv || drv->sock_fd < 0) return -ENODEV;
     struct can_filter filter;
-    filter.can_id   = can_id | CAN_EFF_FLAG;
-    filter.can_mask = can_mask | CAN_EFF_FLAG;
+    /* 11-bit 标准帧过滤: mask 加 EFF_FLAG 确保只匹配标准帧 */
+    filter.can_id   = can_id & CAN_SFF_MASK;
+    filter.can_mask = (can_mask & CAN_SFF_MASK) | CAN_EFF_FLAG;
     return setsockopt(drv->sock_fd, SOL_CAN_RAW, CAN_RAW_FILTER,
                       &filter, sizeof(filter));
 }

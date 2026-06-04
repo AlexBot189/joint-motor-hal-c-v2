@@ -214,38 +214,70 @@ int daemon_start(const char *iface)
     /* 1. 初始化 CAN */
     if (tool_init(iface) < 0) return -1;
 
-    /* 2. 注册 + 启动双电机 (方案A: 硬编码 ID=1,2) */
+    /* 2. 注册电机 (方案B: 扫描 ID=1~4, 不硬编码双电机) */
     motor_config_t cfg = {0};
-    cfg.node_id           = 1;
     cfg.heartbeat_ms      = 2000;
     cfg.profile_accel     = 5000;
     cfg.profile_decel     = 5000;
     cfg.profile_velocity  = 20;
     cfg.disable_watchdog  = true;
     cfg.auto_enable       = true;
-    cfg.bootup_timeout_ms = 5000;
+    cfg.bootup_timeout_ms = 3000;
 
-    motor_hal_add_motor(g_hal, &cfg);
-    tool_register_motor(1);
+    int scan_ids[] = {1, 2, 3, 4};  /* 扫描范围, 后面可做成命令行参数 */
+    int scan_count = sizeof(scan_ids) / sizeof(scan_ids[0]);
 
-    cfg.node_id = 2;
-    motor_hal_add_motor(g_hal, &cfg);
-    tool_register_motor(2);
+    for (int i = 0; i < scan_count; i++) {
+        cfg.node_id = (uint8_t)scan_ids[i];
+        motor_hal_add_motor(g_hal, &cfg);
+    }
 
-    /* ★ 先启动接收线程 (SDO/PDO/Bootup 全部走 recv 线程) */
+    /* 3. 启动接收线程 (先于 startup, 收 Bootup 帧) */
     motor_hal_recv_start(g_hal);
 
-    printf("Starting motors...\n");
-    for (int id = 1; id <= 2; id++) {
-        int ret = motor_hal_startup(g_hal, (uint8_t)id, 5000);
-        if (ret == 0) {
-            printf("  ✓ Motor %d: OPERATION_ENABLED\n", id);
-        } else {
-            fprintf(stderr, "  ✗ Motor %d startup failed (ret=%d)\n", id, ret);
+    /* 4. 等待 Bootup — 给电机 2 秒发 Bootup 帧 */
+    printf("Scanning motors (ID=%d~%d)...\n", scan_ids[0], scan_ids[scan_count-1]);
+    int bootup_wait_ms = 2000;
+    int elapsed = 0;
+    int online_count = 0;
+
+    while (elapsed < bootup_wait_ms) {
+        usleep(50000);  /* 50ms */
+        elapsed += 50;
+        /* 检查已有多少电机收到 bootup */
+        int found = 0;
+        for (int i = 0; i < scan_count; i++) {
+            motor_feedback_t fb;
+            if (motor_hal_get_feedback(g_hal, (uint8_t)scan_ids[i], &fb) == 0
+                && fb.position != 0) found++;
+        }
+        if (found > online_count) {
+            online_count = found;
+            printf("  detected %d motor(s) online...\n", online_count);
         }
     }
 
-    /* 3. 后台化 */
+    /* 5. 逐个启动已检测到 bootup 的电机 */
+    printf("Starting motors...\n");
+    int started = 0;
+    for (int i = 0; i < scan_count; i++) {
+        uint8_t id = (uint8_t)scan_ids[i];
+        int ret = motor_hal_startup(g_hal, id, 5000);
+        if (ret == 0) {
+            tool_register_motor(id);
+            printf("  ✓ Motor %d: OPERATION_ENABLED\n", id);
+            started++;
+        } else {
+            printf("  - Motor %d: not connected (skip)\n", id);
+        }
+    }
+
+    if (started == 0) {
+        fprintf(stderr, "\n⚠ No motors detected. Check power and CAN wiring.\n");
+        fprintf(stderr, "  Daemon is still running — use 'motor_tool startup <id>' manually.\n\n");
+    }
+
+    /* 6. 后台化 */
     _daemonize();
 
     /* 4. 信号处理 */
@@ -264,12 +296,10 @@ int daemon_start(const char *iface)
 
     _accept_loop();
 
-    /* 7. 清理 */
+    /* 7. 清理 (禁用已注册的电机) */
     close(g_listen_fd);
     unlink(MOTOR_TOOL_SOCK_PATH);
-
-    for (int id = 1; id <= 2; id++)
-        motor_hal_disable(g_hal, (uint8_t)id);
+    motor_hal_nmt_broadcast(g_hal, NMT_CMD_STOP);
     tool_cleanup();
 
     printf("motor_tool daemon stopped.\n");
