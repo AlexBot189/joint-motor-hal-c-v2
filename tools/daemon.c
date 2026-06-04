@@ -232,29 +232,29 @@ int daemon_start(const char *iface)
         motor_hal_add_motor(g_hal, &cfg);
     }
 
-    /* 3. 启动接收线程 (先于 startup, 收 Bootup/Heartbeat/反馈帧) */
+    /* 3. 启动接收线程 (先于 startup, 收 Bootup 帧) */
     motor_hal_recv_start(g_hal);
 
-    /* 4. 等待电机在线 — 心跳帧或反馈帧都会标记 bootup_received */
+    /* 4. 等待 Bootup — 给电机 2 秒发 Bootup 帧 */
     printf("Scanning motors (ID=%d~%d)...\n", scan_ids[0], scan_ids[scan_count-1]);
     int bootup_wait_ms = 2000;
     int elapsed = 0;
+    int online_count = 0;
 
     while (elapsed < bootup_wait_ms) {
-        usleep(100000);  /* 100ms */
-        elapsed += 100;
-
-        /* 检查 bootup_received 标志 (由 recv 线程自动设置) */
+        usleep(50000);  /* 50ms */
+        elapsed += 50;
+        /* 检查已有多少电机收到 bootup */
         int found = 0;
         for (int i = 0; i < scan_count; i++) {
             motor_feedback_t fb;
-            /* feedback 缓存有数据且 position 非零也算在线 */
             if (motor_hal_get_feedback(g_hal, (uint8_t)scan_ids[i], &fb) == 0
-                && fb.position != 0)
-                found++;
+                && fb.position != 0) found++;
         }
-        if (found > 0)
-            printf("  detected %d motor(s) online...\n", found);
+        if (found > online_count) {
+            online_count = found;
+            printf("  detected %d motor(s) online...\n", online_count);
+        }
     }
 
     /* 5. 逐个启动已检测到 bootup 的电机 */
