@@ -19,6 +19,7 @@
 
 #include "can_driver_internal.h"
 #include "sdo_client_internal.h"
+#include "pdo_mapper.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -117,6 +118,11 @@ struct motor_hal {
     pthread_t    recv_thread;
     bool         recv_running;
 
+    /* SYNC 定时器线程 */
+    pthread_t    sync_thread;
+    bool         sync_running;
+    uint32_t     sync_period_us;
+
     pthread_mutex_t lock;
     motor_node_t    motors[MOTOR_HAL_MAX_MOTORS];
     int             motor_count;
@@ -192,6 +198,12 @@ void motor_hal_destroy(motor_hal_t *hal)
     if (hal->recv_running) {
         hal->recv_running = false;
         pthread_join(hal->recv_thread, NULL);
+    }
+
+    /* 2.5 停止 SYNC 定时器 */
+    if (hal->sync_running) {
+        hal->sync_running = false;
+        pthread_join(hal->sync_thread, NULL);
     }
 
     /* 3. 销毁 mutex */
@@ -699,6 +711,18 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
             if (m) {
                 m->bootup_received = true;
                 fprintf(stderr, "  → Bootup node=%d\n", node);
+                /* 自动启动 (如果配置了 auto_enable) */
+                if (m->config.auto_enable && m->state == MOTOR_STATE_NOT_READY) {
+                    fprintf(stderr, "  → auto-startup node=%d...\n", node);
+                    int ret = motor_startup_full(hal->drv, &m->config, &m->bootup_received);
+                    if (ret == 0) {
+                        m->enabled = true;
+                        _set_state(hal, m, MOTOR_STATE_OP_ENABLED);
+                        fprintf(stderr, "  → node=%d OPERATION_ENABLED (auto)\n", node);
+                    } else {
+                        fprintf(stderr, "  → node=%d auto-startup failed (ret=%d)\n", node, ret);
+                    }
+                }
             } else {
                 fprintf(stderr, "  → WARN: Bootup node=%d not registered\n", node);
             }
@@ -710,7 +734,7 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
         break;
     }
 
-    case 0x300: {  /* 反馈帧 */
+    case 0x300: {  /* 反馈帧 (巨蟹私有) */
         uint8_t node = canopen_extract_node(f->id, COB_FEEDBACK_BASE);
         motor_node_t *m = _find_motor(hal, node);
         if (!m) break;
@@ -734,6 +758,46 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
             if (m->err_cb) {
                 m->err_cb(node, fb.error_code, m->err_ctx);
             }
+        }
+        break;
+    }
+
+    case 0x180: {  /* 标准 TPDO1 (同步周期上报: 0x180+node) */
+        uint8_t node = (uint8_t)(f->id & 0x7F);
+        motor_node_t *m = _find_motor(hal, node);
+        if (!m || f->dlc < 8) break;
+
+        /* 解析: Statusword(16b) + Position(32b) + Velocity(32b) = 10 bytes */
+        uint16_t sw = (uint16_t)f->data[0] | ((uint16_t)f->data[1] << 8);
+        int32_t  pos = (int32_t)((uint32_t)f->data[2]
+                      | ((uint32_t)f->data[3] << 8)
+                      | ((uint32_t)f->data[4] << 16)
+                      | ((uint32_t)f->data[5] << 24));
+        /* 如果 TPDO 包含了 Velocity + Current (12 bytes), 也解析 */
+        int32_t  vel = 0;
+        int16_t  cur = 0;
+        if (f->dlc >= 12) {
+            vel = (int32_t)((uint32_t)f->data[6]
+                  | ((uint32_t)f->data[7] << 8)
+                  | ((uint32_t)f->data[8] << 16)
+                  | ((uint32_t)f->data[9] << 24));
+            cur = (int16_t)((uint16_t)f->data[10] | ((uint16_t)f->data[11] << 8));
+        }
+
+        /* 更新缓存 (补充 TPDO 数据到缓存) */
+        pthread_mutex_lock(&m->fb_lock);
+        m->cached_fb.position   = (int16_t)pos;  /* 截断到 16bit, 兼容现有类型 */
+        m->cached_fb.velocity   = (int16_t)vel;
+        m->cached_fb.current_iq = cur;
+        m->cached_fb.timestamp_us = motor_utils_now_us();
+        /* 从 statusword 推导状态 */
+        m->cached_fb.status_byte = (sw & 0x000F) |  /* 低4位=状态 */
+                                    ((sw & 0x1000) ? 0 : 0x80);  /* bit12=0→enabled */
+        pthread_mutex_unlock(&m->fb_lock);
+
+        /* 触发反馈回调 */
+        if (m->fb_cb) {
+            m->fb_cb(node, &m->cached_fb, m->fb_ctx);
         }
         break;
     }
@@ -836,6 +900,117 @@ void motor_hal_sync(motor_hal_t *hal)
 {
     if (!hal || !hal->drv) return;
     pdo_sync_send(hal->drv);
+}
+
+/* =====================================================
+ * SYNC 定时器线程
+ * ===================================================== */
+
+static void* _sync_thread_fn(void *arg)
+{
+    motor_hal_t *hal = (motor_hal_t*)arg;
+    uint32_t period_us = hal->sync_period_us;
+
+    while (hal->sync_running) {
+        pdo_sync_send(hal->drv);
+        usleep(period_us);
+    }
+    return NULL;
+}
+
+int motor_hal_sync_start(motor_hal_t *hal, uint32_t period_us)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    if (hal->sync_running) return -EBUSY;
+    if (period_us < 500 || period_us > 1000000) return -EINVAL;
+
+    hal->sync_period_us = period_us;
+    hal->sync_running = true;
+
+    int ret = pthread_create(&hal->sync_thread, NULL, _sync_thread_fn, hal);
+    if (ret != 0) {
+        hal->sync_running = false;
+        return -ret;
+    }
+
+    fprintf(stderr, "[SYNC] started: period=%u us (%.1f Hz)\n",
+            period_us, 1000000.0f / (float)period_us);
+    return 0;
+}
+
+int motor_hal_sync_stop(motor_hal_t *hal)
+{
+    if (!hal || !hal->sync_running) return -EINVAL;
+
+    hal->sync_running = false;
+    pthread_join(hal->sync_thread, NULL);
+
+    fprintf(stderr, "[SYNC] stopped\n");
+    return 0;
+}
+
+bool motor_hal_sync_is_running(motor_hal_t *hal)
+{
+    return hal && hal->sync_running;
+}
+
+/* =====================================================
+ * TPDO 配置 — 同步周期上报
+ * ===================================================== */
+
+int motor_hal_tpdo_config(motor_hal_t *hal, uint8_t node_id, uint8_t sync_count)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    if (sync_count == 0 || sync_count > 240) return -EINVAL;
+
+    uint32_t cob_id = (uint32_t)PDO_TPDO1_COB(node_id);
+    int ret;
+
+    /* 1. 停用 TPDO1 */
+    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_COMM, 0x01,
+                           cob_id | 0x80000000UL, 4);
+    if (ret != 0) { fprintf(stderr, "[TPDO] node=%d disable failed\n", node_id); return ret; }
+
+    /* 2. 清映射 */
+    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x00, 0, 1);
+    if (ret != 0) return ret;
+
+    /* 3. 写入映射: Statusword(0x6041, 16b) */
+    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x01,
+                           pdo_map_entry(OD_STATUSWORD, 0x00, 16), 4);
+    if (ret != 0) return ret;
+
+    /* 4. Position Actual (0x6064, 32b) */
+    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x02,
+                           pdo_map_entry(OD_POSITION_ACTUAL, 0x00, 32), 4);
+    if (ret != 0) return ret;
+
+    /* 5. Velocity Actual (0x606C, 32b) */
+    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x03,
+                           pdo_map_entry(OD_VELOCITY_ACTUAL, 0x00, 32), 4);
+    if (ret != 0) return ret;
+
+    /* 6. Current Actual (0x6078, 16b) */
+    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x04,
+                           pdo_map_entry(OD_CURRENT_ACTUAL, 0x00, 16), 4);
+    if (ret != 0) return ret;
+
+    /* 7. 设映射数量 = 4 */
+    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x00, 4, 1);
+    if (ret != 0) return ret;
+
+    /* 8. 设传输类型 = sync_count (同步周期) */
+    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_COMM, 0x02,
+                           sync_count, 1);
+    if (ret != 0) return ret;
+
+    /* 9. 启用 TPDO1 */
+    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_COMM, 0x01, cob_id, 4);
+    if (ret != 0) return ret;
+
+    fprintf(stderr, "[TPDO] node=%d configured: COB=0x%03X, sync_every=%d\n",
+            node_id, cob_id, sync_count);
+    return 0;
 }
 
 void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_t count)

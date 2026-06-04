@@ -618,6 +618,43 @@ void motor_hal_nmt_broadcast(motor_hal_t *hal, uint8_t cmd);
 void motor_hal_sync(motor_hal_t *hal);
 
 /**
+ * @brief 启动 SYNC 定时器 — 按 period_us 周期发送 SYNC 帧
+ *
+ * 创建一个高优先级线程, 以精确周期发送 SYNC (0 字节, 极低开销)。
+ * 配合从站 TPDO 的同步传输模式 (trans_type=1~240),
+ * 可实现确定性的 5ms/1ms 反馈周期。
+ *
+ * 典型用法:
+ *   motor_hal_sync_start(hal, 5000);  // 5ms = 200Hz
+ *
+ * @param period_us  SYNC 周期 (微秒), 推荐 1000~100000
+ * @return 0=成功; -EBUSY=已在运行; -ENODEV=CAN未初始化
+ */
+int motor_hal_sync_start(motor_hal_t *hal, uint32_t period_us);
+
+/** @brief 停止 SYNC 定时器 */
+int motor_hal_sync_stop(motor_hal_t *hal);
+
+/** @brief 查询 SYNC 定时器是否在运行 */
+bool motor_hal_sync_is_running(motor_hal_t *hal);
+
+/**
+ * @brief 配置从站 TPDO1 为同步周期上报 (CiA 402 标准)
+ *
+ * 通过 SDO 配置 TPDO1 映射和通信参数:
+ *   映射: Statusword(16b) + Position(32b) + Velocity(32b) + Current(16b)
+ *   传输类型: sync_count (1=每个SYNC发, 2=每2个SYNC发...)
+ *   COB-ID: 0x180 + node_id
+ *
+ * 配置后, 主站每发一次 SYNC, 从站就上报一帧 12 字节数据。
+ *
+ * @param node_id    电机 CAN 节点 ID
+ * @param sync_count 每 N 个 SYNC 发一次 (1~240), 0=不配置
+ * @return 0=成功; <0=SDO 失败
+ */
+int motor_hal_tpdo_config(motor_hal_t *hal, uint8_t node_id, uint8_t sync_count);
+
+/**
  * @brief 多轴广播控制 — 一帧 CANFD 控制最多 8 个电机
  *
  * 利用 CANFD 的 64 字节数据段, 一帧同时下发 8 条 PDO 命令。

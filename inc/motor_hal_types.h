@@ -300,6 +300,7 @@ typedef struct {
     bool     disable_watchdog;    /* 上电关闭看门狗 */
     bool     auto_enable;         /* startup 自动使能 */
     int      bootup_timeout_ms;   /* 启动超时 */
+    uint8_t  tpdo_sync_count;     /* TPDO 同步上报: 1~240=每N个SYNC发一次, 0=不配置 */
 } motor_config_t;
 
 /* ============================================================================
