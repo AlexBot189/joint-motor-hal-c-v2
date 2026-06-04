@@ -50,7 +50,6 @@ static void _daemonize(void)
     if (pid < 0) { perror("fork"); exit(1); }
     if (pid > 0) {
         printf("motor_tool daemon starting (pid=%d)\n", pid);
-        fflush(stdout);
         _exit(0);
     }
     setsid();
