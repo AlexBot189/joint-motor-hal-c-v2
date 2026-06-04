@@ -5,9 +5,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-# 交叉编译 (RV1126B)
-# set(CMAKE_C_COMPILER arm-linux-gnueabihf-gcc)
-# set(CMAKE_SYSROOT /opt/rv1126/sysroot)
+# 库类型: ON=动态库(.so)  OFF=静态库(.a)
+option(BUILD_AS_SHARED "Build motor_hal as shared library" ON)
 
 # ============================================================================
 # 库
@@ -27,7 +26,14 @@ set(MOTOR_HAL_SOURCES
     src/motor_hal.c
 )
 
-add_library(motor_hal STATIC ${MOTOR_HAL_SOURCES})
+if(BUILD_AS_SHARED)
+    add_library(motor_hal SHARED ${MOTOR_HAL_SOURCES})
+    message(STATUS "Building motor_hal as SHARED library")
+else()
+    add_library(motor_hal STATIC ${MOTOR_HAL_SOURCES})
+    message(STATUS "Building motor_hal as STATIC library")
+endif()
+
 target_include_directories(motor_hal PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
     $<INSTALL_INTERFACE:include>
@@ -37,7 +43,10 @@ target_link_libraries(motor_hal PUBLIC pthread m)
 target_compile_options(motor_hal PRIVATE -Wall -Wextra -O2)
 
 # 安装
-install(TARGETS motor_hal ARCHIVE DESTINATION lib)
+install(TARGETS motor_hal
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+)
 install(DIRECTORY inc/ DESTINATION include/motor_hal)
 
 # ============================================================================
@@ -57,17 +66,7 @@ add_executable(motor_example_dual_full examples/dual_motor_full.c)
 target_link_libraries(motor_example_dual_full motor_hal m)
 
 # ============================================================================
-# 交叉编译选项
+# 选项
 # ============================================================================
 
 option(BUILD_EXAMPLES "Build examples" ON)
-option(CROSS_RV1126 "Cross-compile for RV1126B" OFF)
-
-if(CROSS_RV1126)
-    set(CMAKE_SYSROOT /opt/rv1126/sysroot)
-    set(CMAKE_C_COMPILER   arm-linux-gnueabihf-gcc)
-    set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-    message(STATUS "Cross-compiling for RV1126B")
-endif()
