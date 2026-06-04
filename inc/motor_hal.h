@@ -176,6 +176,37 @@ int motor_hal_sdo_read_u32(motor_hal_t *hal, uint8_t node_id,
 int motor_hal_get_feedback(motor_hal_t *hal, uint8_t node_id, motor_feedback_t *fb);
 
 /* ============================================================================
+ * 接收线程 (独立线程, 阻塞 recv → 自动分发)
+ * ============================================================================ */
+
+/** 启动接收线程 (阻塞 recv, SDO/PDO/EMCY 自动路由) */
+int  motor_hal_recv_start(motor_hal_t *hal);
+
+/** 停止接收线程 */
+int  motor_hal_recv_stop(motor_hal_t *hal);
+
+/** 查询接收线程状态 */
+bool motor_hal_recv_is_running(motor_hal_t *hal);
+
+/* ============================================================================
+ * 轮询 (向前兼容; 接收线程启动后无需调用, 内部直接 return)
+ * ============================================================================ */
+
+/**
+ * @brief 轮询 CAN 帧, 自动分发
+ * @param timeout_ms 单帧等待超时 (ms)
+ *
+ * 如果已调用 motor_hal_recv_start(), 此函数不执行任何操作。
+ *
+ * 内部根据 COB-ID 自动路由:
+ *   0x580  → SDO 响应队列 (sdo_client 等待)
+ *   0x300  → 解析反馈 → 更新缓存 → 触发回调
+ *   0x700  → Bootup/Heartbeat 处理
+ *   0x080  → EMCY 紧急处理
+ */
+void motor_hal_poll(motor_hal_t *hal, int timeout_ms);
+
+/* ============================================================================
  * 回调注册
  * ============================================================================ */
 
@@ -185,24 +216,6 @@ void motor_hal_set_error_cb(motor_hal_t *hal, uint8_t node_id,
                             motor_error_cb_t cb, void *ctx);
 void motor_hal_set_state_cb(motor_hal_t *hal, uint8_t node_id,
                             motor_state_cb_t cb, void *ctx);
-
-/* ============================================================================
- * 轮询
- * ============================================================================ */
-
-/**
- * @brief 轮询 CAN 帧, 自动分发
- * @param timeout_ms 单帧等待超时 (ms)
- *
- * 内部根据 COB-ID 自动路由:
- *   0x580  → 内部 SDO 等待队列
- *   0x300  → 解析反馈 → 更新缓存 → 触发回调
- *   0x700  → Bootup/Heartbeat 处理
- *   0x080  → EMCY 紧急处理
- *
- * 需在主循环中高频 (≥100Hz) 调用。
- */
-void motor_hal_poll(motor_hal_t *hal, int timeout_ms);
 
 /* ============================================================================
  * 全局控制

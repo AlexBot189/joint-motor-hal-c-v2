@@ -59,9 +59,11 @@ void pdo_feedback_parse(const canfd_frame_t *f, motor_feedback_t *fb);
 const char* feedback_error_string(uint16_t err);
 
 /* motor_hal_startup.c */
-int motor_startup_wait_bootup(can_driver_t *drv, uint8_t node_id, int timeout_ms);
+int motor_startup_wait_bootup(can_driver_t *drv, uint8_t node_id, int timeout_ms,
+                              const volatile bool *bootup_flag);
 int motor_startup_enable(can_driver_t *drv, uint8_t node_id);
-int motor_startup_full(can_driver_t *drv, const motor_config_t *cfg);
+int motor_startup_full(can_driver_t *drv, const motor_config_t *cfg,
+                       const volatile bool *bootup_flag);
 
 /* utils.c */
 uint64_t motor_utils_now_us(void);
@@ -99,6 +101,10 @@ typedef struct {
 struct motor_hal {
     can_driver_t *drv;
     bool          initialized;
+
+    /* 接收线程 */
+    pthread_t    recv_thread;
+    bool         recv_running;
 
     pthread_mutex_t lock;
     motor_node_t    motors[MOTOR_HAL_MAX_MOTORS];
@@ -140,14 +146,21 @@ motor_hal_t* motor_hal_create(void)
     motor_hal_t *hal = calloc(1, sizeof(motor_hal_t));
     if (!hal) return NULL;
 
-    pthread_mutex_init(&hal->lock, NULL);
+    pthread_mutexattr_t ma;
+    pthread_mutexattr_init(&ma);
+    pthread_mutexattr_setprotocol(&ma, PTHREAD_PRIO_INHERIT);
+    pthread_mutex_init(&hal->lock, &ma);
     hal->motor_count = 0;
 
     for (int i = 0; i < MOTOR_HAL_MAX_MOTORS; i++) {
         hal->motors[i].node_id = 0;
         hal->motors[i].state = MOTOR_STATE_NOT_READY;
-        pthread_mutex_init(&hal->motors[i].fb_lock, NULL);
+        pthread_mutex_init(&hal->motors[i].fb_lock, &ma);
     }
+    pthread_mutexattr_destroy(&ma);
+
+    /* 初始化 SDO 响应队列 */
+    sdo_queue_init();
 
     return hal;
 }
@@ -156,21 +169,29 @@ void motor_hal_destroy(motor_hal_t *hal)
 {
     if (!hal) return;
 
-    /* 脱使能所有电机 */
+    /* 1. 停止接收线程 */
+    if (hal->recv_running) {
+        hal->recv_running = false;
+        pthread_join(hal->recv_thread, NULL);
+    }
+
+    /* 2. 脱使能所有电机 */
     for (int i = 0; i < hal->motor_count; i++) {
         if (hal->motors[i].enabled) {
-            motor_startup_enable(hal->drv, hal->motors[i].node_id);
-            /* 写 Disable Voltage */
             sdo_write_simple(hal->drv, hal->motors[i].node_id,
                              OD_CONTROLWORD, 0x00, CW_DISABLE_VOLTAGE, 2);
         }
         pthread_mutex_destroy(&hal->motors[i].fb_lock);
     }
 
+    /* 3. 关闭 CAN */
     if (hal->drv) {
         can_driver_close(hal->drv);
         hal->drv = NULL;
     }
+
+    /* 4. 销毁 SDO 队列 */
+    sdo_queue_destroy();
 
     pthread_mutex_destroy(&hal->lock);
     free(hal);
@@ -257,7 +278,7 @@ int motor_hal_startup(motor_hal_t *hal, uint8_t node_id, int timeout_ms __attrib
     motor_node_t *m = _find_motor(hal, node_id);
     if (!m) return -ENOENT;
 
-    int ret = motor_startup_full(hal->drv, &m->config);
+    int ret = motor_startup_full(hal->drv, &m->config, &m->bootup_received);
     if (ret == 0) {
         m->bootup_received = true;
         m->enabled = true;
@@ -274,7 +295,7 @@ int motor_hal_wait_bootup(motor_hal_t *hal, uint8_t node_id, int timeout_ms)
     if (!m) return -ENOENT;
     if (m->bootup_received) return 0;
 
-    int ret = motor_startup_wait_bootup(hal->drv, node_id, timeout_ms);
+    int ret = motor_startup_wait_bootup(hal->drv, node_id, timeout_ms, &m->bootup_received);
     if (ret == 0) m->bootup_received = true;
     return ret;
 }
@@ -599,29 +620,22 @@ void motor_hal_set_state_cb(motor_hal_t *hal, uint8_t node_id,
 }
 
 /* =====================================================
- * 公共 API: 轮询 (核心)
+ * 内部: 帧分发 (接收线程 + poll 共用)
  * ===================================================== */
 
-void motor_hal_poll(motor_hal_t *hal, int timeout_ms)
+static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
 {
-    if (!hal || !hal->drv) return;
-
-    canfd_frame_t f;
-    int ret = can_driver_recv(hal->drv, &f, timeout_ms);
-    if (ret <= 0) return;
-
-    uint32_t func = canopen_func_code(f.id);
+    uint32_t func = canopen_func_code(f->id);
 
     switch (func) {
-    case 0x580: {  /* SDO 响应 */
-        /* SDO 响应由 sdo_client 的 _sdo_wait_response 内部处理。
-           这里处理异步的 SDO 响应 (正常不会到这里)。 */
+    case 0x580: {  /* SDO 响应 → 入队, 等待 sdo_client 消费 */
+        sdo_push_response(f);
         break;
     }
 
     case 0x700: {  /* Bootup / Heartbeat */
-        if (canopen_is_bootup(f.id, f.data[0])) {
-            uint8_t node = canopen_extract_node(f.id, COB_BOOTUP_BASE);
+        if (canopen_is_bootup(f->id, f->data[0])) {
+            uint8_t node = canopen_extract_node(f->id, COB_BOOTUP_BASE);
             motor_node_t *m = _find_motor(hal, node);
             if (m) m->bootup_received = true;
         }
@@ -629,12 +643,12 @@ void motor_hal_poll(motor_hal_t *hal, int timeout_ms)
     }
 
     case 0x300: {  /* 反馈帧 */
-        uint8_t node = canopen_extract_node(f.id, COB_FEEDBACK_BASE);
+        uint8_t node = canopen_extract_node(f->id, COB_FEEDBACK_BASE);
         motor_node_t *m = _find_motor(hal, node);
         if (!m) break;
 
         motor_feedback_t fb;
-        pdo_feedback_parse(&f, &fb);
+        pdo_feedback_parse(f, &fb);
 
         /* 更新缓存 */
         pthread_mutex_lock(&m->fb_lock);
@@ -648,7 +662,7 @@ void motor_hal_poll(motor_hal_t *hal, int timeout_ms)
         }
 
         /* 检测错误 */
-        if (fb.status_byte & 0x20) {  /* bit5 = error */
+        if (fb.status_byte & 0x20) {
             if (m->err_cb) {
                 m->err_cb(node, fb.error_code, m->err_ctx);
             }
@@ -657,11 +671,11 @@ void motor_hal_poll(motor_hal_t *hal, int timeout_ms)
     }
 
     case 0x080: {  /* EMCY 紧急报文 */
-        uint8_t node = canopen_extract_node(f.id, COB_EMCY_BASE);
+        uint8_t node = canopen_extract_node(f->id, COB_EMCY_BASE);
         motor_node_t *m = _find_motor(hal, node);
         if (!m) break;
 
-        uint16_t err = (uint16_t)f.data[0] | ((uint16_t)f.data[1] << 8);
+        uint16_t err = (uint16_t)f->data[0] | ((uint16_t)f->data[1] << 8);
         if (m->err_cb) {
             m->err_cb(node, err, m->err_ctx);
         }
@@ -671,6 +685,73 @@ void motor_hal_poll(motor_hal_t *hal, int timeout_ms)
     default:
         break;
     }
+}
+
+/* =====================================================
+ * 接收线程 (唯一 recv 入口)
+ * ===================================================== */
+
+static void* _recv_thread_fn(void *arg)
+{
+    motor_hal_t *hal = (motor_hal_t*)arg;
+
+    while (hal->recv_running) {
+        canfd_frame_t f;
+        int ret = can_driver_recv(hal->drv, &f, 100);
+        if (ret <= 0) continue;
+        _dispatch_frame(hal, &f);
+    }
+
+    return NULL;
+}
+
+/* =====================================================
+ * 公共 API: 接收线程控制
+ * ===================================================== */
+
+int motor_hal_recv_start(motor_hal_t *hal)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    if (hal->recv_running) return -EBUSY;
+
+    hal->recv_running = true;
+
+    int ret = pthread_create(&hal->recv_thread, NULL, _recv_thread_fn, hal);
+    if (ret != 0) {
+        hal->recv_running = false;
+        return -ret;
+    }
+
+    return 0;
+}
+
+int motor_hal_recv_stop(motor_hal_t *hal)
+{
+    if (!hal || !hal->recv_running) return -EINVAL;
+
+    hal->recv_running = false;
+    pthread_join(hal->recv_thread, NULL);
+
+    return 0;
+}
+
+bool motor_hal_recv_is_running(motor_hal_t *hal)
+{
+    return hal && hal->recv_running;
+}
+
+/* =====================================================
+ * 公共 API: 轮询 (向前兼容, 接收线程启动后无需调用)
+ * ===================================================== */
+
+void motor_hal_poll(motor_hal_t *hal, int timeout_ms)
+{
+    if (!hal || !hal->drv || hal->recv_running) return;
+
+    canfd_frame_t f;
+    int ret = can_driver_recv(hal->drv, &f, timeout_ms);
+    if (ret <= 0) return;
+    _dispatch_frame(hal, &f);
 }
 
 /* =====================================================

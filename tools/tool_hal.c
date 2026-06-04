@@ -388,9 +388,6 @@ int tool_watch_start(int period_ms, int out_fd)
     write(out_fd >= 0 ? out_fd : STDOUT_FILENO, buf, (size_t)n);
 
     while (g_watch_running) {
-        for (int i = 0; i < 5; i++)
-            motor_hal_poll(g_hal, 0);
-
         uint64_t now = _now_us();
         if (now - last_print >= (uint64_t)period_ms * 1000UL) {
             last_print = now;

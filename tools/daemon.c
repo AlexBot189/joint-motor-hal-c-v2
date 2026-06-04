@@ -181,7 +181,7 @@ static void _accept_loop(void)
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(g_listen_fd, &fds);
-        struct timeval tv = { .tv_sec = 0, .tv_usec = 100000 };  /* 100ms */
+        struct timeval tv = { .tv_sec = 0, .tv_usec = 100000 };
 
         int ret = select(g_listen_fd + 1, &fds, NULL, NULL, &tv);
         if (ret < 0) {
@@ -193,7 +193,6 @@ static void _accept_loop(void)
         int client_fd = accept(g_listen_fd, NULL, NULL);
         if (client_fd < 0) continue;
 
-        /* 读命令 (客户端发一行然后等响应) */
         ssize_t n = read(client_fd, buf, sizeof(buf) - 1);
         if (n <= 0) { close(client_fd); continue; }
         buf[n] = '\0';
@@ -203,9 +202,6 @@ static void _accept_loop(void)
 
         close(client_fd);
         g_client_fd = -1;
-
-        /* poll 一下 CAN 帧以接收反馈 */
-        motor_hal_poll(g_hal, 0);
     }
 }
 
@@ -235,6 +231,9 @@ int daemon_start(const char *iface)
     cfg.node_id = 2;
     motor_hal_add_motor(g_hal, &cfg);
     tool_register_motor(2);
+
+    /* ★ 先启动接收线程 (SDO/PDO/Bootup 全部走 recv 线程) */
+    motor_hal_recv_start(g_hal);
 
     printf("Starting motors...\n");
     for (int id = 1; id <= 2; id++) {
