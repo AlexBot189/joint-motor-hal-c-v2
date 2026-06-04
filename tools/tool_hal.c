@@ -235,6 +235,151 @@ int tool_set_mode(int id, const char *mode_str)
 }
 
 /* ================================================================
+ * 新增: 力矩 / CSP / MIT / 抱闸 / 急停
+ * ================================================================ */
+
+int tool_set_torque(int id, int ma)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        int ret = motor_hal_set_torque(g_hal, (uint8_t)ids[i], (int16_t)ma);
+        if (ret < 0) { fprintf(stderr, "WARN: motor %d torque failed\n", ids[i]); errors++; }
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_set_csp(int id, int deg_x100)
+{
+    float deg = _x100_to_float(deg_x100);
+    int16_t counts = motor_deg_to_counts(deg);
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        int ret = motor_hal_ctrl_raw(g_hal, (uint8_t)ids[i], MOTOR_MODE_CSP, counts, 0, 0);
+        if (ret < 0) { fprintf(stderr, "WARN: motor %d csp failed\n", ids[i]); errors++; }
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_set_mit(int id, float pos, float vel, float kp, float kd, float torque)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        int ret = motor_hal_mit_control(g_hal, (uint8_t)ids[i], pos, vel, kp, kd, torque);
+        if (ret < 0) { fprintf(stderr, "WARN: motor %d mit failed\n", ids[i]); errors++; }
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_set_brake(int id, bool release)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        /* 抱闸通过 PDO data[0] bit6 控制 */
+        int ret = motor_hal_set_brake(g_hal, (uint8_t)ids[i], release);
+        if (ret < 0) { fprintf(stderr, "WARN: motor %d brake failed\n", ids[i]); errors++; }
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_quickstop(int id)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        int ret = motor_hal_quick_stop(g_hal, (uint8_t)ids[i]);
+        if (ret < 0) { fprintf(stderr, "WARN: motor %d quickstop failed\n", ids[i]); errors++; }
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+/* ================================================================
+ * 新增: 配置命令 (save / setzero / pid)
+ * ================================================================ */
+
+int tool_save_flash(int id)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        printf("Saving motor %d to flash...\n", ids[i]);
+        int ret = motor_hal_save_flash(g_hal, (uint8_t)ids[i]);
+        if (ret < 0) { fprintf(stderr, "WARN: motor %d save failed\n", ids[i]); errors++; }
+        else         printf("  ✓ motor %d saved\n", ids[i]);
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_set_zero(int id)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        printf("Zeroing motor %d...\n", ids[i]);
+        int ret = motor_hal_set_zero(g_hal, (uint8_t)ids[i]);
+        if (ret < 0) { fprintf(stderr, "WARN: motor %d setzero failed\n", ids[i]); errors++; }
+        else         printf("  ✓ motor %d zeroed\n", ids[i]);
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_set_pid(int id, uint16_t cp, uint16_t ci,
+                 uint16_t vp, uint16_t vi, uint16_t pp, uint16_t pi)
+{
+    motor_pid_t pid = { .current_p=cp, .current_i=ci,
+                        .velocity_p=vp, .velocity_i=vi,
+                        .position_p=pp, .position_i=pi };
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        int ret = motor_hal_set_pid(g_hal, (uint8_t)ids[i], &pid);
+        if (ret < 0) { fprintf(stderr, "WARN: motor %d pid failed\n", ids[i]); errors++; }
+        else         printf("  ✓ motor %d PID set\n", ids[i]);
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+/* ================================================================
+ * 新增: 通用 SDO 读写 (调试用)
+ * ================================================================ */
+
+int tool_sdo_read(int id, uint16_t index, uint8_t subidx)
+{
+    uint32_t val = 0;
+    int ret = motor_hal_sdo_read_u32(g_hal, (uint8_t)id, index, subidx, &val);
+    if (ret == 0) {
+        printf("[%d] SDO 0x%04X:%02X = 0x%08X (%u)\n", id, index, subidx, val, val);
+    } else {
+        fprintf(stderr, "[%d] SDO 0x%04X:%02X read failed (ret=%d)\n", id, index, subidx, ret);
+    }
+    return ret;
+}
+
+int tool_sdo_write(int id, uint16_t index, uint8_t subidx, uint32_t value, uint8_t size)
+{
+    int ret = motor_hal_sdo_write(g_hal, (uint8_t)id, index, subidx, value, size);
+    if (ret == 0) {
+        printf("[%d] SDO 0x%04X:%02X ← 0x%08X (%u) size=%d OK\n",
+               id, index, subidx, value, value, size);
+    } else {
+        fprintf(stderr, "[%d] SDO 0x%04X:%02X write failed (ret=%d)\n",
+                id, index, subidx, ret);
+    }
+    return ret;
+}
+
+/* ================================================================
  * 读取封装 — 输出原始值, 不做换算
  * ================================================================ */
 

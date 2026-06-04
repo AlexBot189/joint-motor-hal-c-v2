@@ -447,6 +447,27 @@ int motor_hal_stop(motor_hal_t *hal, uint8_t node_id)
     return 0;
 }
 
+int motor_hal_set_brake(motor_hal_t *hal, uint8_t node_id, bool release)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) return -ENOENT;
+    if (!m->enabled) return -EAGAIN;
+
+    /* 通过 PDO data[0] bit6 控制抱闸, 保持当前模式和使能状态 */
+    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_POS,
+                  true, release, false, 0, 0, 0);
+    return 0;
+}
+
+int motor_hal_quick_stop(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    return sdo_write_simple(hal->drv, node_id,
+                            OD_CONTROLWORD, 0x00, CW_QUICK_STOP, 2);
+}
+
 /* =====================================================
  * 公共 API: 模式 / 参数 / PID
  * ===================================================== */
@@ -596,6 +617,14 @@ int motor_hal_sdo_read_u32(motor_hal_t *hal, uint8_t node_id,
 {
     if (!hal || !hal->drv || !value) return -EINVAL;
     return sdo_read_simple(hal->drv, node_id, index, subidx, value);
+}
+
+int motor_hal_sdo_write(motor_hal_t *hal, uint8_t node_id,
+                        uint16_t index, uint8_t subidx,
+                        uint32_t value, uint8_t size)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    return sdo_write_simple(hal->drv, node_id, index, subidx, value, size);
 }
 
 /* =====================================================

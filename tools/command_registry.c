@@ -29,6 +29,20 @@ const command_entry_t g_cmd_table[] = {
     { CMD_MAXV,     "maxv",    "maxv <id> <rpm*100>",          "位置模式最大轨迹速度",         3,   3 },
     { CMD_STOP,     "stop",    "stop [id]",                     "停止电机 (默认 id=0)",         1,   2 },
     { CMD_MODE,     "mode",    "mode <id> <pp|pv|csp|csv|cur>","切换控制模式",                 3,   3 },
+    { CMD_TORQUE,   "torque",  "torque <id> <mA>",             "电流/力矩控制 (mA)",           3,   3 },
+    { CMD_CSP,      "csp",     "csp <id> <deg*100>",           "CSP 同步位置 (度×100)",        3,   3 },
+    { CMD_MIT,      "mit",     "mit <id> <pos> <vel> <kp> <kd> <torque>", "MIT 阻抗控制",    7,   7 },
+    { CMD_BRAKE,    "brake",   "brake <id> <release|lock>",    "抱闸: release=松开 lock=吸合", 3,   3 },
+    { CMD_QUICKSTOP,"quickstop","quickstop <id>",               "急停 (DS402 Quick Stop)",      2,   2 },
+
+    /* 配置命令 */
+    { CMD_SAVE,     "save",    "save <id>",                     "保存参数到 Flash",             2,   2 },
+    { CMD_SETZERO,  "setzero", "setzero <id>",                  "零位标定",                     2,   2 },
+    { CMD_PID,      "pid",     "pid <id> <cp> <ci> <vp> <vi> <pp> <pi>", "设置 PID 参数",   8,   8 },
+
+    /* 调试命令 */
+    { CMD_SDO_READ, "sdoread", "sdoread <id> <0xIndex> [subidx]","通用 SDO 读",                3,   4 },
+    { CMD_SDO_WRITE,"sdowrite","sdowrite <id> <0xIndex> <subidx> <value> <size>","通用 SDO 写",6, 6 },
 
     /* 读取命令 */
     { CMD_READ,     "read",    "read <item> <id>",              "读取: angle/speed/current/temp/state/error/version/all", 3, 3 },
@@ -92,6 +106,16 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
         case CMD_MAXV:    return cmd_do_maxv(hal, cmd->id, argc, argv);
         case CMD_STOP:    return cmd_do_stop(hal, cmd->id, argc, argv);
         case CMD_MODE:    return cmd_do_mode(hal, cmd->id, argc, argv);
+        case CMD_TORQUE:    return cmd_do_torque(hal, cmd->id, argc, argv);
+        case CMD_CSP:       return cmd_do_csp(hal, cmd->id, argc, argv);
+        case CMD_MIT:       return cmd_do_mit(hal, cmd->id, argc, argv);
+        case CMD_BRAKE:     return cmd_do_brake(hal, cmd->id, argc, argv);
+        case CMD_QUICKSTOP: return cmd_do_quickstop(hal, cmd->id, argc, argv);
+        case CMD_SAVE:      return cmd_do_save(hal, cmd->id, argc, argv);
+        case CMD_SETZERO:   return cmd_do_setzero(hal, cmd->id, argc, argv);
+        case CMD_PID:       return cmd_do_pid(hal, cmd->id, argc, argv);
+        case CMD_SDO_READ:  return cmd_do_sdo_read(hal, cmd->id, argc, argv);
+        case CMD_SDO_WRITE: return cmd_do_sdo_write(hal, cmd->id, argc, argv);
         case CMD_READ:    return cmd_do_read(hal, cmd->id, argc, argv);
         case CMD_WATCH:   return cmd_do_watch(hal, cmd->id, argc, argv);
         case CMD_HELP:    return cmd_do_help(hal, cmd->id, argc, argv);

@@ -102,6 +102,23 @@ int motor_startup_full(can_driver_t *drv, const motor_config_t *cfg,
         }
     }
 
+    /* 4.5 配置运动参数 (best-effort, CiA 402: 0x6081/6083/6084) */
+    if (cfg->profile_velocity > 0) {
+        sdo_write_simple(drv, cfg->node_id, OD_PROFILE_VEL, 0x00,
+                         cfg->profile_velocity, 4);
+    }
+    if (cfg->profile_accel > 0) {
+        sdo_write_simple(drv, cfg->node_id, OD_PROFILE_ACCEL, 0x00,
+                         cfg->profile_accel, 4);
+    }
+    if (cfg->profile_decel > 0) {
+        sdo_write_simple(drv, cfg->node_id, OD_PROFILE_DECEL, 0x00,
+                         cfg->profile_decel, 4);
+    } else if (cfg->profile_accel > 0) {
+        sdo_write_simple(drv, cfg->node_id, OD_PROFILE_DECEL, 0x00,
+                         cfg->profile_accel, 4);
+    }
+
     /* 5. 使能 */
     if (cfg->auto_enable) {
         ret = motor_startup_enable(drv, cfg->node_id);

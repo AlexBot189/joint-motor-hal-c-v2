@@ -55,7 +55,21 @@ static void print_help(void)
     printf("  rel <id> <delta*100>       相对位置 (先读再设)\n");
     printf("  maxv <id> <rpm*100>        位置模式最大轨迹速度\n");
     printf("  stop [id]                  停止电机 (默认 id=0)\n");
-    printf("  mode <id> <pp|pv|csp|csv|cur>  切换模式\n\n");
+    printf("  mode <id> <pp|pv|csp|csv|cur>  切换模式\n");
+    printf("  torque <id> <mA>           电流/力矩控制\n");
+    printf("  csp <id> <deg*100>         CSP同步位置控制\n");
+    printf("  mit <id> <pos> <vel> <kp> <kd> <t>  MIT阻抗控制\n");
+    printf("  brake <id> <release|lock>  抱闸控制\n");
+    printf("  quickstop <id>             急停\n\n");
+
+    printf("── 配置命令 ──────────────────────────────────────\n");
+    printf("  save <id>                  保存参数到 Flash\n");
+    printf("  setzero <id>               零位标定\n");
+    printf("  pid <id> <cp> <ci> <vp> <vi> <pp> <pi>  设置PID\n\n");
+
+    printf("── 调试命令 ──────────────────────────────────────\n");
+    printf("  sdoread <id> <0xIndex> [subidx]   通用 SDO 读\n");
+    printf("  sdowrite <id> <0xIndex> <sub> <val> <size>  通用 SDO 写\n\n");
 
     printf("── 读取命令 — 输出原始值 ────────────────────────\n");
     printf("  read angle <id>      角度 (编码器counts)\n");

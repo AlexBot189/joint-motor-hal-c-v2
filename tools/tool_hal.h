@@ -39,6 +39,18 @@ int tool_set_rel_pos(int id, int delta_x100);       /* 相对位置: 度×100 */
 int tool_set_max_vel(int id, int rpm_x100);         /* 位置模式最大速度: RPM×100 */
 int tool_stop(int id);                              /* 停止 */
 int tool_set_mode(int id, const char *mode_str);    /* 切换模式 */
+int tool_set_torque(int id, int ma);                /* 电流/力矩: mA */
+int tool_set_csp(int id, int deg_x100);             /* CSP 同步位置: 度×100 */
+int tool_set_mit(int id, float pos, float vel, float kp, float kd, float torque);
+int tool_set_brake(int id, bool release);            /* 抱闸: true=松开, false=吸合 */
+int tool_quickstop(int id);                         /* 急停 */
+int tool_save_flash(int id);                        /* 保存到 Flash */
+int tool_set_zero(int id);                          /* 零位标定 */
+int tool_set_pid(int id, uint16_t cp, uint16_t ci,  /* PID 设置 */
+                 uint16_t vp, uint16_t vi, uint16_t pp, uint16_t pi);
+int tool_sdo_read(int id, uint16_t index, uint8_t subidx);   /* 通用 SDO 读 */
+int tool_sdo_write(int id, uint16_t index, uint8_t subidx,   /* 通用 SDO 写 */
+                   uint32_t value, uint8_t size);
 
 /* ================================================================
  * 读取封装 — id=0 广播支持, 格式化输出

@@ -364,6 +364,29 @@ int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,
  */
 int motor_hal_stop(motor_hal_t *hal, uint8_t node_id);
 
+/**
+ * @brief 抱闸控制 — 释放/吸合电机抱闸
+ *
+ * 通过 PDO data[0] bit6 控制。
+ * release=true:  松开抱闸 (电机可自由转动)
+ * release=false: 吸合抱闸 (电机制动锁死)
+ *
+ * @param release true=松开, false=吸合
+ * @return 0=成功; -ENOENT=电机不存在; -EAGAIN=未使能
+ */
+int motor_hal_set_brake(motor_hal_t *hal, uint8_t node_id, bool release);
+
+/**
+ * @brief 急停 — 发送 Quick Stop 命令 (CW=0x02)
+ *
+ * 通过 SDO 写 Controlword 0x0002。
+ * 电机立即以 profile_decel 减速到 0, 然后保持使能。
+ * 与 motor_hal_stop 的区别: stop 改目标位置, quickstop 走 DS402 急停逻辑。
+ *
+ * @return 0=成功; <0=SDO 失败
+ */
+int motor_hal_quick_stop(motor_hal_t *hal, uint8_t node_id);
+
 /* ============================================================================
  * 5. 模式与参数配置 — 通过 SDO 读写电机参数 (同步阻塞, 50~200ms)
  *
@@ -441,6 +464,19 @@ int motor_hal_read_pid(motor_hal_t *hal, uint8_t node_id, motor_pid_t *pid);
  */
 int motor_hal_sdo_read_u32(motor_hal_t *hal, uint8_t node_id,
                            uint16_t index, uint8_t subidx, uint32_t *value);
+
+/**
+ * @brief 通用 SDO 写 — 写入任意对象字典索引
+ *
+ * @param index   对象字典索引
+ * @param subidx  子索引
+ * @param value   写入值 (uint32)
+ * @param size    数据字节数 (1/2/4)
+ * @return 0=成功; <0=SDO 超时或错误
+ */
+int motor_hal_sdo_write(motor_hal_t *hal, uint8_t node_id,
+                        uint16_t index, uint8_t subidx,
+                        uint32_t value, uint8_t size);
 
 /* ============================================================================
  * 7. 反馈缓存 — 非阻塞读取最近一次反馈数据 (PI mutex, RT 安全)
