@@ -232,32 +232,11 @@ int daemon_start(const char *iface)
         motor_hal_add_motor(g_hal, &cfg);
     }
 
-    /* 3. 启动接收线程 (先于 startup, 收 Bootup/Heartbeat/反馈帧) */
+    /* 3. 启动接收线程 (先于 startup, 收 Bootup/SDO 响应) */
     motor_hal_recv_start(g_hal);
 
-    /* 4. 等待电机在线 — 心跳帧或反馈帧都会标记 bootup_received */
+    /* 4. 逐个尝试启动 — SDO 心跳配置会验证电机是否在线 */
     printf("Scanning motors (ID=%d~%d)...\n", scan_ids[0], scan_ids[scan_count-1]);
-    int bootup_wait_ms = 2000;
-    int elapsed = 0;
-
-    while (elapsed < bootup_wait_ms) {
-        usleep(100000);  /* 100ms */
-        elapsed += 100;
-
-        /* 检查 bootup_received 标志 (由 recv 线程自动设置) */
-        int found = 0;
-        for (int i = 0; i < scan_count; i++) {
-            motor_feedback_t fb;
-            /* feedback 缓存有数据且 position 非零也算在线 */
-            if (motor_hal_get_feedback(g_hal, (uint8_t)scan_ids[i], &fb) == 0
-                && fb.position != 0)
-                found++;
-        }
-        if (found > 0)
-            printf("  detected %d motor(s) online...\n", found);
-    }
-
-    /* 5. 逐个启动已检测到 bootup 的电机 */
     printf("Starting motors...\n");
     int started = 0;
     for (int i = 0; i < scan_count; i++) {
