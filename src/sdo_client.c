@@ -9,6 +9,7 @@
  */
 
 #define _GNU_SOURCE
+#include "motor_hal.h"
 #include "canopen_frames.h"
 #include "can_driver_internal.h"
 #include "sdo_client_internal.h"
@@ -132,6 +133,15 @@ static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
             fprintf(stderr, "[SDO] queue: dropping stale frame idx=0x%04X for idx=0x%04X\n",
                     idx_in, expected_index);
             _dump_hex("DROP", &g_sdo_queue.frames[idx]);
+            if (g_sdo_queue.frames[idx].data[0] == SDO_CC_ABORT) {
+                uint32_t ac = (uint32_t)g_sdo_queue.frames[idx].data[4]
+                            | ((uint32_t)g_sdo_queue.frames[idx].data[5] << 8)
+                            | ((uint32_t)g_sdo_queue.frames[idx].data[6] << 16)
+                            | ((uint32_t)g_sdo_queue.frames[idx].data[7] << 24);
+                const char *reason = motor_utils_sdo_abort_str(ac);
+                fprintf(stderr, "[SDO]   ABORT code=0x%08X (%s)\n",
+                        ac, reason ? reason : "unknown");
+            }
 
             /* 紧凑移除不匹配帧 */
             for (int j = i; j < g_sdo_queue.count - 1; j++) {
@@ -166,7 +176,12 @@ static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
             /* 解析响应 */
             uint16_t idx_resp = 0;
             bool ok = canopen_sdo_parse_response(&f, value, &idx_resp, NULL, abort_code);
-            if (!ok) return -ECANCELED;
+            if (!ok) {
+                const char *reason = motor_utils_sdo_abort_str(*abort_code);
+                fprintf(stderr, "[SDO] ABORT idx=0x%04X code=0x%08X (%s)\n",
+                        idx_resp, *abort_code, reason ? reason : "unknown");
+                return -ECANCELED;
+            }
             return 0;
         }
 

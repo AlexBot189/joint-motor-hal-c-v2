@@ -84,6 +84,49 @@ typedef struct {
 #define SDO_CC_UPLOAD_RSP_4B  (0x43)   /* 响应 4 字节 */
 #define SDO_CC_ABORT          (0x80)   /* 错误响应 */
 
+/** SDO Abort Code (CiA 301, Table 52) */
+#define SDO_ABORT_TOGGLE_BIT         (0x05030000UL)  /* Toggle bit not alternated */
+#define SDO_ABORT_TIMEOUT            (0x05040000UL)  /* SDO protocol timed out */
+#define SDO_ABORT_CMD_UNKNOWN        (0x05040001UL)  /* Command specifier not valid */
+#define SDO_ABORT_BLK_SIZE           (0x05040005UL)  /* Block size not valid */
+#define SDO_ABORT_UNSUPPORTED        (0x06010000UL)  /* Unsupported access */
+#define SDO_ABORT_WRITE_ONLY         (0x06010001UL)  /* Read access to write-only */
+#define SDO_ABORT_READ_ONLY          (0x06010002UL)  /* Write access to read-only */
+#define SDO_ABORT_NO_OBJECT          (0x06020000UL)  /* Object does not exist */
+#define SDO_ABORT_NO_PDO_MAP         (0x06040041UL)  /* Cannot be mapped to PDO */
+#define SDO_ABORT_PDO_LEN            (0x06040042UL)  /* PDO length exceeded */
+#define SDO_ABORT_PARAM_INCOMPAT     (0x06040043UL)  /* General parameter incompatibility */
+#define SDO_ABORT_HW_ERR             (0x06060000UL)  /* Hardware error */
+#define SDO_ABORT_TYPE_MISMATCH      (0x06070010UL)  /* Data type mismatch */
+#define SDO_ABORT_DATA_LEN           (0x06070012UL)  /* Data length too large */
+#define SDO_ABORT_DATA_LEN_SHORT     (0x06070013UL)  /* Data length too short */
+#define SDO_ABORT_NO_SUBINDEX        (0x06090011UL)  /* Sub-index does not exist */
+#define SDO_ABORT_VALUE_RANGE        (0x06090030UL)  /* Value out of range */
+#define SDO_ABORT_VALUE_TOO_HIGH     (0x06090031UL)  /* Value too high */
+#define SDO_ABORT_VALUE_TOO_LOW      (0x06090032UL)  /* Value too low */
+#define SDO_ABORT_NO_STORE           (0x08000020UL)  /* Cannot store to EEPROM */
+#define SDO_ABORT_LOCAL_ONLY         (0x08000023UL)  /* Local control by application */
+
+/** NMT (Heartbeat) 状态码 */
+#define NMT_STATE_INITIALISING  (0x00)
+#define NMT_STATE_STOPPED       (0x04)
+#define NMT_STATE_OPERATIONAL   (0x05)
+#define NMT_STATE_PRE_OP        (0x7F)
+
+/** EMCY (Emergency) 错误码 (CiA 301) */
+#define EMCY_GENERIC             (0x1000)  /* Generic error */
+#define EMCY_CURRENT             (0x2000)  /* Current */
+#define EMCY_VOLTAGE             (0x3000)  /* Voltage */
+#define EMCY_TEMPERATURE         (0x4000)  /* Temperature */
+#define EMCY_HARDWARE            (0x5000)  /* Hardware */
+#define EMCY_SOFTWARE            (0x6000)  /* Software internal */
+#define EMCY_COMMUNICATION       (0x8000)  /* Communication */
+#define EMCY_POSITION_ERROR      (0x8300)  /* Position error */
+#define EMCY_CAN_OVERRUN         (0x8110)  /* CAN overrun */
+#define EMCY_CAN_PASSIVE         (0x8120)  /* CAN passive mode */
+#define EMCY_HEARTBEAT           (0x8130)  /* Heartbeat lost */
+#define EMCY_SYNC_TIMEOUT        (0x8140)  /* SYNC timeout */
+
 /* ============================================================================
  * NMT 命令码
  * ============================================================================ */

@@ -624,6 +624,28 @@ static inline float motor_ma_to_a(int16_t ma) {
     return ma * 0.001f;
 }
 
+/* ============================================================================
+ * 13. 诊断函数 — CANopen 错误码 / 状态码查表
+ * ============================================================================ */
+
+/**
+ * @brief SDO Abort Code → 可读字符串 (CiA 301, Table 52)
+ * @return 错误描述, 未找到返回 NULL
+ */
+const char* motor_utils_sdo_abort_str(uint32_t abort_code);
+
+/**
+ * @brief NMT 状态码 → 可读字符串
+ * @return 状态描述, 未找到返回 NULL
+ */
+const char* motor_utils_nmt_state_str(uint8_t state);
+
+/**
+ * @brief EMCY 紧急错误码 → 可读字符串
+ * @return 错误描述, 未找到返回 NULL
+ */
+const char* motor_utils_emcy_str(uint16_t emcy_code);
+
 #ifdef __cplusplus
 }
 #endif

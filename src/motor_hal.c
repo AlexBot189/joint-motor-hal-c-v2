@@ -674,12 +674,7 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
                 fprintf(stderr, "  → WARN: Bootup node=%d not registered\n", node);
             }
         } else {
-            const char *nmt_states[] = {
-                [0x00]="Boot", [0x04]="Stopped", [0x05]="Operational",
-                [0x7F]="Pre-Op"
-            };
-            const char *st = (f->data[0] < 4 || f->data[0] == 0x7F) ?
-                nmt_states[f->data[0] & 0x7F] : "?";
+            const char *st = motor_utils_nmt_state_str(f->data[0]);
             fprintf(stderr, "  → Heartbeat state=%s (0x%02X)\n",
                     st ? st : "?", f->data[0]);
         }
