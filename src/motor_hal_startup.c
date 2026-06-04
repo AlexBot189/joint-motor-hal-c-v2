@@ -1,19 +1,13 @@
 /**
  * @file motor_hal_startup.c
- * @brief 电机启动流程 (v3: Bootup 仅做快速试探, 真实校验走 SDO)
- *
- * 关键认知:
- *   - Bootup 帧 (701 00) 只在电机上电瞬间发一次, 错过就没有
- *   - 电机在配置心跳前不会周期上报任何数据
- *   - 因此 Bootup 只能做"快速试探", 不能做"硬门槛"
- *   - 真正验证电机是否在线: 发 SDO 心跳配置, 等响应
+ * @brief 电机启动流程 (v2: bootup 通过 recv 线程标志位检测, 不自己 recv)
  *
  * 完整启动序列:
- *   1. 快速试探 Bootup (500ms, 不论结果都继续)
- *   2. SDO 配置心跳周期 ★ 同步等待, 验证电机通信
+ *   1. 等待 Bootup 帧 (轮询 bootup_received 标志位, 由 recv 线程设置)
+ *   2. SDO 配置心跳周期
  *   3. 关看门狗 (推荐)
- *   4. 读固件版本 (二次验证)
- *   5. 使能 (DS402 状态机)
+ *   4. 读固件版本 (验证通信, 通过 SDO 队列)
+ *   5. 使能 (DS402 状态机: Shutdown→SwitchOn→EnableOp)
  *   6. 延时 120ms (抱闸释放)
  */
 
@@ -24,21 +18,18 @@
 #include <errno.h>
 #include <time.h>
 
-/* ---------- 快速试探 Bootup (v3: 非硬门槛, 不论结果都返回 0) ---------- */
+/* ---------- 等待 Bootup (v2: 轮询标志位, 不自己 recv) ---------- */
 
 int motor_startup_wait_bootup(can_driver_t *drv __attribute__((unused)),
-                              uint8_t node_id __attribute__((unused)),
-                              int timeout_ms,
+                              uint8_t node_id, int timeout_ms,
                               const volatile bool *bootup_flag)
 {
     int elapsed = 0;
     while (!*bootup_flag && elapsed < timeout_ms) {
-        usleep(10000);
+        usleep(10000);   /* 10ms 轮询间隔 */
         elapsed += 10;
     }
-    /* Bootup 是一次性事件, 错过了就错过了。
-       不论有没有收到, 都返回 0 继续 — 真正的验证走 SDO。 */
-    return 0;
+    return *bootup_flag ? 0 : -ETIMEDOUT;
 }
 
 /* ---------- 使能 (DS402 状态机) ---------- */
@@ -74,20 +65,24 @@ int motor_startup_full(can_driver_t *drv, const motor_config_t *cfg,
 {
     int ret;
 
-    /* 1. 快速试探 Bootup (500ms, 过了继续 — 错过是正常的) */
-    motor_startup_wait_bootup(drv, cfg->node_id, 500, bootup_flag);
+    /* 1. 等待 Bootup (标志位由 recv 线程设置) */
+    ret = motor_startup_wait_bootup(drv, cfg->node_id, cfg->bootup_timeout_ms, bootup_flag);
+    if (ret != 0) return ret;
 
-    /* 2. SDO 配置心跳 ★ 同步 SDO, 等响应 — 这是真正的"电机在线"验证 */
-    ret = sdo_write_simple(drv, cfg->node_id, OD_HEARTBEAT, 0x00,
-                           cfg->heartbeat_ms, 2);
-    if (ret != 0) return ret;  /* 电机无响应 — 确实不在线 */
+    /* 2. 配置心跳 */
+    {
+        canfd_frame_t f;
+        canopen_sdo_write_build(cfg->node_id, OD_HEARTBEAT, 0x00,
+                                cfg->heartbeat_ms, 2, &f);
+        can_driver_send(drv, &f);
+    }
 
     /* 3. 关看门狗 (推荐) */
     if (cfg->disable_watchdog) {
         sdo_write_simple(drv, cfg->node_id, OD_WATCHDOG_LIMIT, 0x00, 1, 4);
     }
 
-    /* 4. 读固件版本 (二次验证通信链路) */
+    /* 4. 读固件版本 (验证) */
     {
         uint32_t ver = 0;
         sdo_read_simple(drv, cfg->node_id, OD_FIRMWARE_VER, 0x00, &ver);
