@@ -650,12 +650,10 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
         break;
     }
 
-    case 0x700: {  /* Bootup / Heartbeat */
-        if (canopen_is_bootup(f->id, f->data[0])) {
-            uint8_t node = canopen_extract_node(f->id, COB_BOOTUP_BASE);
-            motor_node_t *m = _find_motor(hal, node);
-            if (m) m->bootup_received = true;
-        }
+    case 0x700: {  /* Bootup / Heartbeat — 任何 0x700 帧都表明电机在线 */
+        uint8_t node = canopen_extract_node(f->id, COB_BOOTUP_BASE);
+        motor_node_t *m = _find_motor(hal, node);
+        if (m) m->bootup_received = true;
         break;
     }
 
@@ -663,6 +661,9 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
         uint8_t node = canopen_extract_node(f->id, COB_FEEDBACK_BASE);
         motor_node_t *m = _find_motor(hal, node);
         if (!m) break;
+
+        /* 收到反馈帧也标记电机在线 (心跳帧已有, 反馈帧加一层保险) */
+        m->bootup_received = true;
 
         motor_feedback_t fb;
         pdo_feedback_parse(f, &fb);
