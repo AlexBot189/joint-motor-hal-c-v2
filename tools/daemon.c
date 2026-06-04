@@ -3,13 +3,15 @@
  * @brief motor_tool 守护进程 — Unix socket + HAL 管理
  *
  * daemon 流程:
- *   1. 初始化 CANFD (motor_hal_init)
- *   2. 注册电机配置 (ID 1~4, 仅注册, 不启动)
- *   3. 后台化 (fork — ★必须在创建线程之前)
- *   4. 启动接收线程 (在子进程中, 捕获后续 Bootup/SDO/PDO)
- *   5. 信号 + socket + accept 循环
- *   6. 客户端命令: motor_tool startup 按需启停电机
+ *   1. 后台化 (fork)
+ *   2. 初始化 CANFD (motor_hal_init)
+ *   3. 注册电机配置 (1~4, 仅注册, 不启动)
+ *   4. 启用接收线程 (捕获后续 Bootup/SDO/PDO 帧)
+ *   5. 创建 Unix domain socket, listen
+ *   6. accept 循环: 接收命令 → 执行 → 返回 JSON 响应
  *   7. 收到 stop 命令时优雅退出
+ *
+ * 电机启动: 由 'motor_tool startup <id>' 按需触发。
  */
 
 #include "daemon.h"
@@ -49,7 +51,8 @@ static void _daemonize(void)
     pid_t pid = fork();
     if (pid < 0) { perror("fork"); exit(1); }
     if (pid > 0) {
-        printf("motor_tool daemon starting (pid=%d)\n", pid);
+        printf("motor_tool daemon started (pid=%d)\n", pid);
+        printf("  socket: %s\n", MOTOR_TOOL_SOCK_PATH);
         _exit(0);
     }
     setsid();
@@ -232,28 +235,28 @@ int daemon_start(const char *iface)
         motor_hal_add_motor(g_hal, &cfg);
     }
 
-    /* 3. 后台化 ★ 必须在创建线程之前 fork, 否则子线程在子进程中丢失 */
-    _daemonize();
-
-    /* 4. 启动接收线程 — 在子进程中创建, 安全 */
+    /* 3. 启动接收线程 — 之后电机上电时的 Bootup 帧会被自动捕获 */
     motor_hal_recv_start(g_hal);
 
-    /* 5. 信号处理 */
+    /* 4. 后台化 */
+    _daemonize();
+
+    /* 4. 信号处理 */
     signal(SIGINT,  _sig_handler);
     signal(SIGTERM, _sig_handler);
 
-    /* 6. 创建 socket */
+    /* 5. 创建 socket */
     g_listen_fd = _create_socket();
     if (g_listen_fd < 0) { tool_cleanup(); return -1; }
 
-    /* 7. 主循环 */
+    /* 6. 主循环 */
     g_daemon_running = 1;
 
     printf("motor_tool daemon ready. Use 'motor_tool startup <id>' to start motors.\n");
 
     _accept_loop();
 
-    /* 8. 清理 */
+    /* 7. 清理 */
     close(g_listen_fd);
     unlink(MOTOR_TOOL_SOCK_PATH);
     motor_hal_nmt_broadcast(g_hal, NMT_CMD_STOP);
