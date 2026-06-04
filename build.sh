@@ -1,9 +1,10 @@
 #!/bin/bash
 #==============================================================================
 # motor_hal 交叉编译脚本
-# 用法: ./build.sh [shared|static]
-#   shared - 编译动态库(.so) + 工具 (默认)
-#   static - 编译静态库(.a) + 工具
+# 用法: ./build.sh [shared|static|clean]
+#   shared - 编译动态库(.so) + 工具 (默认, 先清理再编译)
+#   static - 编译静态库(.a) + 工具 (先清理再编译)
+#   clean  - 仅清理构建目录, 不编译
 #==============================================================================
 set -e
 
@@ -11,9 +12,26 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TOOLCHAIN="$PROJECT_DIR/toolchain.cmake"
 CMAKE="/opt/gcc-arm-12.4-x86_64-aarch64-linux-gnu/bin/cmake"
 
-BUILD_TYPE="${1:-shared}"
+BUILD_DIR="$PROJECT_DIR/build"
+TOOLS_BUILD_DIR="$PROJECT_DIR/tools/build"
 
-case "$BUILD_TYPE" in
+#==============================================================================
+# 清理函数
+#==============================================================================
+_clean() {
+    echo "清理构建目录..."
+    rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR"
+    echo "  ✓ build/       已删除"
+    echo "  ✓ tools/build/ 已删除"
+}
+
+CMD="${1:-shared}"
+
+case "$CMD" in
+    clean)
+        _clean
+        exit 0
+        ;;
     shared)
         SHARED_FLAG="-DBUILD_AS_SHARED=ON"
         ;;
@@ -21,26 +39,24 @@ case "$BUILD_TYPE" in
         SHARED_FLAG="-DBUILD_AS_SHARED=OFF"
         ;;
     *)
-        echo "用法: $0 [shared|static]"
-        echo "  shared - 编译动态库(.so) (默认)"
-        echo "  static - 编译静态库(.a)"
+        echo "用法: $0 [shared|static|clean]"
+        echo "  shared - 编译动态库(.so) (默认, 清理后编译)"
+        echo "  static - 编译静态库(.a) (清理后编译)"
+        echo "  clean  - 仅清理构建目录"
         exit 1
         ;;
 esac
 
-BUILD_DIR="$PROJECT_DIR/build"
-TOOLS_BUILD_DIR="$PROJECT_DIR/tools/build"
-
 #==============================================================================
-# 清理
+# 编译前清理
 #==============================================================================
-rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR"
+_clean
 
 #==============================================================================
 # 1. 编译 motor_hal 库
 #==============================================================================
 echo "=========================================="
-echo "  [1/2] 编译 motor_hal ($BUILD_TYPE)"
+echo "  [1/2] 编译 motor_hal ($CMD)"
 echo "=========================================="
 
 mkdir -p "$BUILD_DIR"
@@ -75,7 +91,7 @@ echo "  编译完成!"
 echo "=========================================="
 echo ""
 
-if [ "$BUILD_TYPE" = "shared" ]; then
+if [ "$CMD" = "shared" ]; then
     LIB_FILE="$BUILD_DIR/libmotor_hal.so"
 else
     LIB_FILE="$BUILD_DIR/libmotor_hal.a"

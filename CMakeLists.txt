@@ -65,6 +65,9 @@ target_link_libraries(motor_example_mit motor_hal)
 add_executable(motor_example_dual_full examples/dual_motor_full.c)
 target_link_libraries(motor_example_dual_full motor_hal m)
 
+add_executable(motor_example_fb_cb    examples/feedback_callback.c)
+target_link_libraries(motor_example_fb_cb motor_hal m)
+
 # ============================================================================
 # 选项
 # ============================================================================
