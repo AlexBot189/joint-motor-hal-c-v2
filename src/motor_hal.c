@@ -169,28 +169,32 @@ void motor_hal_destroy(motor_hal_t *hal)
 {
     if (!hal) return;
 
-    /* 1. 停止接收线程 */
-    if (hal->recv_running) {
-        hal->recv_running = false;
-        pthread_join(hal->recv_thread, NULL);
-    }
-
-    /* 2. 脱使能所有电机 */
+    /* 1. 先脱使能所有电机 (需要 recv 线程运行才能收到 SDO 响应) */
     for (int i = 0; i < hal->motor_count; i++) {
         if (hal->motors[i].enabled) {
             sdo_write_simple(hal->drv, hal->motors[i].node_id,
                              OD_CONTROLWORD, 0x00, CW_DISABLE_VOLTAGE, 2);
         }
+    }
+
+    /* 2. 停止接收线程 */
+    if (hal->recv_running) {
+        hal->recv_running = false;
+        pthread_join(hal->recv_thread, NULL);
+    }
+
+    /* 3. 销毁 mutex */
+    for (int i = 0; i < hal->motor_count; i++) {
         pthread_mutex_destroy(&hal->motors[i].fb_lock);
     }
 
-    /* 3. 关闭 CAN */
+    /* 4. 关闭 CAN */
     if (hal->drv) {
         can_driver_close(hal->drv);
         hal->drv = NULL;
     }
 
-    /* 4. 销毁 SDO 队列 */
+    /* 5. 销毁 SDO 队列 */
     sdo_queue_destroy();
 
     pthread_mutex_destroy(&hal->lock);
@@ -275,8 +279,9 @@ int motor_hal_startup(motor_hal_t *hal, uint8_t node_id, int timeout_ms __attrib
 {
     if (!hal || !hal->drv) return -ENODEV;
 
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return -ENOENT;
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
 
     /* 用调用者传入的 timeout_ms 覆盖 cfg 中的默认值 */
     m->config.bootup_timeout_ms = timeout_ms;
@@ -286,6 +291,7 @@ int motor_hal_startup(motor_hal_t *hal, uint8_t node_id, int timeout_ms __attrib
         m->enabled = true;
         _set_state(hal, m, MOTOR_STATE_OP_ENABLED);
     }
+    pthread_mutex_unlock(&hal->lock);
     return ret;
 }
 
@@ -293,12 +299,14 @@ int motor_hal_wait_bootup(motor_hal_t *hal, uint8_t node_id, int timeout_ms)
 {
     if (!hal || !hal->drv) return -ENODEV;
 
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return -ENOENT;
-    if (m->bootup_received) return 0;
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    if (m->bootup_received) { pthread_mutex_unlock(&hal->lock); return 0; }
 
     int ret = motor_startup_wait_bootup(hal->drv, node_id, timeout_ms, &m->bootup_received);
     if (ret == 0) m->bootup_received = true;
+    pthread_mutex_unlock(&hal->lock);
     return ret;
 }
 
@@ -306,14 +314,16 @@ int motor_hal_enable(motor_hal_t *hal, uint8_t node_id)
 {
     if (!hal || !hal->drv) return -ENODEV;
 
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return -ENOENT;
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
 
     int ret = motor_startup_enable(hal->drv, node_id);
     if (ret == 0) {
         m->enabled = true;
         _set_state(hal, m, MOTOR_STATE_OP_ENABLED);
     }
+    pthread_mutex_unlock(&hal->lock);
     return ret;
 }
 
@@ -321,8 +331,9 @@ int motor_hal_disable(motor_hal_t *hal, uint8_t node_id)
 {
     if (!hal || !hal->drv) return -ENODEV;
 
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return -ENOENT;
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
 
     int ret = sdo_write_simple(hal->drv, node_id,
                                OD_CONTROLWORD, 0x00, CW_SHUTDOWN, 2);
@@ -330,18 +341,22 @@ int motor_hal_disable(motor_hal_t *hal, uint8_t node_id)
         m->enabled = false;
         _set_state(hal, m, MOTOR_STATE_READY_TO_SW_ON);
     }
+    pthread_mutex_unlock(&hal->lock);
     return ret;
 }
 
 int motor_hal_fault_reset(motor_hal_t *hal, uint8_t node_id)
 {
     if (!hal || !hal->drv) return -ENODEV;
+
+    pthread_mutex_lock(&hal->lock);
     int ret = sdo_write_simple(hal->drv, node_id,
                                OD_CONTROLWORD, 0x00, CW_FAULT_RESET, 2);
     if (ret == 0) {
         motor_node_t *m = _find_motor(hal, node_id);
         if (m) _set_state(hal, m, MOTOR_STATE_SWITCH_ON_DIS);
     }
+    pthread_mutex_unlock(&hal->lock);
     return ret;
 }
 
@@ -383,7 +398,7 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     if (!m->enabled) return -EAGAIN;
 
     uint16_t pos  = (uint16_t)(position * 65535.0f / 360.0f);
-    uint16_t vel  = (uint16_t)fabsf(velocity);
+    uint16_t vel  = (uint16_t)((int16_t)velocity);  /* 保留符号, 由电机按有符号12bit解析 */
     uint16_t kp_v = (uint16_t)(kp * 100.0f);
     uint16_t kd_v = (uint16_t)(kd * 100.0f);
     uint16_t torq = (uint16_t)(torque * 1000.0f);

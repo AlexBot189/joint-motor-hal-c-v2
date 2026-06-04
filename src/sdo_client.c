@@ -76,7 +76,7 @@ void sdo_push_response(const canfd_frame_t *f)
     g_sdo_queue.head = (g_sdo_queue.head + 1) % SDO_QUEUE_SIZE;
     g_sdo_queue.count++;
 
-    pthread_cond_signal(&g_sdo_queue.cond);
+    pthread_cond_broadcast(&g_sdo_queue.cond);
     pthread_mutex_unlock(&g_sdo_queue.mutex);
 }
 
