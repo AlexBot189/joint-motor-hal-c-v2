@@ -1,8 +1,8 @@
-# 外骨骼外设节点框架设计文档 v1.1
+# 外骨骼外设节点框架设计文档 v1.2
 
 > 项目: 外骨骼机器人 RV1126B CANFD 控制  
 > 框架: 基于 petrobot_periph_manager 量产验证框架  
-> 核心技术: RT-Linux + POSIX SHM + Double Buffer + Mailbox + 安全监控  
+> 核心技术: RT-Linux + POSIX SHM + Double Buffer + Mailbox + Lock-Free Snapshot + 安全监控  
 > 日期: 2026-06-05
 
 ---
@@ -87,9 +87,11 @@
 // exo_shm.h — 系统侧和算法侧共享的唯一接口文件
 
 #include <stdint.h>
+#include <stdatomic.h>
 
 #define EXO_SHM_NAME   "/exo_shm"
 #define EXO_SHM_SIZE   (64 * 1024)
+#define EXO_SHM_VERSION 1              // ★ 版本号, 升级时递增
 
 // ─── 反馈数据: 一帧 = 左右电机 + IMU, Double Buffer保证一致性 ───
 
@@ -142,34 +144,42 @@ typedef struct {
 } MotorCommand;
 
 typedef struct {
-    uint64_t    seq;          // ★ 原子递增, 算法写, 系统检测变化
-    MotorCommand cmd;         // ★ 覆盖写, 只保留最新
-} MotorMailbox;
+    atomic_uint_least64_t seq_begin;  // ★ 写前递增
+    MotorCommand cmd;                   // 命令数据
+    atomic_uint_least64_t seq_end;    // ★ 写后 = seq_begin
+} MotorMailbox;  // Lock-Free Snapshot: 读端seq_begin==seq_end保证完整性
 
 // ─── 共享内存总结构 ───
 
 typedef struct {
-    // 双Buffer反馈区 (系统写, 算法读)
-    uint32_t        active_idx;     // 0或1, 指示算法读哪个
-    FeedbackFrame   fb_buffer[2];   // 双Buffer
+    // ─── 版本 (系统写, 算法读) ───
+    uint32_t        version;          // ★ EXO_SHM_VERSION, 升级检测
 
-    // Mailbox命令区 (算法写, 系统读)
-    MotorMailbox    mailbox;
+    // ─── 双Buffer反馈区 (系统写, 算法读) ───
+    atomic_uint     active_idx;       // ★ release/acquire 语义, ARMv8弱序安全
+    FeedbackFrame   fb_buffer[2];     // 双Buffer
 
-    // 安全心跳 (算法写, 系统读) ★
-    uint64_t        algo_heartbeat;  // 算法100Hz递增
+    // ─── Mailbox命令区 (算法写, 系统读) ───
+    MotorMailbox    mailbox;           // Lock-Free Snapshot
 
-    // 状态区 ★ (系统写, 算法读)
-    uint8_t         motor_online;    // bit0=右 bit1=左
-    uint8_t         calib_state;     // 0=空闲 1=校准中 2=完成 3=超时
-    uint8_t         motor_enabled;   // bit0=右使能 bit1=左使能
-    uint8_t         motor_fault;     // 故障标志
+    // ─── 安全监控 (算法写, 系统读) ───
+    atomic_uint_least64_t  algo_heartbeat;  // ★ 100Hz递增 (线程存活)
+    atomic_uint_least64_t  cmd_seq;         // ★ 每次写mailbox后递增 (结果有效)
+    atomic_uint_least64_t  algo_ready;      // ★ 算法握手: 1=已就绪 (第六处)
 
-    uint8_t         _pad[4015];      // 对齐64KB
+    // ─── 状态区 (系统写, 算法读) ───
+    uint8_t         motor_online;       // bit0=右 bit1=左
+    uint8_t         calib_state;        // 0=空闲 1=校准中 2=完成 3=超时
+    uint8_t         motor_enabled;       // bit0=右使能 bit1=左使能
+    uint8_t         motor_fault;         // 故障标志 (bit定义见故障恢复章)
+    uint8_t         node_state;          // ★ 系统状态 (OFF/READY/CALIB/ENABLED/RUNNING/FAULT)
+
+    uint8_t         _pad[4006];          // 对齐64KB
 } ExoShm;
 
 // ─── 工具函数 ───
 ExoShm* exo_shm_open(const char* name, bool create);
+// 算法侧: assert(shm->version == EXO_SHM_VERSION); // 升级检测
 void    exo_shm_close(ExoShm* shm);
 ```
 
@@ -249,10 +259,14 @@ motor_node 启动
        │   左右 |angle| < 1.0°? → DONE
        │   超时 10s? → TIMEOUT → shm->calib_state=3
        └─ DONE:
-            ├─ DS402使能 (0x06→0x07→0x0F)
+            ├─ shm->calib_state = 2
+            ├─ shm->node_state = READY_FOR_CONTROL
+            └─ 等待算法握手 (shm->algo_ready == 1)
+                 ↓ 算法就绪
+            ├─ DS402使能 (0x06→0x07→0x0F)   ← 至此才使能
             ├─ 切电流模式 (0x6060=0x0A)
             ├─ 开传感器透传 250Hz
-            ├─ shm->calib_state = 2
+            ├─ shm->node_state = RUNNING
             └─ shm->motor_enabled = 0x03
                     │
                     ▼
@@ -281,8 +295,7 @@ CAN帧 → _dispatch_frame
  └─                        ↓
                       组装 FeedbackFrame
                       写 fb_buffer[active^1]              fb_buffer[active^1] 填满
-                      wmb() 内存屏障
-                      active_idx = active^1                                     检测到切换
+                      atomic_store_explicit(&shm->active_idx, active^1, memory_order_release)                                     atomic_load_explicit(&shm->active_idx, memory_order_acquire)  != last 检测到切换  // ARMv8弱序安全
                       → ConcurrentQueue (ROS旁路)         读 fb_buffer[active] ✓ 完整帧
                       延迟: ~5ms (200Hz)
 
@@ -418,7 +431,11 @@ void RtSafetyLoop() {   // SCHED_FIFO 75, 100Hz
     while (m_running) {
         uint64_t hb = __atomic_load_n(&m_shm->algo_heartbeat, __ATOMIC_RELAXED);
 
-        if (hb == last_hb && m_shm->motor_enabled) {
+        uint64_t cs = atomic_load_explicit(&m_shm->cmd_seq, memory_order_relaxed);
+        static uint64_t last_cs = 0;
+
+        if ((hb == last_hb || cs == last_cs) && m_shm->motor_enabled) {
+            // 心跳停滞 或 命令序列未更新 → 算法异常
             // 心跳无变化 + 电机已使能 → 算法可能挂了
             if (stall_us == 0) stall_us = now_us();
 
@@ -512,10 +529,10 @@ int main() {
 
     while (1) {
         // === 1. 等新反馈帧 (自旋等双Buffer切换) ===
-        while (shm->active_idx == last_active) {
+        while (atomic_load_explicit(&shm->active_idx, memory_order_acquire) == last_active) {
             __asm__ volatile("yield");
         }
-        last_active = shm->active_idx;
+        last_active = atomic_load_explicit(&shm->active_idx, memory_order_acquire);
 
         // === 2. 读完整一帧 (Double Buffer保证一致性) ===
         FeedbackFrame *fb = &shm->fb_buffer[last_active];
@@ -532,17 +549,18 @@ int main() {
         int32_t torque_l = gait_calculate_l(pos_l, vel_l, pitch, roll, sw_r);
 
         // === 4. 下发指令 (Mailbox覆盖写) ===
-        shm->mailbox.cmd.motor_id = 0;           // 双电机
-        shm->mailbox.cmd.cmd      = EXO_CMD_TORQUE;
-        shm->mailbox.cmd.value    = torque_r;    // 系统内部按 left/right 分发
-        __sync_fetch_and_add(&shm->mailbox.seq, 1);
+        // Lock-Free Snapshot: seq_begin先增, 写完cmd, seq_end对齐
+        atomic_fetch_add(&shm->mailbox.seq_begin, 1);
+        shm->mailbox.cmd = {.motor_id=0, .cmd=EXO_CMD_TORQUE, .value=torque_r};
+        atomic_store(&shm->mailbox.seq_end, atomic_load(&shm->mailbox.seq_begin));
 
-        // === 5. 心跳 (100Hz) ===
+        // === 5. 心跳 + 命令序列号 (100Hz) ===
         static int heartbeat_count = 0;
         if (++heartbeat_count >= 10) {
             heartbeat_count = 0;
-            __sync_fetch_and_add(&shm->algo_heartbeat, 1);
+            atomic_fetch_add(&shm->algo_heartbeat, 1);
         }
+        atomic_fetch_add(&shm->cmd_seq, 1);  // ★ 证明算法结果在更新
     }
 }
 ```
@@ -656,3 +674,180 @@ CanDispatcher               新建                    +2个文件
 
 **版本**: v1.1 | **更新**: 2026-06-05 23:30
 **修正**: GPIO解耦 + Bootup双保险 + 安全监控 + 线程优先级 + 状态机事件
+
+## 15. 系统状态机 (v1.2 新增)
+
+```
+                    ┌─────────────────────────────────┐
+                    │        系统状态机 (node_state)     │
+                    └─────────────────────────────────┘
+
+   ┌──────┐   节点启动    ┌───────┐   双电机在线    ┌───────┐
+   │ OFF  │─────────────→│ READY │───────────────→│ CALIB │
+   └──────┘              └───┬───┘  startup完成   └───┬───┘
+                             │                        │
+                             │                        ├─ 校准成功 → CALIB_DONE
+                             │                        ├─ 超时10s  → FAULT
+                             │                        └─ 编码器故障 → FAULT
+                             │
+                             ▼
+                      ┌─────────────────┐
+                      │ READY_FOR_CTRL  │  ← ★ 等算法握手
+                      └────────┬────────┘
+                               │ algo_ready == 1
+                               ▼
+                      ┌─────────────────┐
+                      │   ENABLED       │  ← DS402使能 + 开透传
+                      └────────┬────────┘
+                               │ 算法心跳正常
+                               ▼                         安全监控触发
+                      ┌─────────────────┐           ┌─────────────────┐
+                      │   RUNNING       │──────────→│     FAULT       │
+                      │   (正常运行)     │           │                 │
+                      └────────┬────────┘           │ CAN断线          │
+                               │                    │ 编码器异常        │
+                               │ algo_heartbeat     │ 驱动器过温        │
+                               │ 丢失 / cmd_seq     │ 算法超时          │
+                               │ 停滞               │ 算法心跳200ms    │
+                               └────────────────────│ 算法死亡500ms    │
+                                                    └────────┬────────┘
+                                                             │
+                                                             ▼
+                                                      ┌─────────────┐
+                                                      │ FAULT 恢复   │
+                                                      │ (见§16)     │
+                                                      └─────────────┘
+
+状态转换表:
+  源状态           事件                        目标状态          动作
+  ──────────────────────────────────────────────────────────────────
+  OFF             节点启动                     READY           创建SHM, 初始化CANFD
+  READY           startup(心跳+关狗)完成        CALIB            (等按键)
+  CALIB           校准成功                     CALIB_DONE       版本号写1
+  CALIB           校准超时                     FAULT            motor_fault|=0x10
+  CALIB           编码器故障                    FAULT            motor_fault|=0x20
+  CALIB_DONE      算法握手(algo_ready==1)       ENABLED         DS402使能, 开透传
+  CALIB_DONE      超时10s无握手                FAULT            motor_fault|=0x40
+  ENABLED         心跳正常+cmd_seq正常          RUNNING          RT线程开始消费mailbox
+  ENABLED         心跳丢失200ms                FAULT            torque→0
+  RUNNING         心跳丢失200ms                FAULT            torque→0, motor_fault|=0x01
+  RUNNING         心跳丢失500ms                FAULT            DS402 Shutdown, motor_fault|=0x02
+  RUNNING         cmd_seq停滞200ms             FAULT            torque→0, motor_fault|=0x04
+  RUNNING         CAN断线(收不到帧2s)           FAULT            motor_fault|=0x08
+  FAULT           按键恢复                     READY           重新startup+校准
+```
+
+---
+
+## 16. 故障恢复流程 (v1.2 新增)
+
+### 故障码定义 (motor_fault)
+
+| Bit | 含义 | 触发条件 | 自动处理 |
+|-----|------|---------|---------|
+| 0 | 算法心跳丢失 | algo_heartbeat 200ms无变化 | torque→0 |
+| 1 | 算法死亡 | algo_heartbeat 500ms无变化 | DS402 Shutdown |
+| 2 | 算法输出停滞 | cmd_seq 200ms无变化 | torque→0 |
+| 3 | CAN通信断开 | 2s未收到任何CAN帧 | 标记offline, 等待恢复 |
+| 4 | 校准超时 | motor_calib_poll超时10s | calib_state=3 |
+| 5 | 编码器异常 | position始终不变(3s) | 标记FAULT |
+| 6 | 驱动器过温 | fb.temperature > 80°C | torque→0, 等降温 |
+| 7 | 算法握手超时 | CALIB_DONE后10s无algo_ready | 标记FAULT |
+
+### 故障恢复策略
+
+```
+故障类型          恢复方式              恢复后状态        需要操作
+─────────────────────────────────────────────────────────────────
+算法心跳丢失      torque→0后自动恢复    RUNNING           无需人工 (心跳恢复即重建)
+算法死亡          人工重启校准           READY             按键重新校准
+算法输出停滞      torque→0后自动恢复    RUNNING           无需人工
+CAN断线           自动重连               READY→重新校准     电机重新上电
+校准超时           人工重试              READY             按键重新校准
+编码器异常         人工检查后重试         READY             检查硬件+重新校准
+过温              自动等降温后恢复       RUNNING           无需人工
+算法握手超时       人工确认后触发         READY→重新校准     确认算法启动后按键
+```
+
+**原则: 可自动恢复的不停机, 硬件异常需人工介入, 进入FAULT后脱使能电机。**
+
+---
+
+## 17. 算法握手协议 (v1.2 新增)
+
+校准成功后**不立即使能电机**, 等待算法确认就绪。
+
+```
+motor_node 侧:                   算法侧:
+═════════════════════            ═══════════════════
+CALIB_DONE
+shm->node_state = READY_FOR_CTRL
+shm->calib_state = 2
+                                 检测到 calib_state == 2
+                                 初始化步态模型
+                                 设置控制参数
+                                 atomic_store(&shm->algo_ready, 1);  ← ★ 握手
+                                 ↓
+检测到 algo_ready == 1:
+  motor_hal_enable(1)            (电机使能, 算法已就绪)
+  motor_hal_enable(2)
+  motor_hal_sensor_config(1,4,3) (开透传)
+  motor_hal_sensor_config(2,4,3)
+  shm->motor_enabled = 0x03
+  shm->node_state = RUNNING
+  ↓
+RT控制线程: 开始消费mailbox       ↓
+(mailbox可能还是空的,              开始写 mailbox → PDO生效
+ 这是安全的 — 第一次seq变化后
+ 才开始发PDO)
+```
+
+**超时保护: CALIB_DONE 后 10 秒无 algo_ready → FAULT, motor_fault|=0x80。**
+
+---
+
+## 18. FeedbackFrame 版本兼容 (v1.2 新增)
+
+```c
+#define EXO_SHM_VERSION 1
+
+// 算法侧启动时:
+ExoShm* shm = exo_shm_open(EXO_SHM_NAME, false);
+if (shm->version != EXO_SHM_VERSION) {
+    fprintf(stderr, "FATAL: SHM version mismatch (got %u, expected %u)\n",
+            shm->version, EXO_SHM_VERSION);
+    exit(1);
+}
+
+// motor_node 侧创建时:
+shm->version = EXO_SHM_VERSION;  // 首次创建时写
+```
+
+**升级规则:**
+- 新增字段: 加到结构体末尾, 递增 `EXO_SHM_VERSION`
+- 修改字段: 递增 `EXO_SHM_VERSION`, 算法侧必须重新编译
+- 删除字段: 保留为 `_reserved` 占位, 递增 `EXO_SHM_VERSION`
+
+---
+
+## 19. 实时性能指标 (v1.2 新增)
+
+| 指标 | 要求 | 测试方法 |
+|------|------|---------|
+| 控制周期 | 1ms (1KHz) | `cyclictest -p90 -t1 -i1000` |
+| 控制抖动 | <100μs | `cyclictest` histogram |
+| CAN发送延迟 | <50μs | PDO write() 前后 clock_gettime 差 |
+| CAN接收延迟 | <200μs | 帧到达 → dispatch 完成时间 |
+| SDO读写超时 | 500ms | motor_hal_sdo_write 内部超时 |
+| 校准总超时 | 10s | motor_calib_start 的 timeout_ms |
+| 算法心跳周期 | 10ms (100Hz) | algo_heartbeat 递增频率 |
+| 安全监控检测延迟 | <200ms (心跳丢失→torque清零) | 故意kill算法进程测试 |
+| 数据上报频率 | 200Hz (5ms) | fb_buffer active_idx 切换频率 |
+| 共享内存更新延迟 | <5ms (上报同步) | seq_num 从写到算法读到的时间差 |
+| 故障恢复最大延迟 | 500ms (心跳丢失→Shutdown) | 安全监控的最坏情况延迟 |
+| CAN帧丢失率 | <0.01% | can_rx_err_cnt / can_rx_total |
+
+---
+
+**版本**: v1.2 | **更新**: 2026-06-05 23:55
+**v1.2修正**: active_idx原子变量 + Mailbox Lock-Free Snapshot + algo_heartbeat+cmd_seq双重检查 + 状态机图 + 故障恢复 + 算法握手 + 版本号 + 性能指标
