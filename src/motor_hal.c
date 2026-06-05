@@ -26,7 +26,8 @@
 #include <math.h>
 #include <stdio.h>
 
-/* ---------- 诊断: CAN 帧完整 hex dump ---------- */
+/* ---------- 诊断: CAN 帧 hex dump (仅调试模式) ---------- */
+#ifdef MOTOR_DEBUG_HEX
 static void _dump_can_frame(const char *dir, const canfd_frame_t *f)
 {
     fprintf(stderr, "[%s] id=0x%03X dlc=%d :", dir, f->id, f->dlc);
@@ -35,6 +36,9 @@ static void _dump_can_frame(const char *dir, const canfd_frame_t *f)
     }
     fprintf(stderr, "\n");
 }
+#else
+static inline void _dump_can_frame(const char *dir, const canfd_frame_t *f) { (void)dir; (void)f; }
+#endif
 
 /* =====================================================
  * 内部: 前向声明拆分模块函数
