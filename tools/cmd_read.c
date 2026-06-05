@@ -27,9 +27,12 @@ int cmd_do_read(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (strcmp(item, "state") == 0)    return tool_read_state(id);
     if (strcmp(item, "error") == 0)    return tool_read_error(id);
     if (strcmp(item, "version") == 0)  return tool_read_version(id);
+    if (strcmp(item, "voltage") == 0)  return tool_read_voltage(id);
+    if (strcmp(item, "bus_current") == 0) return tool_read_bus_current(id);
+    if (strcmp(item, "mode") == 0)     return tool_read_mode(id);
     if (strcmp(item, "all") == 0)      return tool_read_all(id);
 
     fprintf(stderr, "Unknown read item: %s\n", item);
-    fprintf(stderr, "  Items: angle speed current temp state error version all\n");
+    fprintf(stderr, "  Items: angle speed current temp state error version voltage bus_current mode all\n");
     return -1;
 }

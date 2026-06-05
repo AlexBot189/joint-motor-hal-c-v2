@@ -136,3 +136,19 @@ int cmd_do_reset(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     return _broadcast_op(atoi(argv[2]), _reset_fn, "fault_reset");
 }
+
+/* ---- 新增: fault_reset / reboot ---- */
+
+int cmd_do_fault_reset(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    return tool_fault_reset(atoi(argv[2]));
+}
+
+int cmd_do_reboot(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    return tool_reboot(atoi(argv[2]));
+}

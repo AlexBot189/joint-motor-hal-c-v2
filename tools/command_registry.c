@@ -53,6 +53,16 @@ const command_entry_t g_cmd_table[] = {
     /* 传感器透传 */
     { CMD_SENSOR,   "sensor",  "sensor <config|stop|read> <id> [period_ms] [bus_fmt]", "外设传感器透传", -1, -1 },
 
+    /* 数据上报 (CA 等效) */
+    { CMD_REPORT,   "report",  "report [period_ms]",             "定时数据上报 (0=停止)", 2, 2 },
+
+    /* 校准 */
+    { CMD_CALIB,    "calib",   "calib <start|status|exit> [id_r] [id_l] [timeout_ms]", "电机零位校准", -1, -1 },
+
+    /* 系统控制 */
+    { CMD_FAULT_RESET, "fault_reset", "fault_reset <id>",       "清零故障 (0=全部)", 2, 2 },
+    { CMD_REBOOT,   "reboot",  "reboot <id>",                   "电机系统重启",             2,   2 },
+
     /* 帮助 */
     { CMD_HELP,     "help",    "help",                          "显示此帮助",                   1,   1 },
 };
@@ -123,6 +133,10 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
         case CMD_WATCH:   return cmd_do_watch(hal, cmd->id, argc, argv);
         case CMD_HELP:    return cmd_do_help(hal, cmd->id, argc, argv);
         case CMD_SENSOR:  return cmd_do_sensor(hal, cmd->id, argc, argv);
+        case CMD_REPORT:  return cmd_do_report(hal, cmd->id, argc, argv);
+        case CMD_CALIB:   return cmd_do_calib(hal, cmd->id, argc, argv);
+        case CMD_FAULT_RESET: return cmd_do_fault_reset(hal, cmd->id, argc, argv);
+        case CMD_REBOOT:  return cmd_do_reboot(hal, cmd->id, argc, argv);
         default:          return 1;
     }
 }

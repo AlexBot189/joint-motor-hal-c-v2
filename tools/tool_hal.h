@@ -77,4 +77,15 @@ void tool_poll(int timeout_ms);
 
 int tool_watch_start(int period_ms, int out_fd);
 
+/* ---- V2: ODS 协议扩展 ---- */
+int tool_fault_reset(int id);
+int tool_disable(int id);
+int tool_reboot(int id);
+int tool_set_pos_ctrl(int id, bool start);
+int tool_set_pos_target(int id, int counts);
+int tool_set_speed_target(int id, int rpm);
+int tool_read_voltage(int id);
+int tool_read_bus_current(int id);
+int tool_read_mode(int id);
+
 #endif /* TOOL_HAL_H */

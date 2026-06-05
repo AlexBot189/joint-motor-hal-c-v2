@@ -18,7 +18,9 @@ enum {
     CMD_TORQUE, CMD_CSP, CMD_MIT, CMD_BRAKE, CMD_QUICKSTOP,
     CMD_SAVE, CMD_SETZERO, CMD_PID,
     CMD_SDO_READ, CMD_SDO_WRITE,
-    CMD_READ, CMD_WATCH, CMD_SENSOR, CMD_HELP,
+    CMD_READ, CMD_WATCH, CMD_SENSOR, CMD_REPORT, CMD_CALIB,
+    CMD_FAULT_RESET, CMD_REBOOT,
+    CMD_HELP,
     CMD_COUNT
 };
 
@@ -75,6 +77,10 @@ int cmd_do_read(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_watch(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_help(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_sensor(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_report(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_calib(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_fault_reset(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_reboot(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 
 /* ================================================================
  * 命令分发: 根据命令名查找并执行回调

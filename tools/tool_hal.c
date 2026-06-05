@@ -574,3 +574,142 @@ int tool_watch_start(int period_ms, int out_fd)
 
     return 0;
 }
+
+/* ================================================================
+ * V2: ODS 协议扩展 — fault_reset / disable / reboot
+ * ================================================================ */
+
+int tool_fault_reset(int id)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        printf("Resetting fault motor %d...\n", ids[i]);
+        int ret = motor_hal_fault_reset(g_hal, (uint8_t)ids[i]);
+        if (ret < 0) { fprintf(stderr, "  ✗ motor %d fault_reset failed\n", ids[i]); errors++; }
+        else         printf("  ✓ motor %d fault cleared\n", ids[i]);
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_disable(int id)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        printf("Disabling motor %d...\n", ids[i]);
+        int ret = motor_hal_disable(g_hal, (uint8_t)ids[i]);
+        if (ret < 0) { fprintf(stderr, "  ✗ motor %d disable failed\n", ids[i]); errors++; }
+        else         printf("  ✓ motor %d disabled\n", ids[i]);
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_reboot(int id)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        printf("Rebooting motor %d...\n", ids[i]);
+        motor_hal_sdo_write(g_hal, (uint8_t)ids[i], 0x6040, 0, 0x06, 3);
+        int ret = motor_hal_sdo_write(g_hal, (uint8_t)ids[i], 0x6040, 0, 0x81, 3);
+        if (ret < 0) { fprintf(stderr, "  ✗ motor %d reboot failed\n", ids[i]); errors++; }
+        else         printf("  ✓ motor %d reboot sent\n", ids[i]);
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+/* ================================================================
+ * V2: posctrl / postarget / speedtarget
+ * ================================================================ */
+
+int tool_set_pos_ctrl(int id, bool start)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        int ret = motor_hal_set_pos_ctrl(g_hal, (uint8_t)ids[i], start);
+        if (ret < 0) { fprintf(stderr, "  ✗ motor %d posctrl %s failed\n",
+                               ids[i], start?"start":"stop"); errors++; }
+        else         printf("  ✓ motor %d position %s\n", ids[i], start?"started":"stopped");
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_set_pos_target(int id, int counts)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        int ret = motor_hal_set_pos_target(g_hal, (uint8_t)ids[i], (int32_t)counts);
+        if (ret < 0) { fprintf(stderr, "  ✗ motor %d postarget failed\n", ids[i]); errors++; }
+        else         printf("  ✓ motor %d target_pos=%d\n", ids[i], counts);
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_set_speed_target(int id, int rpm)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        int ret = motor_hal_set_speed_target(g_hal, (uint8_t)ids[i], (int32_t)rpm);
+        if (ret < 0) { fprintf(stderr, "  ✗ motor %d speedtarget failed\n", ids[i]); errors++; }
+        else         printf("  ✓ motor %d target_speed=%d RPM\n", ids[i], rpm);
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+/* ================================================================
+ * V2: 读取扩展 — voltage / bus_current / mode
+ * ================================================================ */
+
+int tool_read_voltage(int id)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        uint32_t val = 0;
+        int ret = motor_hal_sdo_read_u32(g_hal, (uint8_t)ids[i], 0x2600, 0, &val);
+        if (ret == 0) printf("[%d] voltage=%u\n", ids[i], val);
+        else { printf("[%d] voltage=N/A\n", ids[i]); errors++; }
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_read_bus_current(int id)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        uint32_t val = 0;
+        int ret = motor_hal_sdo_read_u32(g_hal, (uint8_t)ids[i], 0x6077, 0, &val);
+        if (ret == 0) printf("[%d] bus_current=%d mA\n", ids[i], (int16_t)val);
+        else { printf("[%d] bus_current=N/A\n", ids[i]); errors++; }
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+int tool_read_mode(int id)
+{
+    int ids[TOOL_MAX_MOTORS], n;
+    if (_parse_ids(id, ids, &n) < 0) return -1;
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        uint32_t val = 0;
+        int ret = motor_hal_sdo_read_u32(g_hal, (uint8_t)ids[i], 0x6061, 0, &val);
+        if (ret == 0) {
+            const char *names[] = {"?","PP","PV","CSP","CSV","CUR","MIT"};
+            printf("[%d] mode=%s\n", ids[i], (val<7)?names[val]:"?");
+        } else { printf("[%d] mode=N/A\n", ids[i]); errors++; }
+    }
+    return errors > 0 ? -1 : 0;
+}

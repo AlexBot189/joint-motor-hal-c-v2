@@ -32,6 +32,8 @@ add_executable(motor_tool
     cmd_watch.c
     cmd_help.c
     cmd_sensor.c
+    cmd_report.c
+    cmd_calib.c
 )
 
 target_include_directories(motor_tool PRIVATE
