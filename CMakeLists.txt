@@ -24,6 +24,7 @@ set(MOTOR_HAL_SOURCES
     src/motor_hal_startup.c
     src/utils.c
     src/motor_hal.c
+    src/motor_calib.c
 )
 
 if(BUILD_AS_SHARED)

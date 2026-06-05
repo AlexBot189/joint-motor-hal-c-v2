@@ -497,7 +497,20 @@ int motor_hal_quick_stop(motor_hal_t *hal, uint8_t node_id)
 int motor_hal_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)
 {
     if (!hal || !hal->drv) return -ENODEV;
-    return sdo_write_simple(hal->drv, node_id, OD_MODE_OF_OP, 0x00, (uint32_t)mode, 1);
+
+    /* 巨蟹协议: PDO mode flag 和 SDO 0x6060 是两套编码 */
+    static const uint8_t sdo_mode_map[] = {
+        [MOTOR_MODE_PROFILE_POS] = 0x01,  /* PP:      PDO=1, SDO=0x01 ✓ */
+        [MOTOR_MODE_PROFILE_VEL] = 0x03,  /* PV:      PDO=2, SDO=0x03 */
+        [MOTOR_MODE_CSP]         = 0x03,  /* CSP:     PDO=3, SDO=0x03 (暂用) */
+        [MOTOR_MODE_CSV]         = 0x04,  /* CSV:     PDO=4, SDO=0x04 (暂用) */
+        [MOTOR_MODE_CURRENT]     = 0x0A,  /* 电流环:  PDO=5, SDO=0x0A */
+        [MOTOR_MODE_MIT]         = 0x06,  /* MIT:     PDO=6, SDO=0x06 (自定义) */
+    };
+
+    if (mode >= sizeof(sdo_mode_map)) return -EINVAL;
+    return sdo_write_simple(hal->drv, node_id, OD_MODE_OF_OP, 0x00,
+                            sdo_mode_map[mode], 1);
 }
 
 int motor_hal_set_accel_decel(motor_hal_t *hal, uint8_t node_id,
@@ -559,6 +572,28 @@ int motor_hal_disable_watchdog(motor_hal_t *hal, uint8_t node_id)
 {
     if (!hal || !hal->drv) return -ENODEV;
     return sdo_write_simple(hal->drv, node_id, OD_WATCHDOG_LIMIT, 0x00, 1, 4);
+}
+
+int motor_hal_set_pos_ctrl(motor_hal_t *hal, uint8_t node_id, bool start)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    /* 0x4F=启动绝对位置运动, 0x0F=停止 */
+    uint32_t cw = start ? 0x4FU : 0x0FU;
+    return sdo_write_simple(hal->drv, node_id, OD_CONTROLWORD, 0x00, cw, 3);
+}
+
+int motor_hal_set_pos_target(motor_hal_t *hal, uint8_t node_id, int32_t target_counts)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    return sdo_write_simple(hal->drv, node_id, OD_TARGET_POS, 0x00,
+                            (uint32_t)target_counts, 4);
+}
+
+int motor_hal_set_speed_target(motor_hal_t *hal, uint8_t node_id, int32_t target_rpm)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    return sdo_write_simple(hal->drv, node_id, OD_TARGET_VELOCITY, 0x00,
+                            (uint32_t)target_rpm, 4);
 }
 
 /* =====================================================

@@ -1,0 +1,208 @@
+/**
+ * @file motor_calib.c
+ * @brief 校准状态机实现 — 移植自 GD32 jx_can.c/jx_motor.c
+ *
+ * GD32 流程:
+ *   motor_can_comm==1 → 按键触发
+ *   motor_para_calibrate: 0→1(设零位)→2(位置检测±1°成功)→3(失败)
+ *   成功后: 使能+电流模式+开透传
+ *
+ * RV1126B 移植:
+ *   - 按键 → API 调用
+ *   - SDO 轮询角度 → motor_hal_get_feedback() 读缓存
+ *   - tx_re_flag 同步 → motor_hal_c 内部 SDO 队列处理
+ */
+
+#include "motor_calib.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+
+#define CALIB_LOG(fmt, ...) \
+    fprintf(stderr, "[calib] " fmt "\n", ##__VA_ARGS__)
+
+struct motor_calib {
+    motor_hal_t        *hal;        /* HAL 句柄 (不拥有) */
+    motor_calib_state_t state;      /* 当前状态 */
+    motor_calib_config_t cfg;       /* 校准配置 */
+    uint64_t            start_us;   /* 校准开始时间 */
+};
+
+/* ---------- 辅助: 获取当前时间 (us) ---------- */
+static uint64_t _now_us(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000UL + (uint64_t)ts.tv_nsec / 1000UL;
+}
+
+/* ---------- 生命周期 ---------- */
+
+motor_calib_t* motor_calib_create(motor_hal_t *hal)
+{
+    if (!hal) return NULL;
+
+    motor_calib_t *cal = calloc(1, sizeof(motor_calib_t));
+    if (!cal) return NULL;
+
+    cal->hal   = hal;
+    cal->state = MOTOR_CALIB_IDLE;
+
+    CALIB_LOG("created");
+    return cal;
+}
+
+void motor_calib_destroy(motor_calib_t *cal)
+{
+    if (!cal) return;
+    CALIB_LOG("destroyed");
+    free(cal);
+}
+
+/* ---------- 启动校准 ---------- */
+
+int motor_calib_start(motor_calib_t *cal, const motor_calib_config_t *cfg)
+{
+    if (!cal || !cfg) return -1;
+    if (cal->state != MOTOR_CALIB_IDLE && cal->state != MOTOR_CALIB_TIMEOUT) {
+        CALIB_LOG("busy (state=%d)", cal->state);
+        return -1;
+    }
+
+    cal->cfg = *cfg;
+    if (cal->cfg.timeout_ms <= 0)     cal->cfg.timeout_ms = 10000;
+    if (cal->cfg.angle_threshold_deg <= 0.0f) cal->cfg.angle_threshold_deg = 1.0f;
+
+    CALIB_LOG("start: R=%d L=%d timeout=%dms thresh=%.1f°",
+              cfg->motor_id_r, cfg->motor_id_l,
+              cal->cfg.timeout_ms, cal->cfg.angle_threshold_deg);
+
+    /* Step 1: Shutdown 左右电机 (GD32: jx_motor_enable(0x06,...)) */
+    int ret;
+    ret  = motor_hal_sdo_write(cal->hal, cfg->motor_id_r, 0x6040, 0, 0x06, 3);
+    ret |= motor_hal_sdo_write(cal->hal, cfg->motor_id_l, 0x6040, 0, 0x06, 3);
+    if (ret != 0) {
+        CALIB_LOG("shutdown failed");
+        return -1;
+    }
+    usleep(50000); /* 50ms */
+
+    /* Step 2: 设零位 (GD32: jx_motor_SetZeroPos, SDO 0x2531=1) */
+    ret  = motor_hal_set_zero(cal->hal, cfg->motor_id_r);
+    ret |= motor_hal_set_zero(cal->hal, cfg->motor_id_l);
+    if (ret != 0) {
+        CALIB_LOG("set_zero failed");
+        return -1;
+    }
+    usleep(20000); /* 20ms */
+
+    cal->state   = MOTOR_CALIB_CHECKING;
+    cal->start_us = _now_us();
+
+    CALIB_LOG("zero set, entering CHECKING");
+    return 0;
+}
+
+/* ---------- 每轮轮询 ---------- */
+
+motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
+{
+    if (!cal) return MOTOR_CALIB_TIMEOUT;
+    if (cal->state != MOTOR_CALIB_CHECKING) return cal->state;
+
+    /* 检查超时 */
+    uint64_t elapsed_us = _now_us() - cal->start_us;
+    if (elapsed_us > (uint64_t)cal->cfg.timeout_ms * 1000UL) {
+        CALIB_LOG("TIMEOUT after %dms", cal->cfg.timeout_ms);
+        cal->state = MOTOR_CALIB_TIMEOUT;
+        return MOTOR_CALIB_TIMEOUT;
+    }
+
+    /* 从 feedback 缓存读取左右电机当前角度 */
+    motor_feedback_t fb_r, fb_l;
+    int r_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_r, &fb_r);
+    int l_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_l, &fb_l);
+
+    if (r_ok != 0 || l_ok != 0) {
+        /* 还没有反馈数据, 继续等待 */
+        return MOTOR_CALIB_CHECKING;
+    }
+
+    float angle_r = motor_counts_to_deg(fb_r.position);
+    float angle_l = motor_counts_to_deg(fb_l.position);
+    float thresh  = cal->cfg.angle_threshold_deg;
+
+    /* GD32 判定: 左右位置均在 ±1° 范围 */
+    if (angle_r > -thresh && angle_r < thresh &&
+        angle_l > -thresh && angle_l < thresh)
+    {
+        CALIB_LOG("DONE: R=%.2f° L=%.2f°", angle_r, angle_l);
+
+        /* Step 3: DS402 使能 (GD32: 0x06→0x07→0x0F 三步) */
+        int ret;
+        uint8_t id_r = cal->cfg.motor_id_r;
+        uint8_t id_l = cal->cfg.motor_id_l;
+
+        ret  = motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 3);
+        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 3);
+        usleep(20000);
+        ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x07, 3);
+        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x07, 3);
+        usleep(20000);
+        ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x0F, 3);
+        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x0F, 3);
+
+        if (ret != 0) {
+            CALIB_LOG("enable failed");
+            cal->state = MOTOR_CALIB_TIMEOUT;
+            return MOTOR_CALIB_TIMEOUT;
+        }
+        usleep(120000); /* 等抱闸释放 */
+
+        /* Step 4: 设置控制模式 (默认电流模式 0x0A) */
+        motor_hal_set_mode(cal->hal, id_r, cal->cfg.ctrl_mode);
+        motor_hal_set_mode(cal->hal, id_l, cal->cfg.ctrl_mode);
+
+        /* Step 5: 启动传感器透传 (GD32: 0x5503=0x10 → 250Hz) */
+        motor_hal_sensor_config(cal->hal, id_r, 4, 3);  /* 4*250us=1ms/1KHz */
+        motor_hal_sensor_config(cal->hal, id_l, 4, 3);
+
+        cal->state = MOTOR_CALIB_DONE;
+        return MOTOR_CALIB_DONE;
+    }
+
+    return MOTOR_CALIB_CHECKING;
+}
+
+/* ---------- 退出校准 ---------- */
+
+int motor_calib_exit(motor_calib_t *cal)
+{
+    if (!cal) return -1;
+    if (cal->state == MOTOR_CALIB_IDLE) return 0;
+
+    uint8_t id_r = cal->cfg.motor_id_r;
+    uint8_t id_l = cal->cfg.motor_id_l;
+
+    CALIB_LOG("exit: stopping motors");
+
+    /* 关闭透传 */
+    motor_hal_sensor_stop(cal->hal, id_r);
+    motor_hal_sensor_stop(cal->hal, id_l);
+
+    /* 电流置零 */
+    motor_hal_sdo_write(cal->hal, id_r, 0x6071, 0, 0, 3);
+    motor_hal_sdo_write(cal->hal, id_l, 0x6071, 0, 0, 3);
+
+    /* 脱使能 */
+    motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 3);
+    motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 3);
+
+    cal->state = MOTOR_CALIB_IDLE;
+    return 0;
+}
+
+motor_calib_state_t motor_calib_get_state(const motor_calib_t *cal)
+{
+    return cal ? cal->state : MOTOR_CALIB_TIMEOUT;
+}

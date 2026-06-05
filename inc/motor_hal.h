@@ -420,6 +420,15 @@ int motor_hal_set_limits(motor_hal_t *hal, uint8_t node_id, float pos_deg, float
 /** @brief 关闭看门狗 (写 0x2650=1)。推荐在 motor_config_t 中设置, 无需手动调用。 */
 int motor_hal_disable_watchdog(motor_hal_t *hal, uint8_t node_id);
 
+/** @brief 位置环控制 — 启动/停止绝对位置运动 (SDO写 0x6040) */
+int motor_hal_set_pos_ctrl(motor_hal_t *hal, uint8_t node_id, bool start);
+
+/** @brief 设置位置环目标位置 (SDO写 0x607A), 单位编码器count */
+int motor_hal_set_pos_target(motor_hal_t *hal, uint8_t node_id, int32_t target_counts);
+
+/** @brief 设置速度环目标速度 (SDO写 0x60FF), 单位RPM */
+int motor_hal_set_speed_target(motor_hal_t *hal, uint8_t node_id, int32_t target_rpm);
+
 /* ============================================================================
  * 6. 状态查询 — 通过 SDO 同步读取 (阻塞 50~200ms)
  * ============================================================================ */
