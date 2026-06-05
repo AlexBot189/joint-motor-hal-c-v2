@@ -1,4 +1,4 @@
-# 外骨骼外设节点框架设计文档 v1.2
+# 外骨骼外设节点框架设计文档 v1.3
 
 > 项目: 外骨骼机器人 RV1126B CANFD 控制  
 > 框架: 基于 petrobot_periph_manager 量产验证框架  
@@ -117,6 +117,11 @@ typedef struct {
     uint64_t timestamp_us;
 } MotorData;
 
+// 索引约定: motor[0]=右腿(CAN ID=1), motor[1]=左腿(CAN ID=2)
+// 代码显式绑定, 不依赖motor_hal_add_motor注册顺序
+#define MOTOR_IDX_RIGHT  0
+#define MOTOR_IDX_LEFT   1
+
 typedef struct {
     MotorData motor[2];      // [0]=右(ID=1), [1]=左(ID=2)
 
@@ -137,11 +142,12 @@ typedef enum {
 } ExoCmdType;
 
 typedef struct {
-    uint8_t  motor_id;       // 1=右 2=左 0=双电机
-    uint8_t  cmd;
-    int32_t  value;
+    uint8_t  cmd;              // EXO_CMD_TORQUE/SPEED/POS
+    int32_t  value_right;       // 右腿 (CAN ID=1)
+    int32_t  value_left;        // 左腿 (CAN ID=2)
     uint64_t timestamp_us;
 } MotorCommand;
+// 外骨骼左右独立, Mailbox一次覆盖两侧
 
 typedef struct {
     atomic_uint_least64_t seq_begin;  // ★ 写前递增
@@ -223,7 +229,7 @@ motor_node 启动
   │
   └─ 状态机线程 → 主动探测
        for (id = 1; id <= 2; id++) {
-           // Bootup 已到达?
+           // PDO反馈帧正常接收 = 驱动板已在线
            if (motor_hal_get_feedback(id, &fb) == 0 && fb.status_byte != 0) {
                online_mask |= (1 << (id-1));
                continue;
@@ -234,8 +240,8 @@ motor_node 启动
                online_mask |= (1 << (id-1));
                continue;
            }
-           // 都没, 等 Bootup
-           motor_hal_wait_bootup(id, timeout=5000);
+           // 都不通: 电机未上电, 不阻塞, recv线程收到Bootup后事件通知
+           printf("Motor %d: offline (no PDO, no SDO)\n", id);
        }
        shm->motor_online = online_mask;
                     │
@@ -431,11 +437,15 @@ void RtSafetyLoop() {   // SCHED_FIFO 75, 100Hz
     while (m_running) {
         uint64_t hb = __atomic_load_n(&m_shm->algo_heartbeat, __ATOMIC_RELAXED);
 
+        // cmd_seq: 只记录日志, 不参与停机判定
+        // 理由: 站立时力矩恒定, 算法可能不更新cmd_seq, 不能用它判异常
         uint64_t cs = atomic_load_explicit(&m_shm->cmd_seq, memory_order_relaxed);
         static uint64_t last_cs = 0;
+        if (cs == last_cs) { /* 正常: 力矩恒定不变 */ }
+        last_cs = cs;
 
-        if ((hb == last_hb || cs == last_cs) && m_shm->motor_enabled) {
-            // 心跳停滞 或 命令序列未更新 → 算法异常
+        // 仅用 heartbeat 判断算法存活
+        if (hb == last_hb && m_shm->motor_enabled) { → 算法异常
             // 心跳无变化 + 电机已使能 → 算法可能挂了
             if (stall_us == 0) stall_us = now_us();
 
@@ -451,8 +461,7 @@ void RtSafetyLoop() {   // SCHED_FIFO 75, 100Hz
 
             if (elapsed > 500000 && !motor_disabled) {   // 500ms
                 ECO_ERROR("ALGO DEAD: DS402 Shutdown");
-                motor_hal_disable(m_hal, 1);
-                motor_hal_disable(m_hal, 2);
+                atomic_store(&m_safety_shutdown, 1);  // 设标志, 状态机线程消费
                 motor_disabled = true;
                 m_shm->motor_enabled = 0x00;
                 m_shm->motor_fault |= 0x02;  // 故障: 算法死亡,已停机
@@ -536,8 +545,8 @@ int main() {
 
         // === 2. 读完整一帧 (Double Buffer保证一致性) ===
         FeedbackFrame *fb = &shm->fb_buffer[last_active];
-        int16_t pos_r = fb->motor[0].position;   // 右腿
-        int16_t pos_l = fb->motor[1].position;   // 左腿
+        int16_t pos_r = fb->motor[MOTOR_IDX_RIGHT].position;   // 右腿 ID=1
+        int16_t pos_l = fb->motor[MOTOR_IDX_LEFT].position;    // 左腿 ID=2
         int16_t vel_r = fb->motor[0].velocity;
         int16_t vel_l = fb->motor[1].velocity;
         float   pitch = fb->imu.pitch;
@@ -549,9 +558,11 @@ int main() {
         int32_t torque_l = gait_calculate_l(pos_l, vel_l, pitch, roll, sw_r);
 
         // === 4. 下发指令 (Mailbox覆盖写) ===
-        // Lock-Free Snapshot: seq_begin先增, 写完cmd, seq_end对齐
+        // Lock-Free Snapshot: 左右力矩独立, 一次写入
         atomic_fetch_add(&shm->mailbox.seq_begin, 1);
-        shm->mailbox.cmd = {.motor_id=0, .cmd=EXO_CMD_TORQUE, .value=torque_r};
+        shm->mailbox.cmd.cmd         = EXO_CMD_TORQUE;
+        shm->mailbox.cmd.value_right = torque_r;   // 右 ID=1
+        shm->mailbox.cmd.value_left  = torque_l;   // 左 ID=2
         atomic_store(&shm->mailbox.seq_end, atomic_load(&shm->mailbox.seq_begin));
 
         // === 5. 心跳 + 命令序列号 (100Hz) ===
@@ -727,7 +738,7 @@ CanDispatcher               新建                    +2个文件
   CALIB           校准超时                     FAULT            motor_fault|=0x10
   CALIB           编码器故障                    FAULT            motor_fault|=0x20
   CALIB_DONE      算法握手(algo_ready==1)       ENABLED         DS402使能, 开透传
-  CALIB_DONE      超时10s无握手                FAULT            motor_fault|=0x40
+  CALIB_DONE      超时30s无握手                FAULT            motor_fault|=0x80
   ENABLED         心跳正常+cmd_seq正常          RUNNING          RT线程开始消费mailbox
   ENABLED         心跳丢失200ms                FAULT            torque→0
   RUNNING         心跳丢失200ms                FAULT            torque→0, motor_fault|=0x01
@@ -752,7 +763,7 @@ CanDispatcher               新建                    +2个文件
 | 4 | 校准超时 | motor_calib_poll超时10s | calib_state=3 |
 | 5 | 编码器异常 | position始终不变(3s) | 标记FAULT |
 | 6 | 驱动器过温 | fb.temperature > 80°C | torque→0, 等降温 |
-| 7 | 算法握手超时 | CALIB_DONE后10s无algo_ready | 标记FAULT |
+| 7 | 算法握手超时 | CALIB_DONE后30s无algo_ready | 标记FAULT, 需人工确认算法启动 |
 
 ### 故障恢复策略
 
@@ -849,5 +860,5 @@ shm->version = EXO_SHM_VERSION;  // 首次创建时写
 
 ---
 
-**版本**: v1.2 | **更新**: 2026-06-05 23:55
+**版本**: v1.3 | **更新**: 2026-06-06 00:30
 **v1.2修正**: active_idx原子变量 + Mailbox Lock-Free Snapshot + algo_heartbeat+cmd_seq双重检查 + 状态机图 + 故障恢复 + 算法握手 + 版本号 + 性能指标
