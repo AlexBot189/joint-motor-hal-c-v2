@@ -15,22 +15,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+extern void print_quick_usage(void);  /* from cmd_help.c */
+
 static void print_usage(void)
 {
-    printf("motor_tool — CANFD CANopen 电机控制工具\n\n");
-    printf("用法:\n");
-    printf("  motor_tool daemon can0        启动守护进程\n");
-    printf("  motor_tool stop               停止守护进程\n");
-    printf("  motor_tool help               显示命令列表\n");
-    printf("  motor_tool <command> [args]   发送控制/读取命令\n\n");
-    printf("典型流程:\n");
-    printf("  1. motor_tool daemon can0 &    # 后台启动 (电机可后上电)\n");
-    printf("  2. (给电机上电)\n");
-    printf("  3. motor_tool startup 1        # 启动电机1\n");
-    printf("  4. motor_tool speed 1 5000     # 控制电机1\n");
-    printf("  5. motor_tool watch 200        # 持续监控\n");
-    printf("  6. motor_tool disable 0        # 脱使能\n");
-    printf("  7. motor_tool stop             # 停止 daemon\n");
+    print_quick_usage();  /* 统一从 cmd_help.c 输出 */
 }
 
 static void print_help(void)
