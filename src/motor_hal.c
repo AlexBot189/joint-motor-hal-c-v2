@@ -101,9 +101,16 @@ typedef struct {
     motor_feedback_cb_t fb_cb;
     motor_error_cb_t    err_cb;
     motor_state_cb_t    state_cb;
+    motor_sensor_cb_t   sensor_cb;
     void               *fb_ctx;
     void               *err_ctx;
     void               *state_ctx;
+    void               *sensor_ctx;
+
+    /* 传感器缓存 */
+    pthread_mutex_t  sensor_lock;
+    motor_sensor_t   cached_sensor;
+    uint64_t         last_sensor_us;
 } motor_node_t;
 
 /* =====================================================
@@ -173,6 +180,7 @@ motor_hal_t* motor_hal_create(void)
         hal->motors[i].node_id = 0;
         hal->motors[i].state = MOTOR_STATE_NOT_READY;
         pthread_mutex_init(&hal->motors[i].fb_lock, &ma);
+        pthread_mutex_init(&hal->motors[i].sensor_lock, &ma);
     }
     pthread_mutexattr_destroy(&ma);
 
@@ -209,6 +217,7 @@ void motor_hal_destroy(motor_hal_t *hal)
     /* 3. 销毁 mutex */
     for (int i = 0; i < hal->motor_count; i++) {
         pthread_mutex_destroy(&hal->motors[i].fb_lock);
+        pthread_mutex_destroy(&hal->motors[i].sensor_lock);
     }
 
     /* 4. 关闭 CAN */
@@ -283,6 +292,7 @@ void motor_hal_remove_motor(motor_hal_t *hal, uint8_t node_id)
     if (idx < 0) { pthread_mutex_unlock(&hal->lock); return; }
 
     pthread_mutex_destroy(&hal->motors[idx].fb_lock);
+    pthread_mutex_destroy(&hal->motors[idx].sensor_lock);
 
     /* 紧凑数组 */
     if (idx < hal->motor_count - 1) {
@@ -688,9 +698,42 @@ void motor_hal_set_state_cb(motor_hal_t *hal, uint8_t node_id,
     m->state_ctx = ctx;
 }
 
+void motor_hal_set_sensor_cb(motor_hal_t *hal, uint8_t node_id,
+                             motor_sensor_cb_t cb, void *ctx)
+{
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) return;
+    m->sensor_cb  = cb;
+    m->sensor_ctx = ctx;
+}
+
 /* =====================================================
  * 内部: 帧分发 (接收线程 + poll 共用)
  * ===================================================== */
+
+/* =====================================================
+ * 内部: 传感器数据解析 (8字节, 小端, bit-packed)
+ * ===================================================== */
+
+static void _parse_sensor_frame(const canfd_frame_t *f, motor_sensor_t *s)
+{
+    memset(s, 0, sizeof(*s));
+    if (!f || f->dlc < 8) return;
+
+    /* 拼成 uint64 (little-endian) */
+    uint64_t p = 0;
+    for (int i = 0; i < 8; i++) {
+        p |= ((uint64_t)f->data[i]) << (8U * i);
+    }
+
+    s->hall_adc0   = (uint16_t)((p >> 0)  & 0x0FFFU);
+    s->hall_adc1   = (uint16_t)((p >> 12) & 0x0FFFU);
+    s->hall_adc2   = (uint16_t)((p >> 24) & 0x0FFFU);
+    s->force_raw   = (uint16_t)((p >> 36) & 0x3FFFU);
+    s->knee_adc    = (uint16_t)((p >> 50) & 0x0FFFU);
+    s->hw_sw_pc9   = (uint8_t)((p >> 62) & 0x01U);
+    s->data_valid  = (uint8_t)((p >> 63) & 0x01U);
+}
 
 static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
 {
@@ -810,6 +853,26 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
         uint16_t err = (uint16_t)f->data[0] | ((uint16_t)f->data[1] << 8);
         if (m->err_cb) {
             m->err_cb(node, err, m->err_ctx);
+        }
+        break;
+    }
+
+    case 0x680: {  /* 传感器透传 (0x680 + node_id) */
+        uint8_t node = canopen_extract_node(f->id, COB_SENSOR_BASE);
+        motor_node_t *m = _find_motor(hal, node);
+        if (!m) break;
+
+        motor_sensor_t s;
+        _parse_sensor_frame(f, &s);
+        s.timestamp_us = motor_utils_now_us();
+
+        pthread_mutex_lock(&m->sensor_lock);
+        memcpy(&m->cached_sensor, &s, sizeof(s));
+        m->last_sensor_us = s.timestamp_us;
+        pthread_mutex_unlock(&m->sensor_lock);
+
+        if (m->sensor_cb) {
+            m->sensor_cb(node, &s, m->sensor_ctx);
         }
         break;
     }
@@ -1017,4 +1080,39 @@ void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_
 {
     if (!hal || !hal->drv) return;
     pdo_multi_send(hal->drv, cmds, count);
+}
+
+/* =====================================================
+ * 公共 API: 传感器透传控制
+ * ===================================================== */
+
+int motor_hal_sensor_config(motor_hal_t *hal, uint8_t node_id,
+                            uint16_t period_div, uint8_t bus_format)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+
+    uint32_t cfg = (uint32_t)(period_div & 0xFFFF)
+                 | ((uint32_t)(bus_format & 0x03) << 16);
+
+    return sdo_write_simple(hal->drv, node_id, OD_SENSOR_CONFIG,
+                            OD_SENSOR_CONFIG_SUB, cfg, 4);
+}
+
+int motor_hal_sensor_stop(motor_hal_t *hal, uint8_t node_id)
+{
+    return motor_hal_sensor_config(hal, node_id, 0, 0);
+}
+
+int motor_hal_get_sensor(motor_hal_t *hal, uint8_t node_id, motor_sensor_t *s)
+{
+    if (!hal || !s) return -EINVAL;
+
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) return -ENOENT;
+
+    pthread_mutex_lock(&m->sensor_lock);
+    memcpy(s, &m->cached_sensor, sizeof(motor_sensor_t));
+    pthread_mutex_unlock(&m->sensor_lock);
+
+    return 0;
 }

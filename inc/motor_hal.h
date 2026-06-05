@@ -543,6 +543,38 @@ int motor_hal_recv_stop(motor_hal_t *hal);
 bool motor_hal_recv_is_running(motor_hal_t *hal);
 
 /* ============================================================================
+ * 8b. 外设传感器透传 — 通过 0x680+ID 周期性上报
+ * ============================================================================ */
+
+/**
+ * @brief 配置外设传感器透传
+ *
+ * 写入 SDO 0x5503:04, 电机按配置周期自动发送 8 字节传感器数据。
+ * 数据帧 COB-ID = 0x680 + node_id, DLC=8, 小端 bit-packed。
+ *
+ * @param node_id     电机 CAN 节点 ID
+ * @param period_div  周期分频 N (周期 = 250us × N, 0=关闭)
+ *                    例: 4=1ms/1KHz, 10=2.5ms/400Hz, 40=10ms/100Hz
+ * @param bus_format  总线格式: 0=Classic CAN, 3=CANFD BRS
+ * @return 0=成功; <0=SDO 失败
+ */
+int motor_hal_sensor_config(motor_hal_t *hal, uint8_t node_id,
+                            uint16_t period_div, uint8_t bus_format);
+
+/** @brief 停止传感器透传 (等价 sensor_config(node, 0, 0)) */
+int motor_hal_sensor_stop(motor_hal_t *hal, uint8_t node_id);
+
+/** @brief 获取最近一次传感器数据 (线程安全拷贝) */
+int motor_hal_get_sensor(motor_hal_t *hal, uint8_t node_id, motor_sensor_t *s);
+
+/**
+ * @brief 注册传感器回调 — 每收到一帧透传数据就触发
+ * @note 回调在接收线程上下文中执行, 不要做 SDO 或耗时操作
+ */
+void motor_hal_set_sensor_cb(motor_hal_t *hal, uint8_t node_id,
+                             motor_sensor_cb_t cb, void *ctx);
+
+/* ============================================================================
  * 9. 回调系统 — 事件驱动的异步通知
  * ============================================================================ */
 

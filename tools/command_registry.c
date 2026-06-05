@@ -50,6 +50,9 @@ const command_entry_t g_cmd_table[] = {
     /* 持续监控 */
     { CMD_WATCH,    "watch",   "watch <period_ms>",             "持续轮询显示反馈 (Ctrl+C 退出)", 2, 2 },
 
+    /* 传感器透传 */
+    { CMD_SENSOR,   "sensor",  "sensor <config|stop|read> <id> [period_ms] [bus_fmt]", "外设传感器透传", -1, -1 },
+
     /* 帮助 */
     { CMD_HELP,     "help",    "help",                          "显示此帮助",                   1,   1 },
 };
@@ -119,6 +122,7 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
         case CMD_READ:    return cmd_do_read(hal, cmd->id, argc, argv);
         case CMD_WATCH:   return cmd_do_watch(hal, cmd->id, argc, argv);
         case CMD_HELP:    return cmd_do_help(hal, cmd->id, argc, argv);
+        case CMD_SENSOR:  return cmd_do_sensor(hal, cmd->id, argc, argv);
         default:          return 1;
     }
 }

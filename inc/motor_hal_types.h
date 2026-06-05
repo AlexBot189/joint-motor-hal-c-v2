@@ -245,6 +245,23 @@ typedef struct {
     uint64_t timestamp_us;      /* 接收时间戳 */
 } motor_feedback_t;
 
+/* 外设传感器透传 COB-ID */
+#define COB_SENSOR_BASE       (0x680)   /* 透传数据: 0x680 + node_id */
+#define OD_SENSOR_CONFIG      (0x5503)  /* 透传配置对象 */
+#define OD_SENSOR_CONFIG_SUB  (0x04)    /* 透传配置子索引 */
+
+/* 透传数据 (8字节, 小端, bit-packed) */
+typedef struct {
+    uint16_t hall_adc0;        /* Hall 传感器 ADC0, U12, 0~4095 */
+    uint16_t hall_adc1;        /* Hall 传感器 ADC1, U12 */
+    uint16_t hall_adc2;        /* Hall 传感器 ADC2, U12 */
+    uint16_t force_raw;        /* DF181 力/力矩原始值, U14, 0~16383 */
+    uint16_t knee_adc;         /* 膝关节 ADC, U12 */
+    uint8_t  hw_sw_pc9;        /* PC9 硬件开关, 0=低 1=高 */
+    uint8_t  data_valid;       /* Status1, 1=数据有效 */
+    uint64_t timestamp_us;     /* 接收时间戳 */
+} motor_sensor_t;
+
 /* ============================================================================
  * 对象字典索引
  * ============================================================================ */
@@ -338,6 +355,7 @@ typedef struct {
 typedef void (*motor_feedback_cb_t)(uint8_t node_id, const motor_feedback_t *fb, void *ctx);
 typedef void (*motor_error_cb_t)(uint8_t node_id, uint16_t error_code, void *ctx);
 typedef void (*motor_state_cb_t)(uint8_t node_id, motor_state_t old_state, motor_state_t new_state, void *ctx);
+typedef void (*motor_sensor_cb_t)(uint8_t node_id, const motor_sensor_t *s, void *ctx);
 
 #ifdef __cplusplus
 }
