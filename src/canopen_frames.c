@@ -154,13 +154,14 @@ void canopen_custom_pdo_build(uint8_t node, motor_mode_t mode,
     if (clear_err)     flags |= (1 << 5);
     flags |= ((uint8_t)mode & 0x0F) << 1;
 
+    /* 文档要求大端: Byte[N]高8位, Byte[N+1]低8位 */
     f->data[0] = flags;
-    f->data[1] = (uint8_t)(target1 & 0xFF);
-    f->data[2] = (uint8_t)((target1 >> 8) & 0xFF);
-    f->data[3] = (uint8_t)(target2 & 0xFF);
-    f->data[4] = (uint8_t)((target2 >> 8) & 0xFF);
-    f->data[5] = (uint8_t)(feedforward & 0xFF);
-    f->data[6] = (uint8_t)((feedforward >> 8) & 0xFF);
+    f->data[1] = (uint8_t)((target1 >> 8) & 0xFF);     /* 高8位 */
+    f->data[2] = (uint8_t)(target1 & 0xFF);            /* 低8位 */
+    f->data[3] = (uint8_t)((target2 >> 8) & 0xFF);     /* 高8位 */
+    f->data[4] = (uint8_t)(target2 & 0xFF);            /* 低8位 */
+    f->data[5] = (uint8_t)((feedforward >> 8) & 0xFF); /* 高8位 */
+    f->data[6] = (uint8_t)(feedforward & 0xFF);        /* 低8位 */
 }
 
 /* =====================================================
@@ -185,13 +186,19 @@ void canopen_mit_pdo_build(uint8_t node, motor_mode_t mode,
     flags |= ((uint8_t)mode & 0x0F) << 1;
 
     f->data[0] = flags;
-    f->data[1] = (uint8_t)(position & 0xFF);
-    f->data[2] = (uint8_t)((position >> 8) & 0xFF);
-    f->data[3] = (uint8_t)(velocity & 0xFF);
-    f->data[4] = (uint8_t)(((velocity >> 8) & 0x0F) | ((kp & 0x0F) << 4));
-    f->data[5] = (uint8_t)((kp >> 4) & 0xFF);
-    f->data[6] = (uint8_t)(kd & 0xFF);
-    f->data[7] = (uint8_t)((kd >> 8) & 0xFF);
+    /* 文档大端: [1]=位置高8, [2]=位置低8 */
+    f->data[1] = (uint8_t)((position >> 8) & 0xFF);
+    f->data[2] = (uint8_t)(position & 0xFF);
+    /* 速度12bit[11:4]→[3], 速度低4bit[3:0]→[4][7:4] */
+    f->data[3] = (uint8_t)((velocity >> 4) & 0xFF);
+    /* Kp高4bit[11:8]→[4][3:0], Kp低8bit[7:0]→[5] */
+    f->data[4] = (uint8_t)(((velocity & 0x0F) << 4) | ((kp >> 8) & 0x0F));
+    f->data[5] = (uint8_t)(kp & 0xFF);
+    /* Kd高8bit[11:4]→[6] */
+    f->data[6] = (uint8_t)((kd >> 4) & 0xFF);
+    /* Kd低4bit[3:0]→[7][7:4], 力矩高4bit[11:8]→[7][3:0] */
+    f->data[7] = (uint8_t)(((kd & 0x0F) << 4) | ((torque >> 8) & 0x0F));
+    /* 力矩低8bit[7:0]→[8] */
     f->data[8] = (uint8_t)(torque & 0xFF);
 }
 
@@ -219,12 +226,13 @@ void canopen_multi_ctrl_build(const multi_axis_cmd_t *cmds, uint8_t count,
         flags |= ((uint8_t)cmds[i].mode & 0x0F) << 1;
 
         f->data[base + 0] = flags;
-        f->data[base + 1] = (uint8_t)(cmds[i].target1 & 0xFF);
-        f->data[base + 2] = (uint8_t)((cmds[i].target1 >> 8) & 0xFF);
-        f->data[base + 3] = (uint8_t)(cmds[i].target2 & 0xFF);
-        f->data[base + 4] = (uint8_t)((cmds[i].target2 >> 8) & 0xFF);
-        f->data[base + 5] = (uint8_t)(cmds[i].feedforward & 0xFF);
-        f->data[base + 6] = (uint8_t)((cmds[i].feedforward >> 8) & 0xFF);
+        /* 大端: Byte[N+1]高8位, Byte[N+2]低8位 */
+        f->data[base + 1] = (uint8_t)((cmds[i].target1 >> 8) & 0xFF);
+        f->data[base + 2] = (uint8_t)(cmds[i].target1 & 0xFF);
+        f->data[base + 3] = (uint8_t)((cmds[i].target2 >> 8) & 0xFF);
+        f->data[base + 4] = (uint8_t)(cmds[i].target2 & 0xFF);
+        f->data[base + 5] = (uint8_t)((cmds[i].feedforward >> 8) & 0xFF);
+        f->data[base + 6] = (uint8_t)(cmds[i].feedforward & 0xFF);
     }
 
     /* Byte[56-63]: ID 映射 */
@@ -244,20 +252,21 @@ void canopen_parse_feedback(const canfd_frame_t *f, motor_feedback_t *fb)
 
     if (!f || f->dlc < 12) return;
 
-    /* Byte[0-1]: 位置 (int16, 小端) */
-    fb->position = (int16_t)((uint16_t)f->data[0] | ((uint16_t)f->data[1] << 8));
+    /* 文档大端: Byte[N]高8位, Byte[N+1]低8位 */
+    /* Byte[0-1]: 位置 (int16) */
+    fb->position = (int16_t)(((uint16_t)f->data[0] << 8) | (uint16_t)f->data[1]);
 
-    /* Byte[2-3]: 速度 (int16, 小端, RPM) */
-    fb->velocity = (int16_t)((uint16_t)f->data[2] | ((uint16_t)f->data[3] << 8));
+    /* Byte[2-3]: 速度 (int16, RPM) */
+    fb->velocity = (int16_t)(((uint16_t)f->data[2] << 8) | (uint16_t)f->data[3]);
 
-    /* Byte[4-5]: Iq 电流 (int16, 小端, mA) */
-    fb->current_iq = (int16_t)((uint16_t)f->data[4] | ((uint16_t)f->data[5] << 8));
+    /* Byte[4-5]: Iq 电流 (int16, mA) */
+    fb->current_iq = (int16_t)(((uint16_t)f->data[4] << 8) | (uint16_t)f->data[5]);
 
     /* Byte[6-7]: 错误码 */
-    fb->error_code = (uint16_t)f->data[6] | ((uint16_t)f->data[7] << 8);
+    fb->error_code = ((uint16_t)f->data[6] << 8) | (uint16_t)f->data[7];
 
-    /* Byte[8-9]: 温度 (int16, 小端, 0.1°C) */
-    fb->temperature = (int16_t)((uint16_t)f->data[8] | ((uint16_t)f->data[9] << 8));
+    /* Byte[8-9]: 温度 (int16, 0.1°C) */
+    fb->temperature = (int16_t)(((uint16_t)f->data[8] << 8) | (uint16_t)f->data[9]);
 
     /* Byte[10]: 控制模式 */
     fb->mode = f->data[10];
