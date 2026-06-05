@@ -656,7 +656,8 @@ int32_t motor_hal_get_current(motor_hal_t *hal, uint8_t node_id)
     uint32_t val = 0;
     if (hal && hal->drv)
         sdo_read_simple(hal->drv, node_id, OD_CURRENT_ACTUAL, 0x00, &val);
-    return (int32_t)val;
+    /* 巨蟹 0x6078 返回 2 字节 int16, 需符号扩展 */
+    return (int32_t)(int16_t)(val & 0xFFFF);
 }
 
 int motor_hal_read_pid(motor_hal_t *hal, uint8_t node_id, motor_pid_t *pid)

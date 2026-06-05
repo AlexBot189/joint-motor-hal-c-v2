@@ -244,6 +244,8 @@ int tool_set_torque(int id, int ma)
     if (_parse_ids(id, ids, &n) < 0) return -1;
     int errors = 0;
     for (int i = 0; i < n; i++) {
+        /* GD32 流程: 先 SDO 切电流模式 (0x6060=0x0A), 再 PDO 下发电流 */
+        motor_hal_set_mode(g_hal, (uint8_t)ids[i], MOTOR_MODE_CURRENT);
         int ret = motor_hal_set_torque(g_hal, (uint8_t)ids[i], (int16_t)ma);
         if (ret < 0) { fprintf(stderr, "WARN: motor %d torque failed\n", ids[i]); errors++; }
     }
@@ -399,8 +401,12 @@ static int _read_one_speed(uint8_t id)
 
 static int _read_one_current(uint8_t id)
 {
-    int32_t val = motor_hal_get_current(g_hal, id);
-    printf("[%d] current=%d\n", id, val);
+    motor_feedback_t fb;
+    if (motor_hal_get_feedback(g_hal, id, &fb) == 0) {
+        printf("[%d] current=%d mA\n", id, fb.current_iq);
+    } else {
+        printf("[%d] current=N/A\n", id);
+    }
     return 0;
 }
 
