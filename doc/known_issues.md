@@ -136,23 +136,17 @@ ip link set can0 up
 
 ## 四、motor_hal_c 已知问题 (2026-06-06)
 
-### 23. motor_hal_startup 缺少 NMT Start 指令
+### ~~23. motor_hal_startup 缺少 NMT Start 指令~~ ✅ 已修复 (ee37de7)
 
-- **现象**: `motor_hal_startup` 完成 DS402 使能后，驱动板 NMT 状态仍为 Pre-Operational (0x7F)
-- **后果**: 驱动板在 Pre-Operational 下不处理 PDO 帧，`set_position`/`set_velocity`/`set_torque` 等控制命令发送后电机不动作
-- **根因**: `motor_startup_full()` 只走 DS402 状态机 (Shutdown→SwitchOn→EnableOp)，但没有发送 NMT Start 命令将驱动板从 Pre-Operational 切换到 Operational
-- **临时绕过**: 
-  ```bash
-  # startup 后手动发 NMT Start
-  motor_tool startup 1
-  motor_tool disable 1         # 从 Quick Stop 拉回
-  motor_tool enable 1
-  cansend can0 000#0101         # NMT Start → Operational
-  motor_tool abs 1 4500         # 此时能动
-  ```
-- **修复方向**: 在 `motor_startup_full` 末尾 (DS402 使能完成后) 调用 `nmt_send(NMT_CMD_START, node_id)`
-- **影响范围**: 所有使用 motor_hal_c 的项目，必须手动 NMT Start 或等待修复
-- **状态**: ⚠️ 待修复
+- **修复**: `motor_startup_full` 末尾调用 `canopen_nmt_build` + `can_driver_send` 发送 NMT Start
+- **效果**: startup 后驱动板自动进入 Operational, PDO 控制直接生效
+
+### ~~24. SDO 模式值映射错误~~ ✅ 已修复 (ee37de7)
+
+- **修复**: CSP=0x08, CSV=0x09 (CiA 402 标准值)
+- **PP=0x01, PV=0x03, CSP=0x08, CSV=0x09, Current=0x0A**
+
+### 25. (no current open issues)
 
 ---
 
