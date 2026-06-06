@@ -615,7 +615,9 @@ motor_state_t motor_hal_get_state(motor_hal_t *hal, uint8_t node_id)
     uint16_t sw = (uint16_t)(sw_raw & SW_STATE_MASK);
 
     if (sw & SW_FAULT)  return MOTOR_STATE_FAULT;
-    if (sw & SW_QUICK_STOP) return MOTOR_STATE_QUICK_STOP;
+    /* CiA 402: Quick Stop 是位模式 0x0007 (bits 0,1,2=1, bit3=0, bit6=0) */
+    /* 不能简单用 sw & SW_QUICK_STOP, 因为 OP_ENABLED(0x0027) bit5 也是1 */
+    if ((sw & 0x004F) == 0x0007) return MOTOR_STATE_QUICK_STOP;
 
     switch (sw) {
         case SW_NOT_READY:      return MOTOR_STATE_NOT_READY;
