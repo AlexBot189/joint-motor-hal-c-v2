@@ -505,9 +505,9 @@ int motor_hal_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)
     /* 巨蟹协议: PDO mode flag 和 SDO 0x6060 是两套编码 */
     static const uint8_t sdo_mode_map[] = {
         [MOTOR_MODE_PROFILE_POS] = 0x01,  /* PP:      CiA 402 标准值  1 */
-        [MOTOR_MODE_PROFILE_VEL] = 0x03,  /* PV:      CiA 402 标准值  3 */
-        [MOTOR_MODE_CSP]         = 0x08,  /* CSP:     CiA 402 标准值  8 */
-        [MOTOR_MODE_CSV]         = 0x09,  /* CSV:     CiA 402 标准值  9 */
+        [MOTOR_MODE_PROFILE_VEL] = 0x02,  /* PV:      CiA 402 标准值  2 */
+        [MOTOR_MODE_CSP]         = 0x03,  /* CSP:     CiA 402 标准值  3 */
+        [MOTOR_MODE_CSV]         = 0x04,  /* CSV:     CiA 402 标准值  4 */
         [MOTOR_MODE_CURRENT]     = 0x0A,  /* 电流环:  CiA 402 标准值 10 */
         [MOTOR_MODE_MIT]         = 0x06,  /* MIT:     厂商自定义        */
     };
@@ -642,7 +642,9 @@ int32_t motor_hal_get_position(motor_hal_t *hal, uint8_t node_id)
     uint32_t val = 0;
     if (hal && hal->drv)
         sdo_read_simple(hal->drv, node_id, OD_POSITION_ACTUAL, 0x00, &val);
-    return (int32_t)val;
+    /* 0x6064 是 int16 (±32767→±180°), SDO 43 响应 4 字节但驱动板不扩展符号位
+     * 必须手动取低 16 位做 int16 符号扩展, 否则负数变成大的正数 (差 65536) */
+    return (int32_t)(int16_t)(val & 0xFFFF);
 }
 
 int32_t motor_hal_get_velocity(motor_hal_t *hal, uint8_t node_id)
