@@ -8,77 +8,66 @@
 #include <stdio.h>
 
 /* ================================================================
- * 命令注册表 — 加命令只需加一行
+ * 命令注册表
  * ================================================================ */
 
 const command_entry_t g_cmd_table[] = {
-    /* { id,        name,       usage,                          help,                           min, max } */
 
     /* 系统命令 */
-    { CMD_INIT,     "init",    "init <can_iface>",              "初始化 CANFD 接口 (can0)",     2,   2 },
-    { CMD_STARTUP,  "startup", "startup <id>",                  "上电启动 (Bootup→关狗→使能)",   2,   2 },
-    { CMD_ENABLE,   "enable",  "enable <id>",                   "使能电机 (DS402)",             2,   2 },
-    { CMD_DISABLE,  "disable", "disable <id>",                  "脱使能电机",                   2,   2 },
-    { CMD_RESET,    "reset",   "reset <id>",                    "故障复位",                     2,   2 },
+    { CMD_INIT,     "init",     "init <can_iface>",              "初始化 CANFD 接口",            2, 2 },
+    { CMD_STARTUP,  "startup",  "startup <id>",                  "上电启动 (Bootup→NMT→DS402)",  2, 2 },
+    { CMD_ENABLE,   "enable",   "enable <id>",                   "使能电机",                     2, 2 },
+    { CMD_DISABLE,  "disable",  "disable <id>",                  "脱使能电机",                   2, 2 },
+    { CMD_RESET,    "reset",    "reset <id>",                    "故障复位",                     2, 2 },
 
-    /* 控制命令 */
-    { CMD_SPEED,    "speed",   "speed <id> <rpm*100>",         "设置速度 (RPM×100)",           3,   3 },
-    { CMD_ACCEL,    "accel",   "accel <id> <acc*100>",         "设置加减速度 (RPM/s×100)",     3,   3 },
-    { CMD_ABS,      "abs",     "abs <id> <deg*100>",           "绝对位置 (度×100)",            3,   3 },
-    { CMD_REL,      "rel",     "rel <id> <delta_deg*100>",     "相对位置 (度×100)",            3,   3 },
-    { CMD_MAXV,     "maxv",    "maxv <id> <rpm*100>",          "位置模式最大轨迹速度",         3,   3 },
-    { CMD_STOP,     "stop",    "stop [id]",                     "停止电机 (默认 id=0)",         1,   2 },
-    { CMD_MODE,     "mode",    "mode <id> <pp|pv|csp|csv|cur>","切换控制模式",                 3,   3 },
-    { CMD_TORQUE,   "torque",  "torque <id> <mA>",             "电流/力矩控制 (mA)",           3,   3 },
-    { CMD_CSP,      "csp",     "csp <id> <deg*100>",           "CSP 同步位置 (度×100)",        3,   3 },
-    { CMD_MIT,      "mit",     "mit <id> <pos> <vel> <kp> <kd> <torque>", "MIT 阻抗控制",    7,   7 },
-    { CMD_BRAKE,    "brake",   "brake <id> <release|lock>",    "抱闸: release=松开 lock=吸合", 3,   3 },
-    { CMD_QUICKSTOP,"quickstop","quickstop <id>",               "急停 (DS402 Quick Stop)",      2,   2 },
+    /* SDO 控制 — 完整时序 */
+    { CMD_TORQUE,   "torque",   "torque <id> <mA>",              "SDO电流控制(0~20000mA) 使能→电流模式→写0x6071", 3, 3 },
+    { CMD_SPEED,    "speed",    "speed <id> <rpm*100> [acc*100] [dec*100]", "SDO速度控制 使能→PV→加减速→写0x60FF", 3, 5 },
+    { CMD_ABS,      "abs",      "abs <id> <deg*100>",           "SDO位置控制 使能→PP→设参→目标→启动", 3, 3 },
+    { CMD_ABS_STOP, "abs_stop", "abs_stop <id>",                "停止位置运动 (CW=0x0F)",       2, 2 },
+    { CMD_ABS_ACCEL,"abs_accel","abs_accel <acc*100>",          "位置加减速 RPM/s×100 (默认2000)", 2, 2 },
+    { CMD_ABS_SPEED,"abs_speed","abs_speed <rpm*100>",          "位置轨迹速度 RPM×100 输出端(默认10)", 2, 2 },
 
-    /* 配置命令 */
-    { CMD_SAVE,     "save",    "save <id>",                     "保存参数到 Flash",             2,   2 },
-    { CMD_SETZERO,  "setzero", "setzero <id>",                  "零位标定",                     2,   2 },
-    { CMD_PID,      "pid",     "pid <id> <cp> <ci> <vp> <vi> <pp> <pi>", "设置 PID 参数",   8,   8 },
+    /* SDO 单控 */
+    { CMD_SETZERO,  "setzero",  "setzero <id>",                  "零位标定 (自动失能)",          2, 2 },
+    { CMD_LIMIT_POS,"limit_pos","limit_pos <id> <deg*100>",     "正限位 (失能→写→Flash)",      3, 3 },
+    { CMD_LIMIT_NEG,"limit_neg","limit_neg <id> <deg*100>",     "负限位 (失能→写→Flash)",      3, 3 },
+    { CMD_LIMIT_POS_RD,"read_limit_pos","read_limit_pos <id>",  "读正限位 0x607D/02",           2, 2 },
+    { CMD_LIMIT_NEG_RD,"read_limit_neg","read_limit_neg <id>",  "读负限位 0x607D/01",           2, 2 },
+    { CMD_SAVE,     "save",     "save <id>",                     "保存参数到 Flash",             2, 2 },
+    { CMD_PID,      "pid",      "pid <id> <cp> <ci> <vp> <vi> <pp> <pi>", "设置 PID 参数",   8, 8 },
 
-    /* 调试命令 */
-    { CMD_SDO_READ, "sdoread", "sdoread <id> <0xIndex> [subidx]","通用 SDO 读",                3,   4 },
-    { CMD_SDO_WRITE,"sdowrite","sdowrite <id> <0xIndex> <subidx> <value> <size>","通用 SDO 写",6, 6 },
+    /* 调试 */
+    { CMD_SDO_READ, "sdoread",  "sdoread <id> <0xIndex> [sub]", "通用 SDO 读",                 3, 4 },
+    { CMD_SDO_WRITE,"sdowrite", "sdowrite <id> <0xIndex> <sub> <value> <size>", "通用 SDO 写", 6, 6 },
 
-    /* 读取命令 */
-    { CMD_READ,     "read",    "read <item> <id>",              "读取: angle/speed/current/temp/state/error/version/all", 3, 3 },
+    /* 读取 */
+    { CMD_READ,     "read",     "read <item> <id>",              "读: angle/speed/current/temp/state/error/version/pid/all", 3, 3 },
 
-    /* 持续监控 */
-    { CMD_WATCH,    "watch",   "watch <period_ms>",             "持续轮询显示反馈 (Ctrl+C 退出)", 2, 2 },
+    /* 监控/传感器/上报/校准 */
+    { CMD_WATCH,    "watch",    "watch <period_ms>",             "持续轮询反馈",                 2, 2 },
+    { CMD_SENSOR,   "sensor",   "sensor <config|stop|read|watch> ...", "传感器透传",        -1, -1 },
+    { CMD_REPORT,   "report",   "report [period_ms]",             "数据上报 (0=停止)",           2, 2 },
+    { CMD_CALIB,    "calib",    "calib <start|status|exit> ...", "电机零位校准",                 -1, -1 },
 
-    /* 传感器透传 */
-    { CMD_SENSOR,   "sensor",  "sensor <config|stop|read> <id> [period_ms] [bus_fmt]", "外设传感器透传", -1, -1 },
-
-    /* 数据上报 (CA 等效) */
-    { CMD_REPORT,   "report",  "report [period_ms]",             "定时数据上报 (0=停止)", 2, 2 },
-
-    /* 校准 */
-    { CMD_CALIB,    "calib",   "calib <start|status|exit> [id_r] [id_l] [timeout_ms]", "电机零位校准", -1, -1 },
-
-    /* 系统控制 */
-    { CMD_FAULT_RESET, "fault_reset", "fault_reset <id>",       "清零故障 (0=全部)", 2, 2 },
-    { CMD_REBOOT,   "reboot",  "reboot <id>",                   "电机系统重启",             2,   2 },
-
-    /* 帮助 */
-    { CMD_HELP,     "help",    "help",                          "显示此帮助",                   1,   1 },
+    /* 其他 */
+    { CMD_FAULT_RESET,"fault_reset","fault_reset <id>",          "清零故障",                     2, 2 },
+    { CMD_REBOOT,   "reboot",   "reboot <id>",                   "电机重启",                     2, 2 },
+    { CMD_STOP,     "stop",     "stop",                           "停止 daemon",                   1, 1 },
+    { CMD_HELP,     "help",     "help",                          "帮助",                         1, 1 },
 };
 
 const int g_cmd_count = sizeof(g_cmd_table) / sizeof(g_cmd_table[0]);
 
 /* ================================================================
- * 命令名 → ID 查找
+ * 查找
  * ================================================================ */
 
 static const command_entry_t* _find_cmd(const char *name)
 {
-    for (int i = 0; i < g_cmd_count; i++) {
+    for (int i = 0; i < g_cmd_count; i++)
         if (strcmp(g_cmd_table[i].name, name) == 0)
             return &g_cmd_table[i];
-    }
     return NULL;
 }
 
@@ -90,13 +79,12 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
 {
     if (argc < 2) {
         fprintf(stderr, "Usage: motor_tool <command> [args...]\n");
-        fprintf(stderr, "       motor_tool help\n");
         return 1;
     }
 
     const command_entry_t *cmd = _find_cmd(argv[1]);
     if (!cmd) {
-        fprintf(stderr, "Unknown command: %s\nTry 'motor_tool help'\n", argv[1]);
+        fprintf(stderr, "Unknown command: %s\n", argv[1]);
         return 1;
     }
 
@@ -105,38 +93,47 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
         return 1;
     }
 
-    /* 静态函数指针表 — 用 switch 编译期常量有更好的 inlining */
+    /* 读取命令: read_* 项特殊分发 */
+    if (cmd->id == CMD_READ) {
+        /* 用 cmd_do_read 统一处理, 内部根据 argv[2] 再分发到 tool_read_* */
+        return cmd_do_read(hal, CMD_READ, argc, argv);
+    }
+    if (cmd->id == CMD_LIMIT_POS_RD) {
+        int id = atoi(argv[2]);
+        return tool_limit_pos_read(id);
+    }
+    if (cmd->id == CMD_LIMIT_NEG_RD) {
+        int id = atoi(argv[2]);
+        return tool_limit_neg_read(id);
+    }
+
     switch (cmd->id) {
-        case CMD_INIT:    return cmd_do_init(hal, cmd->id, argc, argv);
-        case CMD_STARTUP: return cmd_do_startup(hal, cmd->id, argc, argv);
-        case CMD_ENABLE:  return cmd_do_enable(hal, cmd->id, argc, argv);
-        case CMD_DISABLE: return cmd_do_disable(hal, cmd->id, argc, argv);
-        case CMD_RESET:   return cmd_do_reset(hal, cmd->id, argc, argv);
-        case CMD_SPEED:   return cmd_do_speed(hal, cmd->id, argc, argv);
-        case CMD_ACCEL:   return cmd_do_accel(hal, cmd->id, argc, argv);
-        case CMD_ABS:     return cmd_do_abs(hal, cmd->id, argc, argv);
-        case CMD_REL:     return cmd_do_rel(hal, cmd->id, argc, argv);
-        case CMD_MAXV:    return cmd_do_maxv(hal, cmd->id, argc, argv);
-        case CMD_STOP:    return cmd_do_stop(hal, cmd->id, argc, argv);
-        case CMD_MODE:    return cmd_do_mode(hal, cmd->id, argc, argv);
-        case CMD_TORQUE:    return cmd_do_torque(hal, cmd->id, argc, argv);
-        case CMD_CSP:       return cmd_do_csp(hal, cmd->id, argc, argv);
-        case CMD_MIT:       return cmd_do_mit(hal, cmd->id, argc, argv);
-        case CMD_BRAKE:     return cmd_do_brake(hal, cmd->id, argc, argv);
-        case CMD_QUICKSTOP: return cmd_do_quickstop(hal, cmd->id, argc, argv);
-        case CMD_SAVE:      return cmd_do_save(hal, cmd->id, argc, argv);
-        case CMD_SETZERO:   return cmd_do_setzero(hal, cmd->id, argc, argv);
-        case CMD_PID:       return cmd_do_pid(hal, cmd->id, argc, argv);
-        case CMD_SDO_READ:  return cmd_do_sdo_read(hal, cmd->id, argc, argv);
-        case CMD_SDO_WRITE: return cmd_do_sdo_write(hal, cmd->id, argc, argv);
-        case CMD_READ:    return cmd_do_read(hal, cmd->id, argc, argv);
-        case CMD_WATCH:   return cmd_do_watch(hal, cmd->id, argc, argv);
-        case CMD_HELP:    return cmd_do_help(hal, cmd->id, argc, argv);
-        case CMD_SENSOR:  return cmd_do_sensor(hal, cmd->id, argc, argv);
-        case CMD_REPORT:  return cmd_do_report(hal, cmd->id, argc, argv);
-        case CMD_CALIB:   return cmd_do_calib(hal, cmd->id, argc, argv);
+        case CMD_INIT:     return cmd_do_init(hal, cmd->id, argc, argv);
+        case CMD_STARTUP:  return cmd_do_startup(hal, cmd->id, argc, argv);
+        case CMD_ENABLE:   return cmd_do_enable(hal, cmd->id, argc, argv);
+        case CMD_DISABLE:  return cmd_do_disable(hal, cmd->id, argc, argv);
+        case CMD_RESET:    return cmd_do_reset(hal, cmd->id, argc, argv);
+        case CMD_TORQUE:   return cmd_do_torque(hal, cmd->id, argc, argv);
+        case CMD_SPEED:    return cmd_do_speed(hal, cmd->id, argc, argv);
+        case CMD_ABS:      return cmd_do_abs(hal, cmd->id, argc, argv);
+        case CMD_ABS_STOP: return cmd_do_abs_stop(hal, cmd->id, argc, argv);
+        case CMD_ABS_ACCEL:return cmd_do_abs_accel(hal, cmd->id, argc, argv);
+        case CMD_ABS_SPEED:return cmd_do_abs_speed(hal, cmd->id, argc, argv);
+        case CMD_SETZERO:  return cmd_do_setzero(hal, cmd->id, argc, argv);
+        case CMD_LIMIT_POS:return cmd_do_limit_pos(hal, cmd->id, argc, argv);
+        case CMD_LIMIT_NEG:return cmd_do_limit_neg(hal, cmd->id, argc, argv);
+        case CMD_SAVE:     return cmd_do_save(hal, cmd->id, argc, argv);
+        case CMD_PID:      return cmd_do_pid(hal, cmd->id, argc, argv);
+        case CMD_SDO_READ: return cmd_do_sdo_read(hal, cmd->id, argc, argv);
+        case CMD_SDO_WRITE:return cmd_do_sdo_write(hal, cmd->id, argc, argv);
+        case CMD_WATCH:    return cmd_do_watch(hal, cmd->id, argc, argv);
+        case CMD_SENSOR:   return cmd_do_sensor(hal, cmd->id, argc, argv);
+        case CMD_REPORT:   return cmd_do_report(hal, cmd->id, argc, argv);
+        case CMD_CALIB:    return cmd_do_calib(hal, cmd->id, argc, argv);
         case CMD_FAULT_RESET: return cmd_do_fault_reset(hal, cmd->id, argc, argv);
-        case CMD_REBOOT:  return cmd_do_reboot(hal, cmd->id, argc, argv);
-        default:          return 1;
+        case CMD_REBOOT:   return cmd_do_reboot(hal, cmd->id, argc, argv);
+        case CMD_HELP:     return cmd_do_help(hal, cmd->id, argc, argv);
+        case CMD_STOP:     return cmd_do_stop(hal, cmd->id, argc, argv);
+        default: return 1;
     }
 }

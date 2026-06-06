@@ -151,6 +151,13 @@ static void _process_command(int client_fd, char *cmdline)
         g_sensor_watch_active = 1;
     }
 
+    /* daemon stop: 设退出标志 */
+    if (strcmp(argv[0], "stop") == 0) {
+        g_daemon_running = 0;
+        _send_response(client_fd, "ok", "daemon stopping", 0);
+        return;
+    }
+
     /* 对 argv 补一个前缀 (模拟 motor_tool 命令名), 适配 cmd_dispatch */
     char *full_argv[34];
     full_argv[0] = "motor_tool";

@@ -1,6 +1,6 @@
 /**
  * @file tool_hal.h
- * @brief motor_hal 薄封装层 — ×100换算 + id=0广播 + 格式化输出
+ * @brief motor_hal 薄封装层 — ×100换算 + id=0广播 + SDO时序 + 格式化输出
  */
 
 #ifndef TOOL_HAL_H
@@ -23,71 +23,91 @@ extern motor_hal_t *g_hal;
 
 int  tool_init(const char *iface);
 void tool_cleanup(void);
-int  tool_register_motor(int node_id);  /* 注册电机到广播列表 */
-int  tool_motor_count(void);            /* 已注册电机数量 */
-int  tool_motor_id(int index);          /* 获取第 index 个电机的 ID (-1=越界) */
+int  tool_register_motor(int node_id);
+int  tool_motor_count(void);
+int  tool_motor_id(int index);
 
 /* ================================================================
- * 控制封装 — ×100 换算 + id=0 广播支持
- * 返回值: 0=全部成功, -1=部分或全部失败
+ * 系统命令
  * ================================================================ */
 
-int tool_set_speed(int id, int rpm_x100);           /* 速度: RPM×100 */
-int tool_set_accel(int id, int acc_x100);           /* 加减速: RPM/s×100 (同值) */
-int tool_set_abs_pos(int id, int deg_x100);         /* 绝对位置: 度×100 */
-int tool_set_rel_pos(int id, int delta_x100);       /* 相对位置: 度×100 */
-int tool_set_max_vel(int id, int rpm_x100);         /* 位置模式最大速度: RPM×100 */
-int tool_stop(int id);                              /* 停止 */
-int tool_set_mode(int id, const char *mode_str);    /* 切换模式 */
-int tool_set_torque(int id, int ma);                /* 电流/力矩: mA */
-int tool_set_csp(int id, int deg_x100);             /* CSP 同步位置: 度×100 */
-int tool_set_mit(int id, float pos, float vel, float kp, float kd, float torque);
-int tool_set_brake(int id, bool release);            /* 抱闸: true=松开, false=吸合 */
-int tool_quickstop(int id);                         /* 急停 */
-int tool_save_flash(int id);                        /* 保存到 Flash */
-int tool_set_zero(int id);                          /* 零位标定 */
-int tool_set_pid(int id, uint16_t cp, uint16_t ci,  /* PID 设置 */
+int tool_disable(int id);
+int tool_fault_reset(int id);
+int tool_reboot(int id);
+
+/* ================================================================
+ * SDO 电流控制 — 完整时序 (使能→切模式→写目标电流)
+ *   torque <id> <mA>  范围 0~20000 mA (0~20A)
+ * ================================================================ */
+
+int tool_torque_sdo(int id, int ma);
+
+/* ================================================================
+ * SDO 速度控制 — 完整时序 (使能→切模式→设加减速→写目标速度)
+ *   speed <id> <rpm*100> [acc*100] [dec*100]
+ *   加减速范围 0~10000 RPM/s, 速度无上限
+ * ================================================================ */
+
+int tool_speed_sdo(int id, int rpm_x100, int acc_x100, int dec_x100);
+
+/* ================================================================
+ * SDO 位置控制 — 完整时序 (使能→切模式→设加减速/轨迹速度→目标→启动)
+ *   abs <id> <deg*100>
+ *   加减速范围 0~10000 RPM/s (默认2000)
+ *   轨迹速度范围 0~30 RPM (默认10)
+ *   目标位置范围 -32767~32768 counts (-180°~180°)
+ * ================================================================ */
+
+int tool_abs_sdo(int id, int deg_x100);
+
+/* 位置控制参数配置 */
+int tool_abs_set_accel(int id, int acc_x100);  /* 加减速 RPM/s×100 */
+int tool_abs_set_speed(int id, int rpm_x100);  /* 轨迹速度 RPM×100 */
+
+/* 停止位置运动 (CW=0x0F) */
+int tool_abs_stop(int id);
+
+/* ================================================================
+ * 单控 SDO 命令
+ * ================================================================ */
+
+int tool_set_zero_auto(int id);                 /* setzero: 自动失能→写0x2531 */
+int tool_limit_pos_set(int id, int deg_x100);   /* limit_pos: 自动失能→写0x607D/02→save_flash */
+int tool_limit_neg_set(int id, int deg_x100);   /* limit_neg: 自动失能→写0x607D/01→save_flash */
+int tool_limit_pos_read(int id);                /* 读 0x607D/02 */
+int tool_limit_neg_read(int id);                /* 读 0x607D/01 */
+int tool_save_flash(int id);
+int tool_set_pid(int id, uint16_t cp, uint16_t ci,
                  uint16_t vp, uint16_t vi, uint16_t pp, uint16_t pi);
-int tool_sdo_read(int id, uint16_t index, uint8_t subidx);   /* 通用 SDO 读 */
-int tool_sdo_write(int id, uint16_t index, uint8_t subidx,   /* 通用 SDO 写 */
+int tool_read_pid(int id);
+
+/* 通用 SDO 读写 */
+int tool_sdo_read(int id, uint16_t index, uint8_t subidx);
+int tool_sdo_write(int id, uint16_t index, uint8_t subidx,
                    uint32_t value, uint8_t size);
-int tool_sensor_watch_start(int id, int out_fd);             /* 传感器看板 (后台线程) */
-int tool_sensor_watch_stop(void);                            /* 停止传感器看板 */
+
+/* 传感器看板 */
+int tool_sensor_watch_start(int id, int out_fd);
+int tool_sensor_watch_stop(void);
 
 /* ================================================================
- * 读取封装 — id=0 广播支持, 格式化输出
+ * 读取封装 — id=0 广播, 格式化输出
  * ================================================================ */
 
-int tool_read_angle(int id);         /* 输出编码器count值 */
-int tool_read_speed(int id);         /* 输出 RPM */
-int tool_read_current(int id);       /* 输出 mA */
-int tool_read_temp(int id);          /* 输出 raw (×0.1°C) */
-int tool_read_state(int id);         /* 输出 DS402 状态名称 */
-int tool_read_error(int id);         /* 输出 错误码 */
-int tool_read_version(int id);       /* 输出 固件版本 */
-int tool_read_all(int id);           /* 输出 全部 */
-
-/* ================================================================
- * 轮询封装 
- * ================================================================ */
-
-void tool_poll(int timeout_ms);
+int tool_read_angle(int id);
+int tool_read_speed(int id);
+int tool_read_current(int id);
+int tool_read_temp(int id);
+int tool_read_state(int id);
+int tool_read_error(int id);
+int tool_read_version(int id);
+int tool_read_mode(int id);
+int tool_read_all(int id);
 
 /* ================================================================
  * watch 模式
  * ================================================================ */
 
 int tool_watch_start(int period_ms, int out_fd);
-
-/* ---- V2: ODS 协议扩展 ---- */
-int tool_fault_reset(int id);
-int tool_disable(int id);
-int tool_reboot(int id);
-int tool_set_pos_ctrl(int id, bool start);
-int tool_set_pos_target(int id, int counts);
-int tool_set_speed_target(int id, int rpm);
-int tool_read_voltage(int id);
-int tool_read_bus_current(int id);
-int tool_read_mode(int id);
 
 #endif /* TOOL_HAL_H */

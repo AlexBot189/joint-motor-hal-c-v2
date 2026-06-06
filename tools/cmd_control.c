@@ -1,201 +1,132 @@
 /**
  * @file cmd_control.c
- * @brief 控制命令: speed / accel / abs / rel / maxv / stop / mode
+ * @brief SDO 控制命令: torque / speed / abs / abs_stop / limit / pid / setzero / sdoread/write
+ *
+ * 位置/速度/电流: tool 内部走完整 SDO 时序
+ * 限位/零位: tool 内部自动失能
+ * 其他: 单条 SDO
  */
 
 #include "command_registry.h"
 #include "tool_hal.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* ================================================================
- * 通用: 解析 id + value_x100, 反查电机是否存在
- * ================================================================ */
-
-static int _parse_id_and_val(int argc, char **argv, int *id, int *val_x100)
-{
-    *id       = atoi(argv[2]);
-    *val_x100 = atoi(argv[3]);
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
-    return 0;
-}
-
-/* ================================================================
- * speed <id> <rpm*100>
- * ================================================================ */
-
-int cmd_do_speed(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    int id, val;
-    if (_parse_id_and_val(argc, argv, &id, &val) < 0) return -1;
-    return tool_set_speed(id, val);
-}
-
-/* ================================================================
- * accel <id> <acc*100>
- * ================================================================ */
-
-int cmd_do_accel(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    int id, val;
-    if (_parse_id_and_val(argc, argv, &id, &val) < 0) return -1;
-    return tool_set_accel(id, val);
-}
-
-/* ================================================================
- * abs <id> <deg*100>
- * ================================================================ */
-
-int cmd_do_abs(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    int id, val;
-    if (_parse_id_and_val(argc, argv, &id, &val) < 0) return -1;
-    return tool_set_abs_pos(id, val);
-}
-
-/* ================================================================
- * rel <id> <delta_deg*100>
- * ================================================================ */
-
-int cmd_do_rel(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    int id, val;
-    if (_parse_id_and_val(argc, argv, &id, &val) < 0) return -1;
-    return tool_set_rel_pos(id, val);
-}
-
-/* ================================================================
- * maxv <id> <rpm*100>
- * ================================================================ */
-
-int cmd_do_maxv(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    int id, val;
-    if (_parse_id_and_val(argc, argv, &id, &val) < 0) return -1;
-    return tool_set_max_vel(id, val);
-}
-
-/* ================================================================
- * stop [id]
- * ================================================================ */
-
-int cmd_do_stop(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
-
-    int id = (argc >= 3) ? atoi(argv[2]) : 0;  /* 默认 id=0 */
-    return tool_stop(id);
-}
-
-/* ================================================================
- * mode <id> <pp|pv|csp|csv|cur>
- * ================================================================ */
-
-int cmd_do_mode(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
-
-    int id = atoi(argv[2]);
-    return tool_set_mode(id, argv[3]);
-}
-
-/* ================================================================
- * torque <id> <mA> — 电流/力矩控制
+ * torque <id> <mA> — SDO 电流控制 (使能→电流模式→写0x6071)
+ *   范围 0~20000 mA (0~20A)
  * ================================================================ */
 
 int cmd_do_torque(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
-    (void)hal; (void)cmd_id;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int id = atoi(argv[2]);
     int ma = atoi(argv[3]);
-    return tool_set_torque(id, ma);
+    return tool_torque_sdo(id, ma);
 }
 
 /* ================================================================
- * csp <id> <deg*100> — CSP 同步位置控制
+ * speed <id> <rpm*100> [acc*100] [dec*100] — SDO 速度控制
+ *   加减速范围 0~10000 RPM/s
  * ================================================================ */
 
-int cmd_do_csp(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
-    int id = atoi(argv[2]);
-    int deg = atoi(argv[3]);
-    return tool_set_csp(id, deg);
-}
-
-/* ================================================================
- * mit <id> <pos> <vel> <kp> <kd> <torque> — MIT 阻抗控制
- * ================================================================ */
-
-int cmd_do_mit(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
-    int  id     = atoi(argv[2]);
-    float pos   = atof(argv[3]);
-    float vel   = atof(argv[4]);
-    float kp    = atof(argv[5]);
-    float kd    = atof(argv[6]);
-    float torque = atof(argv[7]);
-    return tool_set_mit(id, pos, vel, kp, kd, torque);
-}
-
-/* ================================================================
- * brake <id> <release|lock> — 抱闸控制
- * ================================================================ */
-
-int cmd_do_brake(motor_hal_t *hal, int cmd_id, int argc, char **argv)
-{
-    (void)hal; (void)cmd_id;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
-    int  id      = atoi(argv[2]);
-    bool release = (strcmp(argv[3], "release") == 0 || strcmp(argv[3], "1") == 0);
-    return tool_set_brake(id, release);
-}
-
-/* ================================================================
- * quickstop <id> — 急停
- * ================================================================ */
-
-int cmd_do_quickstop(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+int cmd_do_speed(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
     (void)hal; (void)cmd_id; (void)argc;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
-    int id = atoi(argv[2]);
-    return tool_quickstop(id);
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int id       = atoi(argv[2]);
+    int rpm_x100 = atoi(argv[3]);
+    int acc_x100 = (argc >= 5) ? atoi(argv[4]) : 100000;  /* 默认 1000 RPM/s */
+    int dec_x100 = (argc >= 6) ? atoi(argv[5]) : acc_x100;
+    return tool_speed_sdo(id, rpm_x100, acc_x100, dec_x100);
 }
 
 /* ================================================================
- * save <id> — 保存到 Flash
+ * abs <id> <deg*100> — SDO 位置控制 (使能→PP→设参数→目标→启动)
+ *   加减速默认 2000 RPM/s, 轨迹速度默认 10 RPM, 范围 -180°~180°
  * ================================================================ */
 
-int cmd_do_save(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+int cmd_do_abs(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
     (void)hal; (void)cmd_id; (void)argc;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
-    int id = atoi(argv[2]);
-    return tool_save_flash(id);
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int id      = atoi(argv[2]);
+    int deg_x100 = atoi(argv[3]);
+    return tool_abs_sdo(id, deg_x100);
 }
 
 /* ================================================================
- * setzero <id> — 零位标定
+ * abs_stop <id> — 停止位置运动 (CW=0x0F)
+ * ================================================================ */
+
+int cmd_do_abs_stop(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int id = atoi(argv[2]);
+    return tool_abs_stop(id);
+}
+
+/* ================================================================
+ * abs_accel <acc*100> — 位置模式加减速 (全局参数)
+ * ================================================================ */
+
+int cmd_do_abs_accel(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    int acc_x100 = atoi(argv[2]);
+    return tool_abs_set_accel(0, acc_x100);
+}
+
+/* ================================================================
+ * abs_speed <rpm*100> — 位置模式轨迹速度 (全局参数, 输出端 0~30RPM)
+ * ================================================================ */
+
+int cmd_do_abs_speed(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    int rpm_x100 = atoi(argv[2]);
+    return tool_abs_set_speed(0, rpm_x100);
+}
+
+/* ================================================================
+ * limit_pos <id> <deg*100> — 正限位 (自动失能→写→save_flash)
+ * ================================================================ */
+
+int cmd_do_limit_pos(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int id      = atoi(argv[2]);
+    int deg_x100 = atoi(argv[3]);
+    return tool_limit_pos_set(id, deg_x100);
+}
+
+/* ================================================================
+ * limit_neg <id> <deg*100> — 负限位 (自动失能→写→save_flash)
+ * ================================================================ */
+
+int cmd_do_limit_neg(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int id      = atoi(argv[2]);
+    int deg_x100 = atoi(argv[3]);
+    return tool_limit_neg_set(id, deg_x100);
+}
+
+/* ================================================================
+ * setzero <id> — 零位标定 (自动失能→写0x2531)
  * ================================================================ */
 
 int cmd_do_setzero(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
     (void)hal; (void)cmd_id; (void)argc;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int id = atoi(argv[2]);
-    return tool_set_zero(id);
+    return tool_set_zero_auto(id);
 }
 
 /* ================================================================
@@ -204,8 +135,8 @@ int cmd_do_setzero(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 
 int cmd_do_pid(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
-    (void)hal; (void)cmd_id;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int      id = atoi(argv[2]);
     uint16_t cp = (uint16_t)atoi(argv[3]);
     uint16_t ci = (uint16_t)atoi(argv[4]);
@@ -217,31 +148,57 @@ int cmd_do_pid(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 }
 
 /* ================================================================
- * sdoread <id> <index_hex> [subidx] — 通用 SDO 读
+ * save <id> — 保存到 Flash
+ * ================================================================ */
+
+int cmd_do_save(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int id = atoi(argv[2]);
+    return tool_save_flash(id);
+}
+
+/* ================================================================
+ * sdoread <id> <0xIndex> [subidx] — 通用 SDO 读
  * ================================================================ */
 
 int cmd_do_sdo_read(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
     (void)hal; (void)cmd_id;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int      id     = atoi(argv[2]);
-    uint16_t index  = (uint16_t)strtol(argv[3], NULL, 0);  /* 0x 前缀自动识别 */
+    uint16_t index  = (uint16_t)strtol(argv[3], NULL, 0);
     uint8_t  subidx = (argc >= 5) ? (uint8_t)atoi(argv[4]) : 0x00;
     return tool_sdo_read(id, index, subidx);
 }
 
 /* ================================================================
- * sdowrite <id> <index_hex> <subidx> <value> <size> — 通用 SDO 写
+ * sdowrite <id> <0xIndex> <subidx> <value> <size> — 通用 SDO 写
  * ================================================================ */
 
 int cmd_do_sdo_write(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
     (void)hal; (void)cmd_id;
-    if (!g_hal) { fprintf(stderr, "ERROR: call 'init' first\n"); return -1; }
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int      id     = atoi(argv[2]);
     uint16_t index  = (uint16_t)strtol(argv[3], NULL, 0);
     uint8_t  subidx = (uint8_t)atoi(argv[4]);
     uint32_t value  = (uint32_t)strtoul(argv[5], NULL, 0);
     uint8_t  size   = (uint8_t)atoi(argv[6]);
     return tool_sdo_write(id, index, subidx, value, size);
+}
+
+/* ================================================================
+ * stop [id] — 停止 daemon
+ * ================================================================ */
+
+int cmd_do_stop(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id;
+    int id = (argc >= 3) ? atoi(argv[2]) : 0;
+    /* daemon stop: 全局清理, id 无用 */
+    (void)id;
+    printf("motor_tool daemon stopping...\n");
+    return 0;
 }

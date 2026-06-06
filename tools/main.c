@@ -37,50 +37,52 @@ static void print_help(void)
     printf("  disable <id>         脱使能\n");
     printf("  reset <id>           故障复位\n\n");
 
-    printf("── 控制命令 — ×100 精度 ─────────────────────────\n");
-    printf("  speed <id> <rpm*100>       设置速度 (例: 5050→50.50RPM)\n");
-    printf("  accel <id> <acc*100>       设置加减速 (例: 3000→30RPM/s)\n");
-    printf("  abs <id> <deg*100>         绝对位置 (例: 2300→23.00°)\n");
-    printf("  rel <id> <delta*100>       相对位置 (先读再设)\n");
-    printf("  maxv <id> <rpm*100>        位置模式最大轨迹速度\n");
-    printf("  stop [id]                  停止电机 (默认 id=0)\n");
-    printf("  mode <id> <pp|pv|csp|csv|cur>  切换模式\n");
-    printf("  torque <id> <mA>           电流/力矩控制\n");
-    printf("  csp <id> <deg*100>         CSP同步位置控制\n");
-    printf("  mit <id> <pos> <vel> <kp> <kd> <t>  MIT阻抗控制\n");
-    printf("  brake <id> <release|lock>  抱闸控制\n");
-    printf("  quickstop <id>             急停\n\n");
+    printf("── 控制命令 (SDO, 自动时序) ×100 精度 ────────\n");
+    printf("  torque <id> <mA>           电流控制 (0~20000mA) 使能→切模式→写目标\n");
+    printf("  speed <id> <rpm*100> [acc*100] [dec*100]  速度控制 使能→PV→设加减速→写目标\n");
+    printf("  abs <id> <deg*100>         位置控制 使能→PP→设参数→目标→启动\n");
+    printf("  abs_stop <id>              停止位置运动\n");
+    printf("  abs_accel <acc*100>        位置加减速 RPM/s×100 (默认2000)\n");
+    printf("  abs_speed <rpm*100>        位置轨迹速度 RPM×100 输出端(默认10)\n\n");
 
     printf("── 配置命令 ──────────────────────────────────────\n");
+    printf("  setzero <id>               零位标定 (自动失能)\n");
+    printf("  limit_pos <id> <deg*100>   正限位 (失能→写→Flash)\n");
+    printf("  limit_neg <id> <deg*100>   负限位 (失能→写→Flash)\n");
     printf("  save <id>                  保存参数到 Flash\n");
-    printf("  setzero <id>               零位标定\n");
     printf("  pid <id> <cp> <ci> <vp> <vi> <pp> <pi>  设置PID\n\n");
 
     printf("── 调试命令 ──────────────────────────────────────\n");
     printf("  sdoread <id> <0xIndex> [subidx]   通用 SDO 读\n");
     printf("  sdowrite <id> <0xIndex> <sub> <val> <size>  通用 SDO 写\n\n");
 
-    printf("── 读取命令 — 输出原始值 ────────────────────────\n");
-    printf("  read angle <id>      角度 (编码器counts)\n");
-    printf("  read speed <id>      速度 (RPM)\n");
-    printf("  read current <id>    Q轴电流 (mA)\n");
-    printf("  read temp <id>       温度 (raw, ×0.1°C)\n");
+    printf("── 读取命令 ──────────────────────────────────────\n");
+    printf("  read angle <id>      角度\n");
+    printf("  read speed <id>      速度\n");
+    printf("  read current <id>    电流 (mA)\n");
+    printf("  read temp <id>       温度 (×0.1°C)\n");
     printf("  read state <id>      电机状态\n");
     printf("  read error <id>      故障码\n");
     printf("  read version <id>    固件版本\n");
-    printf("  read all <id>        全部信息\n\n");
+    printf("  read mode <id>       运行模式\n");
+    printf("  read pid <id>        PID参数\n");
+    printf("  read all <id>        全部信息\n");
+    printf("  read_limit_pos <id>  读正限位\n");
+    printf("  read_limit_neg <id>  读负限位\n\n");
 
     printf("── 持续监控 ─────────────────────────────────────\n");
-    printf("  watch <period_ms>    持续轮询显示 (Ctrl+C 退出)\n\n");
+    printf("  watch <period_ms>    持续轮询反馈 (Ctrl+C 退出)\n");
+    printf("  sensor watch <id>    传感器数据持续显示\n\n");
 
     printf("── 示例 ─────────────────────────────────────────\n");
     printf("  motor_tool daemon can0 &\n");
-    printf("  motor_tool speed 1 5000         # 电机1: 50RPM\n");
-    printf("  motor_tool speed 0 10000        # 双电机: 100RPM\n");
-    printf("  motor_tool abs 2 4500           # 电机2: 45°\n");
-    printf("  motor_tool rel 1 1000           # 电机1: 相对+10°\n");
-    printf("  motor_tool read all 0           # 读双电机\n");
-    printf("  motor_tool watch 200            # 200ms持续监控\n");
+    printf("  motor_tool startup 1\n");
+    printf("  motor_tool torque 1 500          # 电机1: 500mA\n");
+    printf("  motor_tool speed 1 5000 100000   # 电机1: 50RPM 加速度1000RPM/s\n");
+    printf("  motor_tool abs 1 4500            # 电机1: 45°\n");
+    printf("  motor_tool abs_stop 1            # 电机1: 停止位置运动\n");
+    printf("  motor_tool read all 0            # 读双电机全部信息\n");
+    printf("  motor_tool watch 200             # 200ms持续监控\n");
     printf("  motor_tool stop\n\n");
 }
 
