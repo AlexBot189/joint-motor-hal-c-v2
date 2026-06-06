@@ -125,6 +125,14 @@ int motor_startup_full(can_driver_t *drv, const motor_config_t *cfg,
         if (ret != 0) return ret;
     }
 
+    /* 5.5 NMT Start — 从 Pre-Operational 切到 Operational (PDO 才能生效) */
+    {
+        canfd_frame_t nmt_f;
+        canopen_nmt_build(NMT_CMD_START, cfg->node_id, &nmt_f);
+        can_driver_send(drv, &nmt_f);
+        fprintf(stderr, "[startup] motor %d NMT Start → Operational\n", cfg->node_id);
+    }
+
     /* 6. 配置 TPDO 同步上报 (如果 tpdo_sync_count > 0) */
     if (cfg->tpdo_sync_count > 0) {
         uint32_t cob = (uint32_t)(0x180 + cfg->node_id);

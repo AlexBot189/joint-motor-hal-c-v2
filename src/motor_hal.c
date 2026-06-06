@@ -504,12 +504,12 @@ int motor_hal_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)
 
     /* 巨蟹协议: PDO mode flag 和 SDO 0x6060 是两套编码 */
     static const uint8_t sdo_mode_map[] = {
-        [MOTOR_MODE_PROFILE_POS] = 0x01,  /* PP:      PDO=1, SDO=0x01 ✓ */
-        [MOTOR_MODE_PROFILE_VEL] = 0x03,  /* PV:      PDO=2, SDO=0x03 */
-        [MOTOR_MODE_CSP]         = 0x03,  /* CSP:     PDO=3, SDO=0x03 (暂用) */
-        [MOTOR_MODE_CSV]         = 0x04,  /* CSV:     PDO=4, SDO=0x04 (暂用) */
-        [MOTOR_MODE_CURRENT]     = 0x0A,  /* 电流环:  PDO=5, SDO=0x0A */
-        [MOTOR_MODE_MIT]         = 0x06,  /* MIT:     PDO=6, SDO=0x06 (自定义) */
+        [MOTOR_MODE_PROFILE_POS] = 0x01,  /* PP:      CiA 402 标准值  1 */
+        [MOTOR_MODE_PROFILE_VEL] = 0x03,  /* PV:      CiA 402 标准值  3 */
+        [MOTOR_MODE_CSP]         = 0x08,  /* CSP:     CiA 402 标准值  8 */
+        [MOTOR_MODE_CSV]         = 0x09,  /* CSV:     CiA 402 标准值  9 */
+        [MOTOR_MODE_CURRENT]     = 0x0A,  /* 电流环:  CiA 402 标准值 10 */
+        [MOTOR_MODE_MIT]         = 0x06,  /* MIT:     厂商自定义        */
     };
 
     if (mode >= sizeof(sdo_mode_map)) return -EINVAL;
@@ -581,9 +581,9 @@ int motor_hal_disable_watchdog(motor_hal_t *hal, uint8_t node_id)
 int motor_hal_set_pos_ctrl(motor_hal_t *hal, uint8_t node_id, bool start)
 {
     if (!hal || !hal->drv) return -ENODEV;
-    /* 0x4F=启动绝对位置运动, 0x0F=停止 */
+    /* 0x4F=启动绝对位置运动, 0x0F=停止 — 协议要求 2 字节 SDO 写 */
     uint32_t cw = start ? 0x4FU : 0x0FU;
-    return sdo_write_simple(hal->drv, node_id, OD_CONTROLWORD, 0x00, cw, 3);
+    return sdo_write_simple(hal->drv, node_id, OD_CONTROLWORD, 0x00, cw, 2);
 }
 
 int motor_hal_set_pos_target(motor_hal_t *hal, uint8_t node_id, int32_t target_counts)
@@ -747,6 +747,71 @@ void motor_hal_set_sensor_cb(motor_hal_t *hal, uint8_t node_id,
     if (!m) return;
     m->sensor_cb  = cb;
     m->sensor_ctx = ctx;
+}
+
+/* =====================================================
+ * 公共 API: 专用 SDO 控制接口 — 对应巨蟹协议 4.3 章
+ * ===================================================== */
+
+int motor_hal_nmt_send(motor_hal_t *hal, uint8_t node_id, uint8_t cmd)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    canfd_frame_t f;
+    canopen_nmt_build(cmd, node_id, &f);
+    return can_driver_send(hal->drv, &f) >= 0 ? 0 : -errno;
+}
+
+int motor_hal_get_fault_code(motor_hal_t *hal, uint8_t node_id, uint16_t *code)
+{
+    if (!hal || !hal->drv || !code) return -EINVAL;
+    uint32_t val = 0;
+    int ret = sdo_read_simple(hal->drv, node_id, 0x603F, 0x00, &val);
+    *code = (uint16_t)(val & 0xFFFF);
+    return ret;
+}
+
+int motor_hal_get_mos_temp(motor_hal_t *hal, uint8_t node_id, int32_t *temp)
+{
+    if (!hal || !hal->drv || !temp) return -EINVAL;
+    return sdo_read_simple(hal->drv, node_id, 0x2662, 0x00, (uint32_t *)temp);
+}
+
+int motor_hal_get_motor_temp(motor_hal_t *hal, uint8_t node_id, int32_t *temp)
+{
+    if (!hal || !hal->drv || !temp) return -EINVAL;
+    return sdo_read_simple(hal->drv, node_id, 0x2663, 0x00, (uint32_t *)temp);
+}
+
+int motor_hal_get_max_current(motor_hal_t *hal, uint8_t node_id, uint32_t *ma)
+{
+    if (!hal || !hal->drv || !ma) return -EINVAL;
+    return sdo_read_simple(hal->drv, node_id, 0x2538, 0x00, ma);
+}
+
+int motor_hal_set_max_current(motor_hal_t *hal, uint8_t node_id, uint32_t ma)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    return sdo_write_simple(hal->drv, node_id, 0x2538, 0x00, ma, 4);
+}
+
+int motor_hal_set_heartbeat(motor_hal_t *hal, uint8_t node_id, uint32_t ms)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    return sdo_write_simple(hal->drv, node_id, 0x1017, 0x00, ms, 2);
+}
+
+int motor_hal_set_node_id(motor_hal_t *hal, uint8_t node_id, uint8_t new_id)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    if (new_id < 1 || new_id > 127) return -EINVAL;
+    return sdo_write_simple(hal->drv, node_id, 0x2530, 0x00, new_id, 4);
+}
+
+int motor_hal_set_canfd_baud(motor_hal_t *hal, uint8_t node_id, uint8_t baud)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    if (baud < 1 || baud > 4) return -EINVAL;
+    return sdo_write_simple(hal->drv, node_id, 0x2540, 0x00, baud, 4);
 }
 
 /* =====================================================

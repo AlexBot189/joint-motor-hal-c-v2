@@ -715,6 +715,41 @@ int motor_hal_tpdo_config(motor_hal_t *hal, uint8_t node_id, uint8_t sync_count)
 void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_t count);
 
 /* ============================================================================
+ * 11b. 专用 SDO 控制接口 — 对应巨蟹协议 4.3 章每条指令
+ *
+ *   这些是对 motor_hal_sdo_write / motor_hal_sdo_read_u32 的语义封装。
+ *   封装的好处: 类型安全、参数语义明确、不需要记 OD Index。
+ * ============================================================================ */
+
+/** @brief NMT 发送 — 向指定节点发送 NMT 命令 (Start/Stop/PreOp/Reset) */
+int motor_hal_nmt_send(motor_hal_t *hal, uint8_t node_id, uint8_t cmd);
+
+/** @brief 读取故障码 (OD 0x603F), uint16 */
+int motor_hal_get_fault_code(motor_hal_t *hal, uint8_t node_id, uint16_t *code);
+
+/** @brief 读取 MOS 温度 (OD 0x2662), 单位 0.1°C */
+int motor_hal_get_mos_temp(motor_hal_t *hal, uint8_t node_id, int32_t *temp);
+
+/** @brief 读取电机线圈温度 (OD 0x2663), 单位 0.1°C */
+int motor_hal_get_motor_temp(motor_hal_t *hal, uint8_t node_id, int32_t *temp);
+
+/** @brief 读取最大电流限制 (OD 0x2538), 单位 mA */
+int motor_hal_get_max_current(motor_hal_t *hal, uint8_t node_id, uint32_t *ma);
+
+/** @brief 设置最大电流限制 (OD 0x2538), 单位 mA */
+int motor_hal_set_max_current(motor_hal_t *hal, uint8_t node_id, uint32_t ma);
+
+/** @brief 设置心跳周期 (OD 0x1017), 单位 ms (掉电恢复默认) */
+int motor_hal_set_heartbeat(motor_hal_t *hal, uint8_t node_id, uint32_t ms);
+
+/** @brief 修改电机 CAN 节点 ID (OD 0x2530), 范围 1~127, 重启生效 */
+int motor_hal_set_node_id(motor_hal_t *hal, uint8_t node_id, uint8_t new_id);
+
+/** @brief 设置 CANFD 数据段波特率 (OD 0x2540), 重启生效
+ *  @param baud  1=5M, 2=4M, 3=2M, 4=1M */
+int motor_hal_set_canfd_baud(motor_hal_t *hal, uint8_t node_id, uint8_t baud);
+
+/* ============================================================================
  * 12. 工具函数 — 单位换算 (inline, 零开销)
  * ============================================================================ */
 
