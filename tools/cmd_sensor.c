@@ -66,6 +66,8 @@ int cmd_do_sensor(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     }
 
     if (strcmp(sub, "stop") == 0) {
+        /* 先停止传感器看板 (如果有) */
+        tool_sensor_watch_stop();
         printf("Stopping sensor passthrough for motor %d...\n", id);
         int ret = motor_hal_sensor_stop(g_hal, (uint8_t)id);
         if (ret == 0) printf("✓ Motor %d: sensor passthrough stopped\n", id);
@@ -88,6 +90,17 @@ int cmd_do_sensor(motor_hal_t *hal, int cmd_id, int argc, char **argv)
         return 0;
     }
 
-    fprintf(stderr, "Unknown sensor command: %s (use: config/stop/read)\n", sub);
+    if (strcmp(sub, "watch") == 0) {
+        int out_fd = daemon_get_client_fd();
+        int ret = tool_sensor_watch_start(id, out_fd);
+        if (ret < 0) {
+            fprintf(stderr, "✗ sensor watch already running or start failed\n");
+            return ret;
+        }
+        printf("✓ Sensor watch started for motor %d (use 'sensor stop 1' to stop)\n", id);
+        return 0;
+    }
+
+    fprintf(stderr, "Unknown sensor command: %s (use: config/stop/read/watch)\n", sub);
     return -1;
 }

@@ -51,6 +51,8 @@ int tool_set_pid(int id, uint16_t cp, uint16_t ci,  /* PID 设置 */
 int tool_sdo_read(int id, uint16_t index, uint8_t subidx);   /* 通用 SDO 读 */
 int tool_sdo_write(int id, uint16_t index, uint8_t subidx,   /* 通用 SDO 写 */
                    uint32_t value, uint8_t size);
+int tool_sensor_watch_start(int id, int out_fd);             /* 传感器看板 (后台线程) */
+int tool_sensor_watch_stop(void);                            /* 停止传感器看板 */
 
 /* ================================================================
  * 读取封装 — id=0 广播支持, 格式化输出

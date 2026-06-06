@@ -1,0 +1,1 @@
+/usr/bin/cc CMakeFiles/motor_example_single.dir/examples/single_motor.c.o -o motor_example_single  libmotor_hal.a -lpthread -lm 

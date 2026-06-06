@@ -1,0 +1,1196 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_EXCMD	mixed	/number, pattern, mixed, or combineV2/
+!_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
+!_TAG_PROC_CWD	/home/alexbot/workspace/01-agent/aiCoding/code/03/stark/motor_hal/joint-motor-hal-c/	//
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	5.9.0	//
+$(VERBOSE).SILENT	build/Makefile	/^$(VERBOSE).SILENT:$/;"	t
+$(VERBOSE).SILENT	tools/build/Makefile	/^$(VERBOSE).SILENT:$/;"	t
+$(VERBOSE)MAKESILENT	build/Makefile	/^$(VERBOSE)MAKESILENT = -s$/;"	m
+$(VERBOSE)MAKESILENT	tools/build/Makefile	/^$(VERBOSE)MAKESILENT = -s$/;"	m
+%	build/Makefile	/^% : %,v$/;"	t
+%	build/Makefile	/^% : RCS\/%$/;"	t
+%	build/Makefile	/^% : RCS\/%,v$/;"	t
+%	build/Makefile	/^% : SCCS\/s.%$/;"	t
+%	build/Makefile	/^% : s.%$/;"	t
+%	tools/build/Makefile	/^% : %,v$/;"	t
+%	tools/build/Makefile	/^% : RCS\/%$/;"	t
+%	tools/build/Makefile	/^% : RCS\/%,v$/;"	t
+%	tools/build/Makefile	/^% : SCCS\/s.%$/;"	t
+%	tools/build/Makefile	/^% : s.%$/;"	t
+-235,28 +233,28	motor_hal_diagnostic.patch	/^@@ -235,28 +233,28 @@ int daemon_start(const char *iface)$/;"	h	modifiedFile:a/tools/daemon.c
+-24,11 +24,15	motor_hal_diagnostic.patch	/^@@ -24,11 +24,15 @@ int motor_startup_wait_bootup(can_driver_t *drv __attribute__((unused)),$/;"	h	modifiedFile:a/src/motor_hal_startup.c
+-3,15 +3,13	motor_hal_diagnostic.patch	/^@@ -3,15 +3,13 @@$/;"	h	modifiedFile:a/tools/daemon.c
+-51,8 +49,8	motor_hal_diagnostic.patch	/^@@ -51,8 +49,8 @@ static void _daemonize(void)$/;"	h	modifiedFile:a/tools/daemon.c
+-644,6 +644,10	motor_hal_diagnostic.patch	/^@@ -644,6 +644,10 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)$/;"	h	modifiedFile:a/src/motor_hal.c
+-654,7 +658,14	motor_hal_diagnostic.patch	/^@@ -654,7 +658,14 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)$/;"	h	modifiedFile:a/src/motor_hal.c
+1. 生命周期	README.md	/^### 1. 生命周期$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+10. 全局控制	README.md	/^### 10. 全局控制$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+11. 工具函数	README.md	/^### 11. 工具函数$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+2. 电机管理	README.md	/^### 2. 电机管理$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+3. 启动与停用	README.md	/^### 3. 启动与停用$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+4. 实时控制	README.md	/^### 4. 实时控制$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+5. 参数配置	README.md	/^### 5. 参数配置$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+6. 状态查询	README.md	/^### 6. 状态查询$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+7. 反馈缓存	README.md	/^### 7. 反馈缓存$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+8. 接收线程	README.md	/^### 8. 接收线程$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+9. 回调系统	README.md	/^### 9. 回调系统$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""API 参考
+API 参考	README.md	/^## API 参考$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+ARCHITECTURE_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define ARCHITECTURE_ID /;"	d	file:
+ARCHITECTURE_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define ARCHITECTURE_ID /;"	d	file:
+ARCHITECTURE_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define ARCHITECTURE_ID$/;"	d	file:
+ARCHITECTURE_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define ARCHITECTURE_ID /;"	d	file:
+ARCHITECTURE_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define ARCHITECTURE_ID /;"	d	file:
+ARCHITECTURE_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define ARCHITECTURE_ID$/;"	d	file:
+BUILD_AS_SHARED	CMakeLists.txt	/^option(BUILD_AS_SHARED "Build motor_hal as shared library" ON)$/;"	D
+BUILD_AS_SHARED	tools/CMakeLists.txt	/^option(BUILD_AS_SHARED "Link against shared motor_hal" ON)$/;"	D
+BUILD_EXAMPLES	CMakeLists.txt	/^option(BUILD_EXAMPLES "Build examples" ON)$/;"	D
+CAN 接口准备	README.md	/^### CAN 接口准备$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""编译与链接
+CANFD_MAX_DLC	inc/motor_hal_types.h	/^#define CANFD_MAX_DLC /;"	d
+CANOPEN_FRAMES_H	inc/canopen_frames.h	/^#define CANOPEN_FRAMES_H$/;"	d
+CAN_ARB_BITRATE	examples/dual_motor_full.c	/^#define CAN_ARB_BITRATE /;"	d	file:
+CAN_DATA_BITRATE	examples/dual_motor_full.c	/^#define CAN_DATA_BITRATE /;"	d	file:
+CAN_DRIVER_INTERNAL_H	src/can_driver_internal.h	/^#define CAN_DRIVER_INTERNAL_H$/;"	d
+CAN_IFACE	examples/dual_motor_full.c	/^#define CAN_IFACE /;"	d	file:
+CMAKE_AR	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_AR "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux-gnu-ar"/;"	v
+CMAKE_AR	toolchain.cmake	/^set(CMAKE_AR           ${TOOLCHAIN_PREFIX}ar)$/;"	v
+CMAKE_AR	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_AR "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux-gnu-ar"/;"	v
+CMAKE_BINARY_DIR	build/Makefile	/^CMAKE_BINARY_DIR = \/home\/alexbot\/workspace\/01-agent\/aiCoding\/code\/03\/stark\/motor_hal\/j/;"	m
+CMAKE_BINARY_DIR	tools/build/Makefile	/^CMAKE_BINARY_DIR = \/home\/alexbot\/workspace\/01-agent\/aiCoding\/code\/03\/stark\/motor_hal\/j/;"	m
+CMAKE_C11_COMPILE_FEATURES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C11_COMPILE_FEATURES "c_std_11;c_static_assert")$/;"	v
+CMAKE_C11_COMPILE_FEATURES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C11_COMPILE_FEATURES "c_std_11;c_static_assert")$/;"	v
+CMAKE_C17_COMPILE_FEATURES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C17_COMPILE_FEATURES "c_std_17")$/;"	v
+CMAKE_C17_COMPILE_FEATURES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C17_COMPILE_FEATURES "c_std_17")$/;"	v
+CMAKE_C23_COMPILE_FEATURES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C23_COMPILE_FEATURES "c_std_23")$/;"	v
+CMAKE_C23_COMPILE_FEATURES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C23_COMPILE_FEATURES "c_std_23")$/;"	v
+CMAKE_C90_COMPILE_FEATURES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C90_COMPILE_FEATURES "c_std_90;c_function_prototypes")$/;"	v
+CMAKE_C90_COMPILE_FEATURES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C90_COMPILE_FEATURES "c_std_90;c_function_prototypes")$/;"	v
+CMAKE_C99_COMPILE_FEATURES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C99_COMPILE_FEATURES "c_std_99;c_restrict;c_variadic_macros")$/;"	v
+CMAKE_C99_COMPILE_FEATURES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C99_COMPILE_FEATURES "c_std_99;c_restrict;c_variadic_macros")$/;"	v
+CMAKE_CL_SHOWINCLUDES_PREFIX	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^  set(CMAKE_CL_SHOWINCLUDES_PREFIX "${CMAKE_C_CL_SHOWINCLUDES_PREFIX}")$/;"	v
+CMAKE_CL_SHOWINCLUDES_PREFIX	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^  set(CMAKE_CL_SHOWINCLUDES_PREFIX "${CMAKE_C_CL_SHOWINCLUDES_PREFIX}")$/;"	v
+CMAKE_COMMAND	build/Makefile	/^CMAKE_COMMAND = \/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/cmake$/;"	m
+CMAKE_COMMAND	tools/build/Makefile	/^CMAKE_COMMAND = \/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/cmake$/;"	m
+CMAKE_COMPILER_IS_GNUCC	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_COMPILER_IS_GNUCC 1)$/;"	v
+CMAKE_COMPILER_IS_GNUCC	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_COMPILER_IS_GNUCC 1)$/;"	v
+CMAKE_COMPILER_SYSROOT	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_COMPILER_SYSROOT "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/aarch64-buildroot-linu/;"	v
+CMAKE_COMPILER_SYSROOT	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_COMPILER_SYSROOT "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/aarch64-buildroot-linu/;"	v
+CMAKE_CROSSCOMPILING	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_CROSSCOMPILING "TRUE")$/;"	v
+CMAKE_CROSSCOMPILING	build/cmake_install.cmake	/^  set(CMAKE_CROSSCOMPILING "TRUE")$/;"	v
+CMAKE_CROSSCOMPILING	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_CROSSCOMPILING "TRUE")$/;"	v
+CMAKE_CROSSCOMPILING	tools/build/cmake_install.cmake	/^  set(CMAKE_CROSSCOMPILING "TRUE")$/;"	v
+CMAKE_CXX_COMPILER	toolchain.cmake	/^set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)$/;"	v
+CMAKE_CXX_INCLUDE_REGEX_COMPLAIN	build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_CXX_INCLUDE_REGEX_COMPLAIN ${CMAKE_C_INCLUDE_REGEX_COMPLAIN})$/;"	v
+CMAKE_CXX_INCLUDE_REGEX_COMPLAIN	tools/build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_CXX_INCLUDE_REGEX_COMPLAIN ${CMAKE_C_INCLUDE_REGEX_COMPLAIN})$/;"	v
+CMAKE_CXX_INCLUDE_REGEX_SCAN	build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_CXX_INCLUDE_REGEX_SCAN ${CMAKE_C_INCLUDE_REGEX_SCAN})$/;"	v
+CMAKE_CXX_INCLUDE_REGEX_SCAN	tools/build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_CXX_INCLUDE_REGEX_SCAN ${CMAKE_C_INCLUDE_REGEX_SCAN})$/;"	v
+CMAKE_C_ABI_COMPILED	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_ABI_COMPILED TRUE)$/;"	v
+CMAKE_C_ABI_COMPILED	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_ABI_COMPILED TRUE)$/;"	v
+CMAKE_C_BYTE_ORDER	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_BYTE_ORDER "LITTLE_ENDIAN")$/;"	v
+CMAKE_C_BYTE_ORDER	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_BYTE_ORDER "LITTLE_ENDIAN")$/;"	v
+CMAKE_C_CL_SHOWINCLUDES_PREFIX	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_CL_SHOWINCLUDES_PREFIX "")$/;"	v
+CMAKE_C_CL_SHOWINCLUDES_PREFIX	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_CL_SHOWINCLUDES_PREFIX "")$/;"	v
+CMAKE_C_COMPILER	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux/;"	v
+CMAKE_C_COMPILER	toolchain.cmake	/^set(CMAKE_C_COMPILER   ${TOOLCHAIN_PREFIX}gcc)$/;"	v
+CMAKE_C_COMPILER	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux/;"	v
+CMAKE_C_COMPILER_ABI	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ABI "ELF")$/;"	v
+CMAKE_C_COMPILER_ABI	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ABI "ELF")$/;"	v
+CMAKE_C_COMPILER_AR	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_AR "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-li/;"	v
+CMAKE_C_COMPILER_AR	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_AR "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-li/;"	v
+CMAKE_C_COMPILER_ARG1	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ARG1 "")$/;"	v
+CMAKE_C_COMPILER_ARG1	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ARG1 "")$/;"	v
+CMAKE_C_COMPILER_ENV_VAR	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ENV_VAR "CC")$/;"	v
+CMAKE_C_COMPILER_ENV_VAR	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ENV_VAR "CC")$/;"	v
+CMAKE_C_COMPILER_FRONTEND_VARIANT	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_FRONTEND_VARIANT "GNU")$/;"	v
+CMAKE_C_COMPILER_FRONTEND_VARIANT	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_FRONTEND_VARIANT "GNU")$/;"	v
+CMAKE_C_COMPILER_ID	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ID "GNU")$/;"	v
+CMAKE_C_COMPILER_ID	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ID "GNU")$/;"	v
+CMAKE_C_COMPILER_ID_RUN	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ID_RUN 1)$/;"	v
+CMAKE_C_COMPILER_ID_RUN	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_ID_RUN 1)$/;"	v
+CMAKE_C_COMPILER_LOADED	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_LOADED 1)$/;"	v
+CMAKE_C_COMPILER_LOADED	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_LOADED 1)$/;"	v
+CMAKE_C_COMPILER_RANLIB	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_RANLIB "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroo/;"	v
+CMAKE_C_COMPILER_RANLIB	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_RANLIB "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroo/;"	v
+CMAKE_C_COMPILER_SYSROOT	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_SYSROOT "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/aarch64-buildroot-li/;"	v
+CMAKE_C_COMPILER_SYSROOT	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_SYSROOT "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/aarch64-buildroot-li/;"	v
+CMAKE_C_COMPILER_VERSION	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_VERSION "12.4.0")$/;"	v
+CMAKE_C_COMPILER_VERSION	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_VERSION "12.4.0")$/;"	v
+CMAKE_C_COMPILER_VERSION_INTERNAL	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_VERSION_INTERNAL "")$/;"	v
+CMAKE_C_COMPILER_VERSION_INTERNAL	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_VERSION_INTERNAL "")$/;"	v
+CMAKE_C_COMPILER_WORKS	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_WORKS TRUE)$/;"	v
+CMAKE_C_COMPILER_WORKS	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_WORKS TRUE)$/;"	v
+CMAKE_C_COMPILER_WRAPPER	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_WRAPPER "")$/;"	v
+CMAKE_C_COMPILER_WRAPPER	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILER_WRAPPER "")$/;"	v
+CMAKE_C_COMPILE_FEATURES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILE_FEATURES "c_std_90;c_function_prototypes;c_std_99;c_restrict;c_variadic_macr/;"	v
+CMAKE_C_COMPILE_FEATURES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_COMPILE_FEATURES "c_std_90;c_function_prototypes;c_std_99;c_restrict;c_variadic_macr/;"	v
+CMAKE_C_EXTENSIONS	CMakeLists.txt	/^set(CMAKE_C_EXTENSIONS ON)$/;"	v
+CMAKE_C_EXTENSIONS	tools/CMakeLists.txt	/^set(CMAKE_C_EXTENSIONS ON)$/;"	v
+CMAKE_C_EXTENSIONS_COMPUTED_DEFAULT	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_EXTENSIONS_COMPUTED_DEFAULT "ON")$/;"	v
+CMAKE_C_EXTENSIONS_COMPUTED_DEFAULT	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_EXTENSIONS_COMPUTED_DEFAULT "ON")$/;"	v
+CMAKE_C_IGNORE_EXTENSIONS	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IGNORE_EXTENSIONS h;H;o;O;obj;OBJ;def;DEF;rc;RC)$/;"	v
+CMAKE_C_IGNORE_EXTENSIONS	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IGNORE_EXTENSIONS h;H;o;O;obj;OBJ;def;DEF;rc;RC)$/;"	v
+CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/lib\/gcc/;"	v
+CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/lib\/gcc/;"	v
+CMAKE_C_IMPLICIT_LINK_DIRECTORIES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IMPLICIT_LINK_DIRECTORIES "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/lib\/gcc\/a/;"	v
+CMAKE_C_IMPLICIT_LINK_DIRECTORIES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IMPLICIT_LINK_DIRECTORIES "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/lib\/gcc\/a/;"	v
+CMAKE_C_IMPLICIT_LINK_FRAMEWORK_DIRECTORIES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IMPLICIT_LINK_FRAMEWORK_DIRECTORIES "")$/;"	v
+CMAKE_C_IMPLICIT_LINK_FRAMEWORK_DIRECTORIES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IMPLICIT_LINK_FRAMEWORK_DIRECTORIES "")$/;"	v
+CMAKE_C_IMPLICIT_LINK_LIBRARIES	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "gcc;gcc_s;c;gcc;gcc_s")$/;"	v
+CMAKE_C_IMPLICIT_LINK_LIBRARIES	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "gcc;gcc_s;c;gcc;gcc_s")$/;"	v
+CMAKE_C_INCLUDE_REGEX_COMPLAIN	build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_C_INCLUDE_REGEX_COMPLAIN "^$")$/;"	v
+CMAKE_C_INCLUDE_REGEX_COMPLAIN	tools/build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_C_INCLUDE_REGEX_COMPLAIN "^$")$/;"	v
+CMAKE_C_INCLUDE_REGEX_SCAN	build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_C_INCLUDE_REGEX_SCAN "^.*$")$/;"	v
+CMAKE_C_INCLUDE_REGEX_SCAN	tools/build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_C_INCLUDE_REGEX_SCAN "^.*$")$/;"	v
+CMAKE_C_LIBRARY_ARCHITECTURE	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_LIBRARY_ARCHITECTURE "")$/;"	v
+CMAKE_C_LIBRARY_ARCHITECTURE	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_LIBRARY_ARCHITECTURE "")$/;"	v
+CMAKE_C_LINKER_DEPFILE_SUPPORTED	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_LINKER_DEPFILE_SUPPORTED TRUE)$/;"	v
+CMAKE_C_LINKER_DEPFILE_SUPPORTED	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_LINKER_DEPFILE_SUPPORTED TRUE)$/;"	v
+CMAKE_C_LINKER_PREFERENCE	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_LINKER_PREFERENCE 10)$/;"	v
+CMAKE_C_LINKER_PREFERENCE	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_LINKER_PREFERENCE 10)$/;"	v
+CMAKE_C_PLATFORM_ID	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_PLATFORM_ID "Linux")$/;"	v
+CMAKE_C_PLATFORM_ID	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_PLATFORM_ID "Linux")$/;"	v
+CMAKE_C_SIMULATE_ID	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_SIMULATE_ID "")$/;"	v
+CMAKE_C_SIMULATE_ID	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_SIMULATE_ID "")$/;"	v
+CMAKE_C_SIMULATE_VERSION	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_SIMULATE_VERSION "")$/;"	v
+CMAKE_C_SIMULATE_VERSION	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_SIMULATE_VERSION "")$/;"	v
+CMAKE_C_SIZEOF_DATA_PTR	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_SIZEOF_DATA_PTR "8")$/;"	v
+CMAKE_C_SIZEOF_DATA_PTR	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_SIZEOF_DATA_PTR "8")$/;"	v
+CMAKE_C_SOURCE_FILE_EXTENSIONS	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_SOURCE_FILE_EXTENSIONS c;m)$/;"	v
+CMAKE_C_SOURCE_FILE_EXTENSIONS	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_SOURCE_FILE_EXTENSIONS c;m)$/;"	v
+CMAKE_C_STANDARD	CMakeLists.txt	/^set(CMAKE_C_STANDARD 11)$/;"	v
+CMAKE_C_STANDARD	tools/CMakeLists.txt	/^set(CMAKE_C_STANDARD 11)$/;"	v
+CMAKE_C_STANDARD_COMPUTED_DEFAULT	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_STANDARD_COMPUTED_DEFAULT "17")$/;"	v
+CMAKE_C_STANDARD_COMPUTED_DEFAULT	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_C_STANDARD_COMPUTED_DEFAULT "17")$/;"	v
+CMAKE_C_STANDARD_REQUIRED	CMakeLists.txt	/^set(CMAKE_C_STANDARD_REQUIRED ON)$/;"	v
+CMAKE_C_STANDARD_REQUIRED	tools/CMakeLists.txt	/^set(CMAKE_C_STANDARD_REQUIRED ON)$/;"	v
+CMAKE_DEPENDS_DEPENDENCY_FILES	build/CMakeFiles/motor_example_dual.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_DEPENDENCY_FILES$/;"	v
+CMAKE_DEPENDS_DEPENDENCY_FILES	build/CMakeFiles/motor_example_dual_full.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_DEPENDENCY_FILES$/;"	v
+CMAKE_DEPENDS_DEPENDENCY_FILES	build/CMakeFiles/motor_example_mit.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_DEPENDENCY_FILES$/;"	v
+CMAKE_DEPENDS_DEPENDENCY_FILES	build/CMakeFiles/motor_example_single.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_DEPENDENCY_FILES$/;"	v
+CMAKE_DEPENDS_DEPENDENCY_FILES	build/CMakeFiles/motor_hal.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_DEPENDENCY_FILES$/;"	v
+CMAKE_DEPENDS_DEPENDENCY_FILES	tools/build/CMakeFiles/motor_tool.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_DEPENDENCY_FILES$/;"	v
+CMAKE_DEPENDS_GENERATOR	build/CMakeFiles/Makefile.cmake	/^set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")$/;"	v
+CMAKE_DEPENDS_GENERATOR	tools/build/CMakeFiles/Makefile.cmake	/^set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")$/;"	v
+CMAKE_DEPENDS_IN_PROJECT_ONLY	build/CMakeFiles/motor_example_dual.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)$/;"	v
+CMAKE_DEPENDS_IN_PROJECT_ONLY	build/CMakeFiles/motor_example_dual_full.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)$/;"	v
+CMAKE_DEPENDS_IN_PROJECT_ONLY	build/CMakeFiles/motor_example_mit.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)$/;"	v
+CMAKE_DEPENDS_IN_PROJECT_ONLY	build/CMakeFiles/motor_example_single.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)$/;"	v
+CMAKE_DEPENDS_IN_PROJECT_ONLY	build/CMakeFiles/motor_hal.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)$/;"	v
+CMAKE_DEPENDS_IN_PROJECT_ONLY	tools/build/CMakeFiles/motor_tool.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)$/;"	v
+CMAKE_DEPENDS_LANGUAGES	build/CMakeFiles/motor_example_dual.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_LANGUAGES$/;"	v
+CMAKE_DEPENDS_LANGUAGES	build/CMakeFiles/motor_example_dual_full.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_LANGUAGES$/;"	v
+CMAKE_DEPENDS_LANGUAGES	build/CMakeFiles/motor_example_mit.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_LANGUAGES$/;"	v
+CMAKE_DEPENDS_LANGUAGES	build/CMakeFiles/motor_example_single.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_LANGUAGES$/;"	v
+CMAKE_DEPENDS_LANGUAGES	build/CMakeFiles/motor_hal.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_LANGUAGES$/;"	v
+CMAKE_DEPENDS_LANGUAGES	tools/build/CMakeFiles/motor_tool.dir/DependInfo.cmake	/^set(CMAKE_DEPENDS_LANGUAGES$/;"	v
+CMAKE_DEPEND_INFO_FILES	build/CMakeFiles/Makefile.cmake	/^set(CMAKE_DEPEND_INFO_FILES$/;"	v
+CMAKE_DEPEND_INFO_FILES	tools/build/CMakeFiles/Makefile.cmake	/^set(CMAKE_DEPEND_INFO_FILES$/;"	v
+CMAKE_FIND_ROOT_PATH	toolchain.cmake	/^set(CMAKE_FIND_ROOT_PATH ${CMAKE_SYSROOT})$/;"	v
+CMAKE_FIND_ROOT_PATH_MODE_INCLUDE	toolchain.cmake	/^set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)$/;"	v
+CMAKE_FIND_ROOT_PATH_MODE_LIBRARY	toolchain.cmake	/^set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)$/;"	v
+CMAKE_FIND_ROOT_PATH_MODE_PACKAGE	toolchain.cmake	/^set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)$/;"	v
+CMAKE_FIND_ROOT_PATH_MODE_PROGRAM	toolchain.cmake	/^set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)$/;"	v
+CMAKE_FORCE_UNIX_PATHS	build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_FORCE_UNIX_PATHS 1)$/;"	v
+CMAKE_FORCE_UNIX_PATHS	tools/build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_FORCE_UNIX_PATHS 1)$/;"	v
+CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES	build/CMakeFiles/motor_example_dual.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES	build/CMakeFiles/motor_example_dual_full.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES	build/CMakeFiles/motor_example_mit.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES	build/CMakeFiles/motor_example_single.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES	build/CMakeFiles/motor_hal.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES	tools/build/CMakeFiles/motor_tool.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_LINKED_INFO_FILES	build/CMakeFiles/motor_example_dual.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_LINKED_INFO_FILES	build/CMakeFiles/motor_example_dual_full.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_LINKED_INFO_FILES	build/CMakeFiles/motor_example_mit.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_LINKED_INFO_FILES	build/CMakeFiles/motor_example_single.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_LINKED_INFO_FILES	build/CMakeFiles/motor_hal.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_LINKED_INFO_FILES	tools/build/CMakeFiles/motor_tool.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_LINKED_INFO_FILES$/;"	v
+CMAKE_Fortran_TARGET_MODULE_DIR	build/CMakeFiles/motor_example_dual.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_MODULE_DIR "")$/;"	v
+CMAKE_Fortran_TARGET_MODULE_DIR	build/CMakeFiles/motor_example_dual_full.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_MODULE_DIR "")$/;"	v
+CMAKE_Fortran_TARGET_MODULE_DIR	build/CMakeFiles/motor_example_mit.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_MODULE_DIR "")$/;"	v
+CMAKE_Fortran_TARGET_MODULE_DIR	build/CMakeFiles/motor_example_single.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_MODULE_DIR "")$/;"	v
+CMAKE_Fortran_TARGET_MODULE_DIR	build/CMakeFiles/motor_hal.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_MODULE_DIR "")$/;"	v
+CMAKE_Fortran_TARGET_MODULE_DIR	tools/build/CMakeFiles/motor_tool.dir/DependInfo.cmake	/^set(CMAKE_Fortran_TARGET_MODULE_DIR "")$/;"	v
+CMAKE_HOST_SYSTEM	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_HOST_SYSTEM "Linux-6.8.0-111-generic")$/;"	v
+CMAKE_HOST_SYSTEM	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_HOST_SYSTEM "Linux-6.8.0-111-generic")$/;"	v
+CMAKE_HOST_SYSTEM_NAME	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_HOST_SYSTEM_NAME "Linux")$/;"	v
+CMAKE_HOST_SYSTEM_NAME	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_HOST_SYSTEM_NAME "Linux")$/;"	v
+CMAKE_HOST_SYSTEM_PROCESSOR	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_HOST_SYSTEM_PROCESSOR "x86_64")$/;"	v
+CMAKE_HOST_SYSTEM_PROCESSOR	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_HOST_SYSTEM_PROCESSOR "x86_64")$/;"	v
+CMAKE_HOST_SYSTEM_VERSION	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_HOST_SYSTEM_VERSION "6.8.0-111-generic")$/;"	v
+CMAKE_HOST_SYSTEM_VERSION	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_HOST_SYSTEM_VERSION "6.8.0-111-generic")$/;"	v
+CMAKE_INSTALL_COMPONENT	build/cmake_install.cmake	/^    set(CMAKE_INSTALL_COMPONENT "${COMPONENT}")$/;"	v
+CMAKE_INSTALL_COMPONENT	build/cmake_install.cmake	/^    set(CMAKE_INSTALL_COMPONENT)$/;"	v
+CMAKE_INSTALL_COMPONENT	tools/build/cmake_install.cmake	/^    set(CMAKE_INSTALL_COMPONENT "${COMPONENT}")$/;"	v
+CMAKE_INSTALL_COMPONENT	tools/build/cmake_install.cmake	/^    set(CMAKE_INSTALL_COMPONENT)$/;"	v
+CMAKE_INSTALL_CONFIG_NAME	build/cmake_install.cmake	/^    set(CMAKE_INSTALL_CONFIG_NAME "")$/;"	v
+CMAKE_INSTALL_CONFIG_NAME	tools/build/cmake_install.cmake	/^    set(CMAKE_INSTALL_CONFIG_NAME "")$/;"	v
+CMAKE_INSTALL_MANIFEST	build/cmake_install.cmake	/^  set(CMAKE_INSTALL_MANIFEST "install_manifest.txt")$/;"	v
+CMAKE_INSTALL_MANIFEST	build/cmake_install.cmake	/^  set(CMAKE_INSTALL_MANIFEST "install_manifest_${CMAKE_INSTALL_COMPONENT}.txt")$/;"	v
+CMAKE_INSTALL_MANIFEST	tools/build/cmake_install.cmake	/^  set(CMAKE_INSTALL_MANIFEST "install_manifest.txt")$/;"	v
+CMAKE_INSTALL_MANIFEST	tools/build/cmake_install.cmake	/^  set(CMAKE_INSTALL_MANIFEST "install_manifest_${CMAKE_INSTALL_COMPONENT}.txt")$/;"	v
+CMAKE_INSTALL_PREFIX	build/cmake_install.cmake	/^  set(CMAKE_INSTALL_PREFIX "\/usr\/local")$/;"	v
+CMAKE_INSTALL_PREFIX	tools/build/cmake_install.cmake	/^  set(CMAKE_INSTALL_PREFIX "\/usr\/local")$/;"	v
+CMAKE_INSTALL_SO_NO_EXE	build/cmake_install.cmake	/^  set(CMAKE_INSTALL_SO_NO_EXE "1")$/;"	v
+CMAKE_INSTALL_SO_NO_EXE	tools/build/cmake_install.cmake	/^  set(CMAKE_INSTALL_SO_NO_EXE "1")$/;"	v
+CMAKE_INTERNAL_PLATFORM_ABI	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^  set(CMAKE_INTERNAL_PLATFORM_ABI "${CMAKE_C_COMPILER_ABI}")$/;"	v
+CMAKE_INTERNAL_PLATFORM_ABI	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^  set(CMAKE_INTERNAL_PLATFORM_ABI "${CMAKE_C_COMPILER_ABI}")$/;"	v
+CMAKE_LIBRARY_ARCHITECTURE	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^  set(CMAKE_LIBRARY_ARCHITECTURE "")$/;"	v
+CMAKE_LIBRARY_ARCHITECTURE	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^  set(CMAKE_LIBRARY_ARCHITECTURE "")$/;"	v
+CMAKE_LINKER	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_LINKER "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux-gnu/;"	v
+CMAKE_LINKER	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_LINKER "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux-gnu/;"	v
+CMAKE_MAKEFILE_DEPENDS	build/CMakeFiles/Makefile.cmake	/^set(CMAKE_MAKEFILE_DEPENDS$/;"	v
+CMAKE_MAKEFILE_DEPENDS	tools/build/CMakeFiles/Makefile.cmake	/^set(CMAKE_MAKEFILE_DEPENDS$/;"	v
+CMAKE_MAKEFILE_OUTPUTS	build/CMakeFiles/Makefile.cmake	/^set(CMAKE_MAKEFILE_OUTPUTS$/;"	v
+CMAKE_MAKEFILE_OUTPUTS	tools/build/CMakeFiles/Makefile.cmake	/^set(CMAKE_MAKEFILE_OUTPUTS$/;"	v
+CMAKE_MAKEFILE_PRODUCTS	build/CMakeFiles/Makefile.cmake	/^set(CMAKE_MAKEFILE_PRODUCTS$/;"	v
+CMAKE_MAKEFILE_PRODUCTS	tools/build/CMakeFiles/Makefile.cmake	/^set(CMAKE_MAKEFILE_PRODUCTS$/;"	v
+CMAKE_MT	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_MT "")$/;"	v
+CMAKE_MT	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_MT "")$/;"	v
+CMAKE_OBJCOPY	toolchain.cmake	/^set(CMAKE_OBJCOPY      ${TOOLCHAIN_PREFIX}objcopy)$/;"	v
+CMAKE_OBJDUMP	build/cmake_install.cmake	/^  set(CMAKE_OBJDUMP "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux-/;"	v
+CMAKE_OBJDUMP	toolchain.cmake	/^set(CMAKE_OBJDUMP      ${TOOLCHAIN_PREFIX}objdump)$/;"	v
+CMAKE_OBJDUMP	tools/build/cmake_install.cmake	/^  set(CMAKE_OBJDUMP "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux-/;"	v
+CMAKE_RANLIB	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_RANLIB "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux-gnu/;"	v
+CMAKE_RANLIB	toolchain.cmake	/^set(CMAKE_RANLIB       ${TOOLCHAIN_PREFIX}ranlib)$/;"	v
+CMAKE_RANLIB	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_RANLIB "\/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux-gnu/;"	v
+CMAKE_RELATIVE_PATH_TOP_BINARY	build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_RELATIVE_PATH_TOP_BINARY "\/home\/alexbot\/workspace\/01-agent\/aiCoding\/code\/03\/st/;"	v
+CMAKE_RELATIVE_PATH_TOP_BINARY	tools/build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_RELATIVE_PATH_TOP_BINARY "\/home\/alexbot\/workspace\/01-agent\/aiCoding\/code\/03\/st/;"	v
+CMAKE_RELATIVE_PATH_TOP_SOURCE	build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_RELATIVE_PATH_TOP_SOURCE "\/home\/alexbot\/workspace\/01-agent\/aiCoding\/code\/03\/st/;"	v
+CMAKE_RELATIVE_PATH_TOP_SOURCE	tools/build/CMakeFiles/CMakeDirectoryInformation.cmake	/^set(CMAKE_RELATIVE_PATH_TOP_SOURCE "\/home\/alexbot\/workspace\/01-agent\/aiCoding\/code\/03\/st/;"	v
+CMAKE_SIZEOF_VOID_P	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^  set(CMAKE_SIZEOF_VOID_P "${CMAKE_C_SIZEOF_DATA_PTR}")$/;"	v
+CMAKE_SIZEOF_VOID_P	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^  set(CMAKE_SIZEOF_VOID_P "${CMAKE_C_SIZEOF_DATA_PTR}")$/;"	v
+CMAKE_SOURCE_DIR	build/Makefile	/^CMAKE_SOURCE_DIR = \/home\/alexbot\/workspace\/01-agent\/aiCoding\/code\/03\/stark\/motor_hal\/j/;"	m
+CMAKE_SOURCE_DIR	tools/build/Makefile	/^CMAKE_SOURCE_DIR = \/home\/alexbot\/workspace\/01-agent\/aiCoding\/code\/03\/stark\/motor_hal\/j/;"	m
+CMAKE_SYSROOT	toolchain.cmake	/^set(CMAKE_SYSROOT \/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/aarch64-buildroot-linux-gnu\/sys/;"	v
+CMAKE_SYSTEM	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM "Linux")$/;"	v
+CMAKE_SYSTEM	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM "Linux")$/;"	v
+CMAKE_SYSTEM_LOADED	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM_LOADED 1)$/;"	v
+CMAKE_SYSTEM_LOADED	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM_LOADED 1)$/;"	v
+CMAKE_SYSTEM_NAME	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM_NAME "Linux")$/;"	v
+CMAKE_SYSTEM_NAME	toolchain.cmake	/^set(CMAKE_SYSTEM_NAME Linux)$/;"	v
+CMAKE_SYSTEM_NAME	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM_NAME "Linux")$/;"	v
+CMAKE_SYSTEM_PROCESSOR	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM_PROCESSOR "aarch64")$/;"	v
+CMAKE_SYSTEM_PROCESSOR	toolchain.cmake	/^set(CMAKE_SYSTEM_PROCESSOR aarch64)$/;"	v
+CMAKE_SYSTEM_PROCESSOR	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM_PROCESSOR "aarch64")$/;"	v
+CMAKE_SYSTEM_VERSION	build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM_VERSION "")$/;"	v
+CMAKE_SYSTEM_VERSION	tools/build/CMakeFiles/3.28.1/CMakeSystem.cmake	/^set(CMAKE_SYSTEM_VERSION "")$/;"	v
+CMAKE_TAPI	build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_TAPI "CMAKE_TAPI-NOTFOUND")$/;"	v
+CMAKE_TAPI	tools/build/CMakeFiles/3.28.1/CMakeCCompiler.cmake	/^set(CMAKE_TAPI "CMAKE_TAPI-NOTFOUND")$/;"	v
+CMD_ABS	tools/command_registry.h	/^    CMD_SPEED, CMD_ACCEL, CMD_ABS, CMD_REL, CMD_MAXV, CMD_STOP, CMD_MODE,$/;"	e	enum:__anon1d8b71d20103
+CMD_ACCEL	tools/command_registry.h	/^    CMD_SPEED, CMD_ACCEL, CMD_ABS, CMD_REL, CMD_MAXV, CMD_STOP, CMD_MODE,$/;"	e	enum:__anon1d8b71d20103
+CMD_COUNT	tools/command_registry.h	/^    CMD_COUNT$/;"	e	enum:__anon1d8b71d20103
+CMD_DISABLE	tools/command_registry.h	/^    CMD_INIT, CMD_STARTUP, CMD_ENABLE, CMD_DISABLE, CMD_RESET,$/;"	e	enum:__anon1d8b71d20103
+CMD_ENABLE	tools/command_registry.h	/^    CMD_INIT, CMD_STARTUP, CMD_ENABLE, CMD_DISABLE, CMD_RESET,$/;"	e	enum:__anon1d8b71d20103
+CMD_HELP	tools/command_registry.h	/^    CMD_READ, CMD_WATCH, CMD_HELP,$/;"	e	enum:__anon1d8b71d20103
+CMD_INIT	tools/command_registry.h	/^    CMD_INIT, CMD_STARTUP, CMD_ENABLE, CMD_DISABLE, CMD_RESET,$/;"	e	enum:__anon1d8b71d20103
+CMD_MAXV	tools/command_registry.h	/^    CMD_SPEED, CMD_ACCEL, CMD_ABS, CMD_REL, CMD_MAXV, CMD_STOP, CMD_MODE,$/;"	e	enum:__anon1d8b71d20103
+CMD_MODE	tools/command_registry.h	/^    CMD_SPEED, CMD_ACCEL, CMD_ABS, CMD_REL, CMD_MAXV, CMD_STOP, CMD_MODE,$/;"	e	enum:__anon1d8b71d20103
+CMD_READ	tools/command_registry.h	/^    CMD_READ, CMD_WATCH, CMD_HELP,$/;"	e	enum:__anon1d8b71d20103
+CMD_REL	tools/command_registry.h	/^    CMD_SPEED, CMD_ACCEL, CMD_ABS, CMD_REL, CMD_MAXV, CMD_STOP, CMD_MODE,$/;"	e	enum:__anon1d8b71d20103
+CMD_RESET	tools/command_registry.h	/^    CMD_INIT, CMD_STARTUP, CMD_ENABLE, CMD_DISABLE, CMD_RESET,$/;"	e	enum:__anon1d8b71d20103
+CMD_SPEED	tools/command_registry.h	/^    CMD_SPEED, CMD_ACCEL, CMD_ABS, CMD_REL, CMD_MAXV, CMD_STOP, CMD_MODE,$/;"	e	enum:__anon1d8b71d20103
+CMD_STARTUP	tools/command_registry.h	/^    CMD_INIT, CMD_STARTUP, CMD_ENABLE, CMD_DISABLE, CMD_RESET,$/;"	e	enum:__anon1d8b71d20103
+CMD_STOP	tools/command_registry.h	/^    CMD_SPEED, CMD_ACCEL, CMD_ABS, CMD_REL, CMD_MAXV, CMD_STOP, CMD_MODE,$/;"	e	enum:__anon1d8b71d20103
+CMD_WATCH	tools/command_registry.h	/^    CMD_READ, CMD_WATCH, CMD_HELP,$/;"	e	enum:__anon1d8b71d20103
+COB_BOOTUP_BASE	inc/motor_hal_types.h	/^#define COB_BOOTUP_BASE /;"	d
+COB_EMCY_BASE	inc/motor_hal_types.h	/^#define COB_EMCY_BASE /;"	d
+COB_FEEDBACK_BASE	inc/motor_hal_types.h	/^#define COB_FEEDBACK_BASE /;"	d
+COB_MULTI_CTRL	inc/motor_hal_types.h	/^#define COB_MULTI_CTRL /;"	d
+COB_NMT	inc/motor_hal_types.h	/^#define COB_NMT /;"	d
+COB_PDO_CTRL_BASE	inc/motor_hal_types.h	/^#define COB_PDO_CTRL_BASE /;"	d
+COB_PDO_MIT_BASE	inc/motor_hal_types.h	/^#define COB_PDO_MIT_BASE /;"	d
+COB_RPDO1_BASE	inc/motor_hal_types.h	/^#define COB_RPDO1_BASE /;"	d
+COB_SDO_RX_BASE	inc/motor_hal_types.h	/^#define COB_SDO_RX_BASE /;"	d
+COB_SDO_TX_BASE	inc/motor_hal_types.h	/^#define COB_SDO_TX_BASE /;"	d
+COB_SYNC	inc/motor_hal_types.h	/^#define COB_SYNC /;"	d
+COB_TPDO1_BASE	inc/motor_hal_types.h	/^#define COB_TPDO1_BASE /;"	d
+COMMAND_REGISTRY_H	tools/command_registry.h	/^#define COMMAND_REGISTRY_H$/;"	d
+COMPILER_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_ID /;"	d	file:
+COMPILER_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_ID /;"	d	file:
+COMPILER_VERSION	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION /;"	d	file:
+COMPILER_VERSION	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION /;"	d	file:
+COMPILER_VERSION_INTERNAL	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION_INTERNAL /;"	d	file:
+COMPILER_VERSION_INTERNAL	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_INTERNAL /;"	d	file:
+COMPILER_VERSION_INTERNAL	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_INTERNAL /;"	d	file:
+COMPILER_VERSION_INTERNAL	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION_INTERNAL /;"	d	file:
+COMPILER_VERSION_INTERNAL	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_INTERNAL /;"	d	file:
+COMPILER_VERSION_INTERNAL	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_INTERNAL /;"	d	file:
+COMPILER_VERSION_INTERNAL_STR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_INTERNAL_STR /;"	d	file:
+COMPILER_VERSION_INTERNAL_STR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_INTERNAL_STR /;"	d	file:
+COMPILER_VERSION_MAJOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^  # define COMPILER_VERSION_MAJOR /;"	d	file:
+COMPILER_VERSION_MAJOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION_MAJOR /;"	d	file:
+COMPILER_VERSION_MAJOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_MAJOR /;"	d	file:
+COMPILER_VERSION_MAJOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_MAJOR /;"	d	file:
+COMPILER_VERSION_MAJOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^  # define COMPILER_VERSION_MAJOR /;"	d	file:
+COMPILER_VERSION_MAJOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION_MAJOR /;"	d	file:
+COMPILER_VERSION_MAJOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_MAJOR /;"	d	file:
+COMPILER_VERSION_MAJOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_MAJOR /;"	d	file:
+COMPILER_VERSION_MINOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^  # define COMPILER_VERSION_MINOR /;"	d	file:
+COMPILER_VERSION_MINOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION_MINOR /;"	d	file:
+COMPILER_VERSION_MINOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_MINOR /;"	d	file:
+COMPILER_VERSION_MINOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_MINOR /;"	d	file:
+COMPILER_VERSION_MINOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^  # define COMPILER_VERSION_MINOR /;"	d	file:
+COMPILER_VERSION_MINOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION_MINOR /;"	d	file:
+COMPILER_VERSION_MINOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_MINOR /;"	d	file:
+COMPILER_VERSION_MINOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_MINOR /;"	d	file:
+COMPILER_VERSION_PATCH	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^  # define COMPILER_VERSION_PATCH /;"	d	file:
+COMPILER_VERSION_PATCH	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION_PATCH /;"	d	file:
+COMPILER_VERSION_PATCH	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_PATCH /;"	d	file:
+COMPILER_VERSION_PATCH	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_PATCH /;"	d	file:
+COMPILER_VERSION_PATCH	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^  # define COMPILER_VERSION_PATCH /;"	d	file:
+COMPILER_VERSION_PATCH	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define COMPILER_VERSION_PATCH /;"	d	file:
+COMPILER_VERSION_PATCH	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_PATCH /;"	d	file:
+COMPILER_VERSION_PATCH	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_PATCH /;"	d	file:
+COMPILER_VERSION_TWEAK	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_TWEAK /;"	d	file:
+COMPILER_VERSION_TWEAK	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_TWEAK /;"	d	file:
+COMPILER_VERSION_TWEAK	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define COMPILER_VERSION_TWEAK /;"	d	file:
+COMPILER_VERSION_TWEAK	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define COMPILER_VERSION_TWEAK /;"	d	file:
+CTRL_INTERVAL_US	examples/dual_motor_full.c	/^#define CTRL_INTERVAL_US /;"	d	file:
+CW_DISABLE_OP	inc/motor_hal_types.h	/^#define CW_DISABLE_OP /;"	d
+CW_DISABLE_VOLTAGE	inc/motor_hal_types.h	/^#define CW_DISABLE_VOLTAGE /;"	d
+CW_ENABLE_OP	inc/motor_hal_types.h	/^#define CW_ENABLE_OP /;"	d
+CW_FAULT_RESET	inc/motor_hal_types.h	/^#define CW_FAULT_RESET /;"	d
+CW_NEW_SET_POINT	inc/motor_hal_types.h	/^#define CW_NEW_SET_POINT /;"	d
+CW_QUICK_STOP	inc/motor_hal_types.h	/^#define CW_QUICK_STOP /;"	d
+CW_SHUTDOWN	inc/motor_hal_types.h	/^#define CW_SHUTDOWN /;"	d
+CW_STOP	inc/motor_hal_types.h	/^#define CW_STOP /;"	d
+CW_SWITCH_ON	inc/motor_hal_types.h	/^#define CW_SWITCH_ON /;"	d
+C_VERSION	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define C_VERSION /;"	d	file:
+C_VERSION	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define C_VERSION$/;"	d	file:
+C_VERSION	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define C_VERSION /;"	d	file:
+C_VERSION	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define C_VERSION /;"	d	file:
+C_VERSION	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define C_VERSION$/;"	d	file:
+C_VERSION	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define C_VERSION /;"	d	file:
+DEC	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#define DEC(/;"	d	file:
+DEC	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#define DEC(/;"	d	file:
+DS402 状态机	README.md	/^## DS402 状态机$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+ENCODER_LOAD_RES	inc/motor_hal_types.h	/^#define ENCODER_LOAD_RES /;"	d
+ENCODER_MOTOR_RES	inc/motor_hal_types.h	/^#define ENCODER_MOTOR_RES /;"	d
+EQUALS	build/Makefile	/^EQUALS = =$/;"	m
+EQUALS	tools/build/Makefile	/^EQUALS = =$/;"	m
+ERR_CURRENT_SAMPLE	inc/motor_hal_types.h	/^#define ERR_CURRENT_SAMPLE /;"	d
+ERR_ELEC_ANGLE_FAIL	inc/motor_hal_types.h	/^#define ERR_ELEC_ANGLE_FAIL /;"	d
+ERR_ENCODER_FAULT	inc/motor_hal_types.h	/^#define ERR_ENCODER_FAULT /;"	d
+ERR_ENCODER_TIMEOUT	inc/motor_hal_types.h	/^#define ERR_ENCODER_TIMEOUT /;"	d
+ERR_NEG_LIMIT	inc/motor_hal_types.h	/^#define ERR_NEG_LIMIT /;"	d
+ERR_OVERLOAD	inc/motor_hal_types.h	/^#define ERR_OVERLOAD /;"	d
+ERR_OVER_MAX_SPEED	inc/motor_hal_types.h	/^#define ERR_OVER_MAX_SPEED /;"	d
+ERR_OVER_TEMP	inc/motor_hal_types.h	/^#define ERR_OVER_TEMP /;"	d
+ERR_OVER_VOLTAGE	inc/motor_hal_types.h	/^#define ERR_OVER_VOLTAGE /;"	d
+ERR_POS_ERROR_LARGE	inc/motor_hal_types.h	/^#define ERR_POS_ERROR_LARGE /;"	d
+ERR_POS_LIMIT	inc/motor_hal_types.h	/^#define ERR_POS_LIMIT /;"	d
+ERR_STALL	inc/motor_hal_types.h	/^#define ERR_STALL /;"	d
+ERR_UNDER_VOLTAGE	inc/motor_hal_types.h	/^#define ERR_UNDER_VOLTAGE /;"	d
+HEX	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#define HEX(/;"	d	file:
+HEX	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#define HEX(/;"	d	file:
+ID_VOID_MAIN	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define ID_VOID_MAIN$/;"	d	file:
+ID_VOID_MAIN	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define ID_VOID_MAIN$/;"	d	file:
+LEFT_NODE_ID	examples/dual_motor_full.c	/^#define LEFT_NODE_ID /;"	d	file:
+LOAD_ANGLE_MAX	inc/motor_hal_types.h	/^#define LOAD_ANGLE_MAX /;"	d
+LOAD_ANGLE_MIN	inc/motor_hal_types.h	/^#define LOAD_ANGLE_MIN /;"	d
+LOAD_POS_MAX	inc/motor_hal_types.h	/^#define LOAD_POS_MAX /;"	d
+LOAD_POS_MIN	inc/motor_hal_types.h	/^#define LOAD_POS_MIN /;"	d
+MOTOR_BOOTUP_TIMEOUT_MS	inc/motor_hal_types.h	/^#define MOTOR_BOOTUP_TIMEOUT_MS /;"	d
+MOTOR_ENABLE_STEP_MS	inc/motor_hal_types.h	/^#define MOTOR_ENABLE_STEP_MS /;"	d
+MOTOR_HAL_BUILD_DIR	tools/CMakeLists.txt	/^set(MOTOR_HAL_BUILD_DIR "${MOTOR_HAL_DIR}\/build" CACHE PATH "motor_hal build directory")$/;"	v
+MOTOR_HAL_DIR	tools/CMakeLists.txt	/^set(MOTOR_HAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}\/..")$/;"	v
+MOTOR_HAL_H	inc/motor_hal.h	/^#define MOTOR_HAL_H$/;"	d
+MOTOR_HAL_LIB	tools/CMakeLists.txt	/^    set(MOTOR_HAL_LIB ${MOTOR_HAL_BUILD_DIR}\/libmotor_hal.a)$/;"	v
+MOTOR_HAL_LIB	tools/CMakeLists.txt	/^    set(MOTOR_HAL_LIB ${MOTOR_HAL_BUILD_DIR}\/libmotor_hal.so)$/;"	v
+MOTOR_HAL_MAX_MOTORS	inc/motor_hal_types.h	/^#define MOTOR_HAL_MAX_MOTORS /;"	d
+MOTOR_HAL_SOURCES	CMakeLists.txt	/^set(MOTOR_HAL_SOURCES$/;"	v
+MOTOR_HAL_TYPES_H	inc/motor_hal_types.h	/^#define MOTOR_HAL_TYPES_H$/;"	d
+MOTOR_MODE_CSP	inc/motor_hal_types.h	/^    MOTOR_MODE_CSP           = 3,  \/* CSP: 循环同步位置 *\/$/;"	e	enum:__anonfd34793d0203
+MOTOR_MODE_CSV	inc/motor_hal_types.h	/^    MOTOR_MODE_CSV           = 4,  \/* CSV: 循环同步速度 *\/$/;"	e	enum:__anonfd34793d0203
+MOTOR_MODE_CURRENT	inc/motor_hal_types.h	/^    MOTOR_MODE_CURRENT       = 5,  \/* 电流环 *\/$/;"	e	enum:__anonfd34793d0203
+MOTOR_MODE_MIT	inc/motor_hal_types.h	/^    MOTOR_MODE_MIT           = 6,  \/* MIT: 阻抗控制 *\/$/;"	e	enum:__anonfd34793d0203
+MOTOR_MODE_PROFILE_POS	inc/motor_hal_types.h	/^    MOTOR_MODE_PROFILE_POS   = 1,  \/* PP:  轮廓位置 *\/$/;"	e	enum:__anonfd34793d0203
+MOTOR_MODE_PROFILE_VEL	inc/motor_hal_types.h	/^    MOTOR_MODE_PROFILE_VEL   = 2,  \/* PV:  轮廓速度 *\/$/;"	e	enum:__anonfd34793d0203
+MOTOR_SDO_TIMEOUT_MS	inc/motor_hal_types.h	/^#define MOTOR_SDO_TIMEOUT_MS /;"	d
+MOTOR_STATE_FAULT	inc/motor_hal_types.h	/^    MOTOR_STATE_FAULT           = 6,$/;"	e	enum:__anonfd34793d0303
+MOTOR_STATE_NOT_READY	inc/motor_hal_types.h	/^    MOTOR_STATE_NOT_READY       = 0,$/;"	e	enum:__anonfd34793d0303
+MOTOR_STATE_OP_ENABLED	inc/motor_hal_types.h	/^    MOTOR_STATE_OP_ENABLED      = 4,$/;"	e	enum:__anonfd34793d0303
+MOTOR_STATE_QUICK_STOP	inc/motor_hal_types.h	/^    MOTOR_STATE_QUICK_STOP      = 5,$/;"	e	enum:__anonfd34793d0303
+MOTOR_STATE_READY_TO_SW_ON	inc/motor_hal_types.h	/^    MOTOR_STATE_READY_TO_SW_ON  = 2,$/;"	e	enum:__anonfd34793d0303
+MOTOR_STATE_SWITCHED_ON	inc/motor_hal_types.h	/^    MOTOR_STATE_SWITCHED_ON     = 3,$/;"	e	enum:__anonfd34793d0303
+MOTOR_STATE_SWITCH_ON_DIS	inc/motor_hal_types.h	/^    MOTOR_STATE_SWITCH_ON_DIS   = 1,$/;"	e	enum:__anonfd34793d0303
+MOTOR_STATE_UNKNOWN	inc/motor_hal_types.h	/^    MOTOR_STATE_UNKNOWN         = 99,$/;"	e	enum:__anonfd34793d0303
+MOTOR_TOOL_DAEMON_H	tools/daemon.h	/^#define MOTOR_TOOL_DAEMON_H$/;"	d
+MOTOR_TOOL_SOCK_PATH	tools/daemon.h	/^#define MOTOR_TOOL_SOCK_PATH /;"	d
+Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层	README.md	/^# Motor HAL — 关节模组 CANopen\/CANFD 硬件抽象层$/;"	c
+NMT_CMD_PRE_OP	inc/motor_hal_types.h	/^#define NMT_CMD_PRE_OP /;"	d
+NMT_CMD_RESET_COMM	inc/motor_hal_types.h	/^#define NMT_CMD_RESET_COMM /;"	d
+NMT_CMD_RESET_NODE	inc/motor_hal_types.h	/^#define NMT_CMD_RESET_NODE /;"	d
+NMT_CMD_START	inc/motor_hal_types.h	/^#define NMT_CMD_START /;"	d
+NMT_CMD_STOP	inc/motor_hal_types.h	/^#define NMT_CMD_STOP /;"	d
+OD_CANFD_BAUD	inc/motor_hal_types.h	/^#define OD_CANFD_BAUD /;"	d
+OD_CONTROLWORD	inc/motor_hal_types.h	/^#define OD_CONTROLWORD /;"	d
+OD_CURRENT_ACTUAL	inc/motor_hal_types.h	/^#define OD_CURRENT_ACTUAL /;"	d
+OD_CURRENT_I	inc/motor_hal_types.h	/^#define OD_CURRENT_I /;"	d
+OD_CURRENT_P	inc/motor_hal_types.h	/^#define OD_CURRENT_P /;"	d
+OD_FIRMWARE_VER	inc/motor_hal_types.h	/^#define OD_FIRMWARE_VER /;"	d
+OD_HARDWARE_VER	inc/motor_hal_types.h	/^#define OD_HARDWARE_VER /;"	d
+OD_HEARTBEAT	inc/motor_hal_types.h	/^#define OD_HEARTBEAT /;"	d
+OD_MANUFACTURER	inc/motor_hal_types.h	/^#define OD_MANUFACTURER /;"	d
+OD_MAX_CURRENT	inc/motor_hal_types.h	/^#define OD_MAX_CURRENT /;"	d
+OD_MODE_OF_OP	inc/motor_hal_types.h	/^#define OD_MODE_OF_OP /;"	d
+OD_MODE_OF_OP_DISP	inc/motor_hal_types.h	/^#define OD_MODE_OF_OP_DISP /;"	d
+OD_MOTOR_MODEL	inc/motor_hal_types.h	/^#define OD_MOTOR_MODEL /;"	d
+OD_NODE_ID	inc/motor_hal_types.h	/^#define OD_NODE_ID /;"	d
+OD_POSITION_ACTUAL	inc/motor_hal_types.h	/^#define OD_POSITION_ACTUAL /;"	d
+OD_POSITION_I	inc/motor_hal_types.h	/^#define OD_POSITION_I /;"	d
+OD_POSITION_P	inc/motor_hal_types.h	/^#define OD_POSITION_P /;"	d
+OD_POS_LIMIT	inc/motor_hal_types.h	/^#define OD_POS_LIMIT /;"	d
+OD_PROFILE_ACCEL	inc/motor_hal_types.h	/^#define OD_PROFILE_ACCEL /;"	d
+OD_PROFILE_DECEL	inc/motor_hal_types.h	/^#define OD_PROFILE_DECEL /;"	d
+OD_PROFILE_VEL	inc/motor_hal_types.h	/^#define OD_PROFILE_VEL /;"	d
+OD_RPDO1_COMM	inc/pdo_mapper.h	/^#define OD_RPDO1_COMM /;"	d
+OD_RPDO1_COMM	src/pdo_mapper.h	/^#define OD_RPDO1_COMM /;"	d
+OD_RPDO1_MAP	inc/pdo_mapper.h	/^#define OD_RPDO1_MAP /;"	d
+OD_RPDO1_MAP	src/pdo_mapper.h	/^#define OD_RPDO1_MAP /;"	d
+OD_RPDO2_COMM	inc/pdo_mapper.h	/^#define OD_RPDO2_COMM /;"	d
+OD_RPDO2_COMM	src/pdo_mapper.h	/^#define OD_RPDO2_COMM /;"	d
+OD_RPDO2_MAP	inc/pdo_mapper.h	/^#define OD_RPDO2_MAP /;"	d
+OD_RPDO2_MAP	src/pdo_mapper.h	/^#define OD_RPDO2_MAP /;"	d
+OD_SAVE_FLASH	inc/motor_hal_types.h	/^#define OD_SAVE_FLASH /;"	d
+OD_STATUSWORD	inc/motor_hal_types.h	/^#define OD_STATUSWORD /;"	d
+OD_TARGET_POS	inc/motor_hal_types.h	/^#define OD_TARGET_POS /;"	d
+OD_TARGET_TORQUE	inc/motor_hal_types.h	/^#define OD_TARGET_TORQUE /;"	d
+OD_TARGET_VELOCITY	inc/motor_hal_types.h	/^#define OD_TARGET_VELOCITY /;"	d
+OD_TORQUE_ACTUAL	inc/motor_hal_types.h	/^#define OD_TORQUE_ACTUAL /;"	d
+OD_TPDO1_COMM	inc/pdo_mapper.h	/^#define OD_TPDO1_COMM /;"	d
+OD_TPDO1_COMM	src/pdo_mapper.h	/^#define OD_TPDO1_COMM /;"	d
+OD_TPDO1_MAP	inc/pdo_mapper.h	/^#define OD_TPDO1_MAP /;"	d
+OD_TPDO1_MAP	src/pdo_mapper.h	/^#define OD_TPDO1_MAP /;"	d
+OD_TPDO2_COMM	inc/pdo_mapper.h	/^#define OD_TPDO2_COMM /;"	d
+OD_TPDO2_COMM	src/pdo_mapper.h	/^#define OD_TPDO2_COMM /;"	d
+OD_TPDO2_MAP	inc/pdo_mapper.h	/^#define OD_TPDO2_MAP /;"	d
+OD_TPDO2_MAP	src/pdo_mapper.h	/^#define OD_TPDO2_MAP /;"	d
+OD_VELOCITY_ACTUAL	inc/motor_hal_types.h	/^#define OD_VELOCITY_ACTUAL /;"	d
+OD_VELOCITY_I	inc/motor_hal_types.h	/^#define OD_VELOCITY_I /;"	d
+OD_VELOCITY_P	inc/motor_hal_types.h	/^#define OD_VELOCITY_P /;"	d
+OD_WATCHDOG_LIMIT	inc/motor_hal_types.h	/^#define OD_WATCHDOG_LIMIT /;"	d
+OD_ZERO_POSITION	inc/motor_hal_types.h	/^#define OD_ZERO_POSITION /;"	d
+PDO_DEFAULT_RPDO1_COB	inc/pdo_mapper.h	/^#define PDO_DEFAULT_RPDO1_COB /;"	d
+PDO_DEFAULT_RPDO1_COB	src/pdo_mapper.h	/^#define PDO_DEFAULT_RPDO1_COB /;"	d
+PDO_DEFAULT_TPDO1_COB	inc/pdo_mapper.h	/^#define PDO_DEFAULT_TPDO1_COB /;"	d
+PDO_DEFAULT_TPDO1_COB	src/pdo_mapper.h	/^#define PDO_DEFAULT_TPDO1_COB /;"	d
+PDO_MAPPER_H	inc/pdo_mapper.h	/^#define PDO_MAPPER_H$/;"	d
+PDO_MAPPER_H	src/pdo_mapper.h	/^#define PDO_MAPPER_H$/;"	d
+PDO_RPDO1_COB	inc/pdo_mapper.h	/^#define PDO_RPDO1_COB(/;"	d
+PDO_RPDO1_COB	src/pdo_mapper.h	/^#define PDO_RPDO1_COB(/;"	d
+PDO_RPDO2_COB	inc/pdo_mapper.h	/^#define PDO_RPDO2_COB(/;"	d
+PDO_RPDO2_COB	src/pdo_mapper.h	/^#define PDO_RPDO2_COB(/;"	d
+PDO_RPDO2_COB_SAFE	inc/pdo_mapper.h	/^#define PDO_RPDO2_COB_SAFE(/;"	d
+PDO_RPDO2_COB_SAFE	src/pdo_mapper.h	/^#define PDO_RPDO2_COB_SAFE(/;"	d
+PDO_TPDO1_COB	inc/pdo_mapper.h	/^#define PDO_TPDO1_COB(/;"	d
+PDO_TPDO1_COB	src/pdo_mapper.h	/^#define PDO_TPDO1_COB(/;"	d
+PDO_TPDO2_COB	inc/pdo_mapper.h	/^#define PDO_TPDO2_COB(/;"	d
+PDO_TPDO2_COB	src/pdo_mapper.h	/^#define PDO_TPDO2_COB(/;"	d
+PDO_TTYPE_ASYNC_DEV	inc/pdo_mapper.h	/^#define PDO_TTYPE_ASYNC_DEV /;"	d
+PDO_TTYPE_ASYNC_DEV	src/pdo_mapper.h	/^#define PDO_TTYPE_ASYNC_DEV /;"	d
+PDO_TTYPE_ASYNC_MFG	inc/pdo_mapper.h	/^#define PDO_TTYPE_ASYNC_MFG /;"	d
+PDO_TTYPE_ASYNC_MFG	src/pdo_mapper.h	/^#define PDO_TTYPE_ASYNC_MFG /;"	d
+PDO_TTYPE_SYNC_ACYCLIC	inc/pdo_mapper.h	/^#define PDO_TTYPE_SYNC_ACYCLIC /;"	d
+PDO_TTYPE_SYNC_ACYCLIC	src/pdo_mapper.h	/^#define PDO_TTYPE_SYNC_ACYCLIC /;"	d
+PDO_TTYPE_SYNC_CYCLIC	inc/pdo_mapper.h	/^#define PDO_TTYPE_SYNC_CYCLIC(/;"	d
+PDO_TTYPE_SYNC_CYCLIC	src/pdo_mapper.h	/^#define PDO_TTYPE_SYNC_CYCLIC(/;"	d
+PLATFORM_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define PLATFORM_ID /;"	d	file:
+PLATFORM_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define PLATFORM_ID$/;"	d	file:
+PLATFORM_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define PLATFORM_ID /;"	d	file:
+PLATFORM_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define PLATFORM_ID$/;"	d	file:
+PLATFORM_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define PLATFORM_ID /;"	d	file:
+PLATFORM_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define PLATFORM_ID$/;"	d	file:
+PLATFORM_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define PLATFORM_ID /;"	d	file:
+PLATFORM_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define PLATFORM_ID$/;"	d	file:
+RESP_BUF_SIZE	tools/daemon.c	/^#define RESP_BUF_SIZE /;"	d	file:
+RIGHT_NODE_ID	examples/dual_motor_full.c	/^#define RIGHT_NODE_ID /;"	d	file:
+RM	build/Makefile	/^RM = \/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/cmake -E rm -f$/;"	m
+RM	tools/build/Makefile	/^RM = \/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/cmake -E rm -f$/;"	m
+RT 实时控制模式	README.md	/^### RT 实时控制模式$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""使用模式
+SDO_CC_ABORT	inc/motor_hal_types.h	/^#define SDO_CC_ABORT /;"	d
+SDO_CC_DOWNLOAD_1B	inc/motor_hal_types.h	/^#define SDO_CC_DOWNLOAD_1B /;"	d
+SDO_CC_DOWNLOAD_2B	inc/motor_hal_types.h	/^#define SDO_CC_DOWNLOAD_2B /;"	d
+SDO_CC_DOWNLOAD_4B	inc/motor_hal_types.h	/^#define SDO_CC_DOWNLOAD_4B /;"	d
+SDO_CC_UPLOAD_REQ	inc/motor_hal_types.h	/^#define SDO_CC_UPLOAD_REQ /;"	d
+SDO_CC_UPLOAD_RSP_1B	inc/motor_hal_types.h	/^#define SDO_CC_UPLOAD_RSP_1B /;"	d
+SDO_CC_UPLOAD_RSP_2B	inc/motor_hal_types.h	/^#define SDO_CC_UPLOAD_RSP_2B /;"	d
+SDO_CC_UPLOAD_RSP_4B	inc/motor_hal_types.h	/^#define SDO_CC_UPLOAD_RSP_4B /;"	d
+SDO_CLIENT_INTERNAL_H	src/sdo_client_internal.h	/^#define SDO_CLIENT_INTERNAL_H$/;"	d
+SDO_QUEUE_SIZE	src/sdo_client.c	/^#define SDO_QUEUE_SIZE /;"	d	file:
+SDO_W	src/pdo_mapper.c	/^#define SDO_W(/;"	d	file:
+SHELL	build/Makefile	/^SHELL = \/bin\/sh$/;"	m
+SHELL	tools/build/Makefile	/^SHELL = \/bin\/sh$/;"	m
+SIMULATE_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define SIMULATE_ID /;"	d	file:
+SIMULATE_ID	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define SIMULATE_ID /;"	d	file:
+SIMULATE_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define SIMULATE_ID /;"	d	file:
+SIMULATE_ID	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define SIMULATE_ID /;"	d	file:
+SIMULATE_VERSION_MAJOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define SIMULATE_VERSION_MAJOR /;"	d	file:
+SIMULATE_VERSION_MAJOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define SIMULATE_VERSION_MAJOR /;"	d	file:
+SIMULATE_VERSION_MAJOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define SIMULATE_VERSION_MAJOR /;"	d	file:
+SIMULATE_VERSION_MAJOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define SIMULATE_VERSION_MAJOR /;"	d	file:
+SIMULATE_VERSION_MINOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define SIMULATE_VERSION_MINOR /;"	d	file:
+SIMULATE_VERSION_MINOR	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define SIMULATE_VERSION_MINOR /;"	d	file:
+SIMULATE_VERSION_MINOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define SIMULATE_VERSION_MINOR /;"	d	file:
+SIMULATE_VERSION_MINOR	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define SIMULATE_VERSION_MINOR /;"	d	file:
+SIMULATE_VERSION_PATCH	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define SIMULATE_VERSION_PATCH /;"	d	file:
+SIMULATE_VERSION_PATCH	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define SIMULATE_VERSION_PATCH /;"	d	file:
+SIMULATE_VERSION_PATCH	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define SIMULATE_VERSION_PATCH /;"	d	file:
+SIMULATE_VERSION_PATCH	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#   define SIMULATE_VERSION_PATCH /;"	d	file:
+SIMULATE_VERSION_PATCH	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define SIMULATE_VERSION_PATCH /;"	d	file:
+SIMULATE_VERSION_PATCH	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define SIMULATE_VERSION_PATCH /;"	d	file:
+STARTUP_TIMEOUT_MS	examples/dual_motor_full.c	/^#define STARTUP_TIMEOUT_MS /;"	d	file:
+STRINGIFY	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#define STRINGIFY(/;"	d	file:
+STRINGIFY	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#define STRINGIFY(/;"	d	file:
+STRINGIFY_HELPER	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#define STRINGIFY_HELPER(/;"	d	file:
+STRINGIFY_HELPER	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#define STRINGIFY_HELPER(/;"	d	file:
+SW_FAULT	inc/motor_hal_types.h	/^#define SW_FAULT /;"	d
+SW_FAULT_STATE	inc/motor_hal_types.h	/^#define SW_FAULT_STATE /;"	d
+SW_INTERNAL_LIMIT	inc/motor_hal_types.h	/^#define SW_INTERNAL_LIMIT /;"	d
+SW_NOT_READY	inc/motor_hal_types.h	/^#define SW_NOT_READY /;"	d
+SW_ON_DISABLED	inc/motor_hal_types.h	/^#define SW_ON_DISABLED /;"	d
+SW_OP_ENABLED	inc/motor_hal_types.h	/^#define SW_OP_ENABLED /;"	d
+SW_QUICK_STOP	inc/motor_hal_types.h	/^#define SW_QUICK_STOP /;"	d
+SW_QUICK_STOP_STATE	inc/motor_hal_types.h	/^#define SW_QUICK_STOP_STATE /;"	d
+SW_READY_TO_SW_ON	inc/motor_hal_types.h	/^#define SW_READY_TO_SW_ON /;"	d
+SW_STATE_MASK	inc/motor_hal_types.h	/^#define SW_STATE_MASK /;"	d
+SW_SWITCHED_ON	inc/motor_hal_types.h	/^#define SW_SWITCHED_ON /;"	d
+SW_SWITCH_ON_DISABLED	inc/motor_hal_types.h	/^#define SW_SWITCH_ON_DISABLED /;"	d
+SW_TARGET_REACHED	inc/motor_hal_types.h	/^#define SW_TARGET_REACHED /;"	d
+SW_VOLTAGE_ENABLED	inc/motor_hal_types.h	/^#define SW_VOLTAGE_ENABLED /;"	d
+SW_WARNING	inc/motor_hal_types.h	/^#define SW_WARNING /;"	d
+TOOLCHAIN_PREFIX	toolchain.cmake	/^set(TOOLCHAIN_PREFIX \/opt\/gcc-arm-12.4-x86_64-aarch64-linux-gnu\/bin\/aarch64-buildroot-linux-/;"	v
+TOOL_BROADCAST_ID	tools/tool_hal.h	/^#define TOOL_BROADCAST_ID /;"	d
+TOOL_HAL_H	tools/tool_hal.h	/^#define TOOL_HAL_H$/;"	d
+TOOL_MAX_MOTORS	tools/tool_hal.h	/^#define TOOL_MAX_MOTORS /;"	d
+_GNU_SOURCE	src/sdo_client.c	/^#define _GNU_SOURCE$/;"	d	file:
+__anon1d8b71d20103	tools/command_registry.h	/^enum {$/;"	g
+__anon1d8b71d20208	tools/command_registry.h	/^typedef struct {$/;"	s
+__anon4b25bc2c0108	examples/dual_motor_full.c	/^typedef struct {$/;"	s	file:
+__anon4f6696710108	src/sdo_client.c	/^typedef struct {$/;"	s	file:
+__anon675df98a0108	src/can_driver.c	/^typedef struct {$/;"	s	file:
+__anonaca8a77a0108	examples/dual_motor.c	/^static struct {$/;"	s	file:
+__anonf1dab0120108	src/motor_hal.c	/^typedef struct {$/;"	s	file:
+__anonfd34793d0108	inc/motor_hal_types.h	/^typedef struct {$/;"	s
+__anonfd34793d0203	inc/motor_hal_types.h	/^typedef enum {$/;"	g
+__anonfd34793d0303	inc/motor_hal_types.h	/^typedef enum {$/;"	g
+__anonfd34793d0408	inc/motor_hal_types.h	/^typedef struct {$/;"	s
+__anonfd34793d0508	inc/motor_hal_types.h	/^typedef struct {$/;"	s
+__anonfd34793d0608	inc/motor_hal_types.h	/^typedef struct {$/;"	s
+__anonfd34793d0708	inc/motor_hal_types.h	/^typedef struct {$/;"	s
+__has_include	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define __has_include(/;"	d	file:
+__has_include	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^#  define __has_include(/;"	d	file:
+_accept_loop	tools/daemon.c	/^static void _accept_loop(void)$/;"	f	typeref:typename:void	file:
+_broadcast_op	tools/cmd_system.c	/^static int _broadcast_op(int id,$/;"	f	typeref:typename:int	file:
+_create_socket	tools/daemon.c	/^static int _create_socket(void)$/;"	f	typeref:typename:int	file:
+_daemonize	tools/daemon.c	/^static void _daemonize(void)$/;"	f	typeref:typename:void	file:
+_disable_fn	tools/cmd_system.c	/^static int _disable_fn(motor_hal_t *h, uint8_t id) { return motor_hal_disable(h, id); }$/;"	f	typeref:typename:int	file:
+_dispatch_frame	src/motor_hal.c	/^static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)$/;"	f	typeref:typename:void	file:
+_enable_fn	tools/cmd_system.c	/^static int _enable_fn(motor_hal_t *h, uint8_t id)  { return motor_hal_enable(h, id); }$/;"	f	typeref:typename:int	file:
+_find_cmd	tools/command_registry.c	/^static const command_entry_t* _find_cmd(const char *name)$/;"	f	typeref:typename:const command_entry_t *	file:
+_find_motor	src/motor_hal.c	/^static motor_node_t* _find_motor(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:motor_node_t *	file:
+_now_us	examples/dual_motor.c	/^static uint64_t _now_us(void) {$/;"	f	typeref:typename:uint64_t	file:
+_now_us	examples/mit_control.c	/^static uint64_t _now_us(void) {$/;"	f	typeref:typename:uint64_t	file:
+_now_us	examples/single_motor.c	/^static uint64_t _now_us(void) {$/;"	f	typeref:typename:uint64_t	file:
+_now_us	src/canopen_frames.c	/^static uint64_t _now_us(void) {$/;"	f	typeref:typename:uint64_t	file:
+_now_us	tools/tool_hal.c	/^static uint64_t _now_us(void)$/;"	f	typeref:typename:uint64_t	file:
+_parse_id_and_val	tools/cmd_control.c	/^static int _parse_id_and_val(int argc, char **argv, int *id, int *val_x100)$/;"	f	typeref:typename:int	file:
+_parse_ids	tools/tool_hal.c	/^static int _parse_ids(int id, int *ids, int *count)$/;"	f	typeref:typename:int	file:
+_process_command	tools/daemon.c	/^static void _process_command(int client_fd, char *cmdline)$/;"	f	typeref:typename:void	file:
+_read_broadcast	tools/tool_hal.c	/^static int _read_broadcast(int id, read_one_fn fn)$/;"	f	typeref:typename:int	file:
+_read_one_all	tools/tool_hal.c	/^static int _read_one_all(uint8_t id)$/;"	f	typeref:typename:int	file:
+_read_one_angle	tools/tool_hal.c	/^static int _read_one_angle(uint8_t id)$/;"	f	typeref:typename:int	file:
+_read_one_current	tools/tool_hal.c	/^static int _read_one_current(uint8_t id)$/;"	f	typeref:typename:int	file:
+_read_one_error	tools/tool_hal.c	/^static int _read_one_error(uint8_t id)$/;"	f	typeref:typename:int	file:
+_read_one_speed	tools/tool_hal.c	/^static int _read_one_speed(uint8_t id)$/;"	f	typeref:typename:int	file:
+_read_one_state	tools/tool_hal.c	/^static int _read_one_state(uint8_t id)$/;"	f	typeref:typename:int	file:
+_read_one_temp	tools/tool_hal.c	/^static int _read_one_temp(uint8_t id)$/;"	f	typeref:typename:int	file:
+_read_one_version	tools/tool_hal.c	/^static int _read_one_version(uint8_t id)$/;"	f	typeref:typename:int	file:
+_recv_thread_fn	src/motor_hal.c	/^static void* _recv_thread_fn(void *arg)$/;"	f	typeref:typename:void *	file:
+_reset_fn	tools/cmd_system.c	/^static int _reset_fn(motor_hal_t *h, uint8_t id)   { return motor_hal_fault_reset(h, id); }$/;"	f	typeref:typename:int	file:
+_sdo_w	src/pdo_mapper.c	/^static int _sdo_w(can_driver_t *drv, uint8_t node,$/;"	f	typeref:typename:int	file:
+_sdo_wait_response	src/sdo_client.c	/^static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),$/;"	f	typeref:typename:int	file:
+_send_response	tools/daemon.c	/^static void _send_response(int fd, const char *type, const char *msg, int ret)$/;"	f	typeref:typename:void	file:
+_send_watch_line	tools/daemon.c	/^static void _send_watch_line(int fd, const char *line)$/;"	f	typeref:typename:void	file:
+_set_state	src/motor_hal.c	/^static void _set_state(motor_hal_t *hal __attribute__((unused)), motor_node_t *m, motor_state_t /;"	f	typeref:typename:void	file:
+_sig_handler	tools/daemon.c	/^static void _sig_handler(int sig)$/;"	f	typeref:typename:void	file:
+_startup_single	tools/cmd_system.c	/^static int _startup_single(int id)$/;"	f	typeref:typename:int	file:
+_x100_to_float	tools/tool_hal.c	/^static inline float _x100_to_float(int val_x100) {$/;"	f	typeref:typename:float	file:
+_x100_to_u16	tools/tool_hal.c	/^static inline uint16_t _x100_to_u16(int val_x100) {$/;"	f	typeref:typename:uint16_t	file:
+a/src/motor_hal.c	motor_hal_diagnostic.patch	/^--- a\/src\/motor_hal.c$/;"	m
+a/src/motor_hal_startup.c	motor_hal_diagnostic.patch	/^--- a\/src\/motor_hal_startup.c$/;"	m
+a/tools/daemon.c	motor_hal_diagnostic.patch	/^--- a\/tools\/daemon.c$/;"	m
+all	build/Makefile	/^all: cmake_check_build_system$/;"	t
+all	tools/build/Makefile	/^all: cmake_check_build_system$/;"	t
+angle_deg	examples/dual_motor.c	/^    float angle_deg;$/;"	m	struct:__anonaca8a77a0108	typeref:typename:float	file:
+angle_deg	examples/dual_motor_full.c	/^    float    angle_deg;       \/* 角度 (°) *\/$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:float	file:
+auto_enable	inc/motor_hal_types.h	/^    bool     auto_enable;         \/* startup 自动使能 *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:bool
+bootup_received	src/motor_hal.c	/^    bool        bootup_received;$/;"	m	struct:__anonf1dab0120108	typeref:typename:bool	file:
+bootup_timeout_ms	inc/motor_hal_types.h	/^    int      bootup_timeout_ms;   \/* 启动超时 *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:int
+brake_released	examples/dual_motor_full.c	/^    bool     brake_released;$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:bool	file:
+cached_fb	src/motor_hal.c	/^    motor_feedback_t cached_fb;$/;"	m	struct:__anonf1dab0120108	typeref:typename:motor_feedback_t	file:
+can_driver_close	src/can_driver.c	/^void can_driver_close(can_driver_t *drv)$/;"	f	typeref:typename:void
+can_driver_fd	src/can_driver.c	/^int can_driver_fd(can_driver_t *drv)$/;"	f	typeref:typename:int
+can_driver_iface	src/can_driver.c	/^const char* can_driver_iface(can_driver_t *drv)$/;"	f	typeref:typename:const char *
+can_driver_open	src/can_driver.c	/^int can_driver_open(const char *iface, uint32_t arb_bitrate __attribute__((unused)), uint32_t da/;"	f	typeref:typename:int
+can_driver_recv	src/can_driver.c	/^int can_driver_recv(can_driver_t *drv, canfd_frame_t *frame, int timeout_ms)$/;"	f	typeref:typename:int
+can_driver_send	src/can_driver.c	/^int can_driver_send(can_driver_t *drv, const canfd_frame_t *frame)$/;"	f	typeref:typename:int
+can_driver_set_filter	src/can_driver.c	/^int can_driver_set_filter(can_driver_t *drv, uint32_t can_id, uint32_t can_mask)$/;"	f	typeref:typename:int
+can_driver_stats	src/can_driver.c	/^void can_driver_stats(can_driver_t *drv, uint64_t *tx, uint64_t *rx,$/;"	f	typeref:typename:void
+can_driver_t	src/can_driver.c	/^} can_driver_t;$/;"	t	typeref:struct:__anon675df98a0108	file:
+can_driver_t	src/can_driver_internal.h	/^typedef struct can_driver_s can_driver_t;$/;"	t	typeref:struct:can_driver_s
+canfd_frame_t	inc/motor_hal_types.h	/^} canfd_frame_t;$/;"	t	typeref:struct:__anonfd34793d0108
+canfd_init	examples/dual_motor_full.c	/^static int canfd_init(motor_hal_t *hal)$/;"	f	typeref:typename:int	file:
+canopen_custom_pdo_build	src/canopen_frames.c	/^void canopen_custom_pdo_build(uint8_t node, motor_mode_t mode,$/;"	f	typeref:typename:void
+canopen_extract_node	inc/canopen_frames.h	/^static inline uint8_t canopen_extract_node(uint32_t can_id, uint32_t base) {$/;"	f	typeref:typename:uint8_t
+canopen_func_code	inc/canopen_frames.h	/^static inline uint32_t canopen_func_code(uint32_t can_id) {$/;"	f	typeref:typename:uint32_t
+canopen_is_bootup	inc/canopen_frames.h	/^static inline bool canopen_is_bootup(uint32_t can_id, uint8_t data0) {$/;"	f	typeref:typename:bool
+canopen_is_emcy	inc/canopen_frames.h	/^static inline bool canopen_is_emcy(uint32_t can_id) {$/;"	f	typeref:typename:bool
+canopen_mit_pdo_build	src/canopen_frames.c	/^void canopen_mit_pdo_build(uint8_t node, motor_mode_t mode,$/;"	f	typeref:typename:void
+canopen_multi_ctrl_build	src/canopen_frames.c	/^void canopen_multi_ctrl_build(const multi_axis_cmd_t *cmds, uint8_t count,$/;"	f	typeref:typename:void
+canopen_nmt_build	src/canopen_frames.c	/^void canopen_nmt_build(uint8_t cmd, uint8_t node, canfd_frame_t *f)$/;"	f	typeref:typename:void
+canopen_parse_feedback	src/canopen_frames.c	/^void canopen_parse_feedback(const canfd_frame_t *f, motor_feedback_t *fb)$/;"	f	typeref:typename:void
+canopen_sdo_parse_response	src/canopen_frames.c	/^bool canopen_sdo_parse_response(const canfd_frame_t *f,$/;"	f	typeref:typename:bool
+canopen_sdo_read_build	src/canopen_frames.c	/^void canopen_sdo_read_build(uint8_t node, uint16_t index, uint8_t subidx,$/;"	f	typeref:typename:void
+canopen_sdo_write_build	src/canopen_frames.c	/^void canopen_sdo_write_build(uint8_t node, uint16_t index, uint8_t subidx,$/;"	f	typeref:typename:void
+canopen_sync_build	src/canopen_frames.c	/^void canopen_sync_build(canfd_frame_t *f)$/;"	f	typeref:typename:void
+clean	build/Makefile	/^clean:$/;"	t
+clean	tools/build/Makefile	/^clean:$/;"	t
+clean/fast	build/Makefile	/^clean\/fast: clean$/;"	t
+clean/fast	tools/build/Makefile	/^clean\/fast: clean$/;"	t
+clear_error	inc/motor_hal_types.h	/^    bool      clear_error;$/;"	m	struct:__anonfd34793d0708	typeref:typename:bool
+client_send	tools/daemon.c	/^int client_send(int argc, char **argv)$/;"	f	typeref:typename:int
+cmake_check_build_system	build/Makefile	/^cmake_check_build_system:$/;"	t
+cmake_check_build_system	tools/build/Makefile	/^cmake_check_build_system:$/;"	t
+cmake_force	build/Makefile	/^cmake_force:$/;"	t
+cmake_force	tools/build/Makefile	/^cmake_force:$/;"	t
+cmd_control.c.i	tools/build/Makefile	/^cmd_control.c.i:$/;"	t
+cmd_control.c.o	tools/build/Makefile	/^cmd_control.c.o:$/;"	t
+cmd_control.c.s	tools/build/Makefile	/^cmd_control.c.s:$/;"	t
+cmd_control.i	tools/build/Makefile	/^cmd_control.i: cmd_control.c.i$/;"	t
+cmd_control.o	tools/build/Makefile	/^cmd_control.o: cmd_control.c.o$/;"	t
+cmd_control.s	tools/build/Makefile	/^cmd_control.s: cmd_control.c.s$/;"	t
+cmd_dispatch	tools/command_registry.c	/^int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_abs	tools/cmd_control.c	/^int cmd_do_abs(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_accel	tools/cmd_control.c	/^int cmd_do_accel(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_disable	tools/cmd_system.c	/^int cmd_do_disable(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_enable	tools/cmd_system.c	/^int cmd_do_enable(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_help	tools/cmd_help.c	/^int cmd_do_help(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_init	tools/cmd_system.c	/^int cmd_do_init(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_maxv	tools/cmd_control.c	/^int cmd_do_maxv(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_mode	tools/cmd_control.c	/^int cmd_do_mode(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_read	tools/cmd_read.c	/^int cmd_do_read(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_rel	tools/cmd_control.c	/^int cmd_do_rel(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_reset	tools/cmd_system.c	/^int cmd_do_reset(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_speed	tools/cmd_control.c	/^int cmd_do_speed(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_startup	tools/cmd_system.c	/^int cmd_do_startup(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_stop	tools/cmd_control.c	/^int cmd_do_stop(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_do_watch	tools/cmd_watch.c	/^int cmd_do_watch(motor_hal_t *hal, int cmd_id, int argc, char **argv)$/;"	f	typeref:typename:int
+cmd_handler_t	tools/command_registry.h	/^typedef int (*cmd_handler_t)(motor_hal_t *hal, int cmd_id, int argc, char **argv);$/;"	t	typeref:typename:int (*)(motor_hal_t * hal,int cmd_id,int argc,char ** argv)
+cmd_help.c.i	tools/build/Makefile	/^cmd_help.c.i:$/;"	t
+cmd_help.c.o	tools/build/Makefile	/^cmd_help.c.o:$/;"	t
+cmd_help.c.s	tools/build/Makefile	/^cmd_help.c.s:$/;"	t
+cmd_help.i	tools/build/Makefile	/^cmd_help.i: cmd_help.c.i$/;"	t
+cmd_help.o	tools/build/Makefile	/^cmd_help.o: cmd_help.c.o$/;"	t
+cmd_help.s	tools/build/Makefile	/^cmd_help.s: cmd_help.c.s$/;"	t
+cmd_read.c.i	tools/build/Makefile	/^cmd_read.c.i:$/;"	t
+cmd_read.c.o	tools/build/Makefile	/^cmd_read.c.o:$/;"	t
+cmd_read.c.s	tools/build/Makefile	/^cmd_read.c.s:$/;"	t
+cmd_read.i	tools/build/Makefile	/^cmd_read.i: cmd_read.c.i$/;"	t
+cmd_read.o	tools/build/Makefile	/^cmd_read.o: cmd_read.c.o$/;"	t
+cmd_read.s	tools/build/Makefile	/^cmd_read.s: cmd_read.c.s$/;"	t
+cmd_system.c.i	tools/build/Makefile	/^cmd_system.c.i:$/;"	t
+cmd_system.c.o	tools/build/Makefile	/^cmd_system.c.o:$/;"	t
+cmd_system.c.s	tools/build/Makefile	/^cmd_system.c.s:$/;"	t
+cmd_system.i	tools/build/Makefile	/^cmd_system.i: cmd_system.c.i$/;"	t
+cmd_system.o	tools/build/Makefile	/^cmd_system.o: cmd_system.c.o$/;"	t
+cmd_system.s	tools/build/Makefile	/^cmd_system.s: cmd_system.c.s$/;"	t
+cmd_watch.c.i	tools/build/Makefile	/^cmd_watch.c.i:$/;"	t
+cmd_watch.c.o	tools/build/Makefile	/^cmd_watch.c.o:$/;"	t
+cmd_watch.c.s	tools/build/Makefile	/^cmd_watch.c.s:$/;"	t
+cmd_watch.i	tools/build/Makefile	/^cmd_watch.i: cmd_watch.c.i$/;"	t
+cmd_watch.o	tools/build/Makefile	/^cmd_watch.o: cmd_watch.c.o$/;"	t
+cmd_watch.s	tools/build/Makefile	/^cmd_watch.s: cmd_watch.c.s$/;"	t
+command_entry_t	tools/command_registry.h	/^} command_entry_t;$/;"	t	typeref:struct:__anon1d8b71d20208
+command_registry.c.i	tools/build/Makefile	/^command_registry.c.i:$/;"	t
+command_registry.c.o	tools/build/Makefile	/^command_registry.c.o:$/;"	t
+command_registry.c.s	tools/build/Makefile	/^command_registry.c.s:$/;"	t
+command_registry.i	tools/build/Makefile	/^command_registry.i: command_registry.c.i$/;"	t
+command_registry.o	tools/build/Makefile	/^command_registry.o: command_registry.c.o$/;"	t
+command_registry.s	tools/build/Makefile	/^command_registry.s: command_registry.c.s$/;"	t
+cond	src/sdo_client.c	/^    pthread_cond_t  cond;$/;"	m	struct:__anon4f6696710108	typeref:typename:pthread_cond_t	file:
+config	src/motor_hal.c	/^    motor_config_t config;$/;"	m	struct:__anonf1dab0120108	typeref:typename:motor_config_t	file:
+const	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define const$/;"	d	file:
+const	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define const$/;"	d	file:
+count	src/sdo_client.c	/^    int           count;    \/* 当前数量 *\/$/;"	m	struct:__anon4f6696710108	typeref:typename:int	file:
+current_a	examples/dual_motor.c	/^    float current_a;$/;"	m	struct:__anonaca8a77a0108	typeref:typename:float	file:
+current_i	inc/motor_hal_types.h	/^    uint16_t current_i;$/;"	m	struct:__anonfd34793d0608	typeref:typename:uint16_t
+current_iq	inc/motor_hal_types.h	/^    int16_t  current_iq;        \/* Iq 电流 (mA) *\/$/;"	m	struct:__anonfd34793d0408	typeref:typename:int16_t
+current_ma	examples/dual_motor_full.c	/^    int16_t  current_ma;      \/* 电流 (mA) *\/$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:int16_t	file:
+current_p	inc/motor_hal_types.h	/^    uint16_t current_p;$/;"	m	struct:__anonfd34793d0608	typeref:typename:uint16_t
+daemon.c.i	tools/build/Makefile	/^daemon.c.i:$/;"	t
+daemon.c.o	tools/build/Makefile	/^daemon.c.o:$/;"	t
+daemon.c.s	tools/build/Makefile	/^daemon.c.s:$/;"	t
+daemon.i	tools/build/Makefile	/^daemon.i: daemon.c.i$/;"	t
+daemon.o	tools/build/Makefile	/^daemon.o: daemon.c.o$/;"	t
+daemon.s	tools/build/Makefile	/^daemon.s: daemon.c.s$/;"	t
+daemon_get_client_fd	tools/daemon.c	/^int daemon_get_client_fd(void) { return g_client_fd; }$/;"	f	typeref:typename:int
+daemon_start	tools/daemon.c	/^int daemon_start(const char *iface)$/;"	f	typeref:typename:int
+daemon_stop	tools/daemon.c	/^int daemon_stop(void)$/;"	f	typeref:typename:int
+daemon_watch_print	tools/daemon.c	/^void daemon_watch_print(const char *line)$/;"	f	typeref:typename:void
+data	inc/motor_hal_types.h	/^    uint8_t  data[CANFD_MAX_DLC];    \/* 数据 *\/$/;"	m	struct:__anonfd34793d0108	typeref:typename:uint8_t[]
+default_target	build/Makefile	/^default_target: all$/;"	t
+default_target	tools/build/Makefile	/^default_target: all$/;"	t
+depend	build/Makefile	/^depend:$/;"	t
+depend	tools/build/Makefile	/^depend:$/;"	t
+disable_watchdog	inc/motor_hal_types.h	/^    bool     disable_watchdog;    \/* 上电关闭看门狗 *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:bool
+dlc	inc/motor_hal_types.h	/^    uint8_t  dlc;                    \/* 数据长度 *\/$/;"	m	struct:__anonfd34793d0108	typeref:typename:uint8_t
+drv	src/motor_hal.c	/^    can_driver_t *drv;$/;"	m	struct:motor_hal	typeref:typename:can_driver_t *	file:
+edit_cache	build/Makefile	/^edit_cache:$/;"	t
+edit_cache	tools/build/Makefile	/^edit_cache:$/;"	t
+edit_cache/fast	build/Makefile	/^edit_cache\/fast: edit_cache$/;"	t
+edit_cache/fast	tools/build/Makefile	/^edit_cache\/fast: edit_cache$/;"	t
+enable	inc/motor_hal_types.h	/^    bool      enable;$/;"	m	struct:__anonfd34793d0708	typeref:typename:bool
+enabled	examples/dual_motor_full.c	/^    bool     enabled;$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:bool	file:
+enabled	src/motor_hal.c	/^    bool        enabled;$/;"	m	struct:__anonf1dab0120108	typeref:typename:bool	file:
+err_cb	src/motor_hal.c	/^    motor_error_cb_t    err_cb;$/;"	m	struct:__anonf1dab0120108	typeref:typename:motor_error_cb_t	file:
+err_ctx	src/motor_hal.c	/^    void               *err_ctx;$/;"	m	struct:__anonf1dab0120108	typeref:typename:void *	file:
+error_code	examples/dual_motor_full.c	/^    uint16_t error_code;$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:uint16_t	file:
+error_code	inc/motor_hal_types.h	/^    uint16_t error_code;        \/* 错误码 *\/$/;"	m	struct:__anonfd34793d0408	typeref:typename:uint16_t
+examples/dual_motor.c.i	build/Makefile	/^examples\/dual_motor.c.i:$/;"	t
+examples/dual_motor.c.o	build/Makefile	/^examples\/dual_motor.c.o:$/;"	t
+examples/dual_motor.c.s	build/Makefile	/^examples\/dual_motor.c.s:$/;"	t
+examples/dual_motor.i	build/Makefile	/^examples\/dual_motor.i: examples\/dual_motor.c.i$/;"	t
+examples/dual_motor.o	build/Makefile	/^examples\/dual_motor.o: examples\/dual_motor.c.o$/;"	t
+examples/dual_motor.s	build/Makefile	/^examples\/dual_motor.s: examples\/dual_motor.c.s$/;"	t
+examples/dual_motor_full.c.i	build/Makefile	/^examples\/dual_motor_full.c.i:$/;"	t
+examples/dual_motor_full.c.o	build/Makefile	/^examples\/dual_motor_full.c.o:$/;"	t
+examples/dual_motor_full.c.s	build/Makefile	/^examples\/dual_motor_full.c.s:$/;"	t
+examples/dual_motor_full.i	build/Makefile	/^examples\/dual_motor_full.i: examples\/dual_motor_full.c.i$/;"	t
+examples/dual_motor_full.o	build/Makefile	/^examples\/dual_motor_full.o: examples\/dual_motor_full.c.o$/;"	t
+examples/dual_motor_full.s	build/Makefile	/^examples\/dual_motor_full.s: examples\/dual_motor_full.c.s$/;"	t
+examples/mit_control.c.i	build/Makefile	/^examples\/mit_control.c.i:$/;"	t
+examples/mit_control.c.o	build/Makefile	/^examples\/mit_control.c.o:$/;"	t
+examples/mit_control.c.s	build/Makefile	/^examples\/mit_control.c.s:$/;"	t
+examples/mit_control.i	build/Makefile	/^examples\/mit_control.i: examples\/mit_control.c.i$/;"	t
+examples/mit_control.o	build/Makefile	/^examples\/mit_control.o: examples\/mit_control.c.o$/;"	t
+examples/mit_control.s	build/Makefile	/^examples\/mit_control.s: examples\/mit_control.c.s$/;"	t
+examples/single_motor.c.i	build/Makefile	/^examples\/single_motor.c.i:$/;"	t
+examples/single_motor.c.o	build/Makefile	/^examples\/single_motor.c.o:$/;"	t
+examples/single_motor.c.s	build/Makefile	/^examples\/single_motor.c.s:$/;"	t
+examples/single_motor.i	build/Makefile	/^examples\/single_motor.i: examples\/single_motor.c.i$/;"	t
+examples/single_motor.o	build/Makefile	/^examples\/single_motor.o: examples\/single_motor.c.o$/;"	t
+examples/single_motor.s	build/Makefile	/^examples\/single_motor.s: examples\/single_motor.c.s$/;"	t
+fb_cb	src/motor_hal.c	/^    motor_feedback_cb_t fb_cb;$/;"	m	struct:__anonf1dab0120108	typeref:typename:motor_feedback_cb_t	file:
+fb_ctx	src/motor_hal.c	/^    void               *fb_ctx;$/;"	m	struct:__anonf1dab0120108	typeref:typename:void *	file:
+fb_lock	src/motor_hal.c	/^    pthread_mutex_t fb_lock;$/;"	m	struct:__anonf1dab0120108	typeref:typename:pthread_mutex_t	file:
+feedback_brake_released	src/feedback_parser.c	/^bool feedback_brake_released(const motor_feedback_t *fb) {$/;"	f	typeref:typename:bool
+feedback_error_string	src/feedback_parser.c	/^const char* feedback_error_string(uint16_t err) {$/;"	f	typeref:typename:const char *
+feedback_has_error	src/feedback_parser.c	/^bool feedback_has_error(const motor_feedback_t *fb) {$/;"	f	typeref:typename:bool
+feedback_is_enabled	src/feedback_parser.c	/^bool feedback_is_enabled(const motor_feedback_t *fb) {$/;"	f	typeref:typename:bool
+feedback_parse_raw	src/feedback_parser.c	/^void feedback_parse_raw(const canfd_frame_t *f, motor_feedback_t *out)$/;"	f	typeref:typename:void
+feedback_target_reached	src/feedback_parser.c	/^bool feedback_target_reached(const motor_feedback_t *fb) {$/;"	f	typeref:typename:bool
+feedforward	inc/motor_hal_types.h	/^    int16_t   feedforward;$/;"	m	struct:__anonfd34793d0708	typeref:typename:int16_t
+frames	src/sdo_client.c	/^    canfd_frame_t frames[SDO_QUEUE_SIZE];$/;"	m	struct:__anon4f6696710108	typeref:typename:canfd_frame_t[]	file:
+g_client_fd	tools/daemon.c	/^static int g_client_fd = -1;$/;"	v	typeref:typename:int	file:
+g_cmd_count	tools/command_registry.c	/^const int g_cmd_count = sizeof(g_cmd_table) \/ sizeof(g_cmd_table[0]);$/;"	v	typeref:typename:const int
+g_cmd_table	tools/command_registry.c	/^const command_entry_t g_cmd_table[] = {$/;"	v	typeref:typename:const command_entry_t[]
+g_daemon_running	tools/daemon.c	/^static volatile int g_daemon_running = 0;$/;"	v	typeref:typename:volatile int	file:
+g_hal	tools/tool_hal.c	/^motor_hal_t *g_hal = NULL;$/;"	v	typeref:typename:motor_hal_t *
+g_initialized	tools/tool_hal.c	/^static bool   g_initialized = false;$/;"	v	typeref:typename:bool	file:
+g_left	examples/dual_motor.c	/^} g_left, g_right;$/;"	v	typeref:struct:__anonaca8a77a0108
+g_left	examples/dual_motor_full.c	/^static joint_state_t g_left, g_right;$/;"	v	typeref:typename:joint_state_t	file:
+g_listen_fd	tools/daemon.c	/^static int g_listen_fd = -1;$/;"	v	typeref:typename:int	file:
+g_motor_count	tools/tool_hal.c	/^static int    g_motor_count = 0;$/;"	v	typeref:typename:int	file:
+g_motor_ids	tools/tool_hal.c	/^static int    g_motor_ids[TOOL_MAX_MOTORS];$/;"	v	typeref:typename:int[]	file:
+g_right	examples/dual_motor.c	/^} g_left, g_right;$/;"	v	typeref:struct:__anonaca8a77a0108
+g_right	examples/dual_motor_full.c	/^static joint_state_t g_left, g_right;$/;"	v	typeref:typename:joint_state_t	file:
+g_running	examples/dual_motor.c	/^static volatile int g_running = 1;$/;"	v	typeref:typename:volatile int	file:
+g_running	examples/dual_motor_full.c	/^static volatile int g_running = 1;$/;"	v	typeref:typename:volatile int	file:
+g_running	examples/mit_control.c	/^static volatile int g_running = 1;$/;"	v	typeref:typename:volatile int	file:
+g_running	examples/single_motor.c	/^static volatile int g_running = 1;$/;"	v	typeref:typename:volatile int	file:
+g_sdo_queue	src/sdo_client.c	/^static sdo_queue_t g_sdo_queue = { .head = 0, .tail = 0, .count = 0 };$/;"	v	typeref:typename:sdo_queue_t	file:
+g_watch_running	tools/tool_hal.c	/^static volatile int g_watch_running = 0;$/;"	v	typeref:typename:volatile int	file:
+gait_calc	examples/dual_motor_full.c	/^static void gait_calc(float *left_deg, float *right_deg, float t)$/;"	f	typeref:typename:void	file:
+has_error	examples/dual_motor.c	/^    bool  has_error;$/;"	m	struct:__anonaca8a77a0108	typeref:typename:bool	file:
+has_error	examples/dual_motor_full.c	/^    bool     has_error;$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:bool	file:
+head	src/sdo_client.c	/^    int           head;     \/* 写入位置 *\/$/;"	m	struct:__anon4f6696710108	typeref:typename:int	file:
+heartbeat_disable_watchdog	src/heartbeat.c	/^void heartbeat_disable_watchdog(can_driver_t *drv, uint8_t node)$/;"	f	typeref:typename:void
+heartbeat_feed	src/heartbeat.c	/^void heartbeat_feed(can_driver_t *drv)$/;"	f	typeref:typename:void
+heartbeat_ms	inc/motor_hal_types.h	/^    uint32_t heartbeat_ms;        \/* 心跳周期 (默认 2000) *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:uint32_t
+heartbeat_set_period	src/heartbeat.c	/^void heartbeat_set_period(can_driver_t *drv, uint8_t node, uint32_t ms)$/;"	f	typeref:typename:void
+help	build/Makefile	/^help:$/;"	t
+help	tools/build/Makefile	/^help:$/;"	t
+help	tools/command_registry.h	/^    const char *help;       \/* 帮助文本 *\/$/;"	m	struct:__anon1d8b71d20208	typeref:typename:const char *
+id	inc/motor_hal_types.h	/^    uint32_t id;                     \/* 11-bit 标准帧 ID *\/$/;"	m	struct:__anonfd34793d0108	typeref:typename:uint32_t
+id	tools/command_registry.h	/^    int         id;         \/* CMD_xxx 枚举值 *\/$/;"	m	struct:__anon1d8b71d20208	typeref:typename:int
+iface	src/can_driver.c	/^    char     iface[16];$/;"	m	struct:__anon675df98a0108	typeref:typename:char[16]	file:
+info_arch	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_arch = "INFO" ":" "arch[" ARCHITECTURE_ID "]";$/;"	v	typeref:typename:char const *
+info_arch	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_arch = "INFO" ":" "arch[" ARCHITECTURE_ID "]";$/;"	v	typeref:typename:char const *
+info_compiler	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_compiler = "INFO" ":" "compiler[" COMPILER_ID "]";$/;"	v	typeref:typename:char const *
+info_compiler	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_compiler = "INFO" ":" "compiler[" COMPILER_ID "]";$/;"	v	typeref:typename:char const *
+info_cray	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const *info_cray = "INFO" ":" "compiler_wrapper[CrayPrgEnv]";$/;"	v	typeref:typename:char const *
+info_cray	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const *info_cray = "INFO" ":" "compiler_wrapper[CrayPrgEnv]";$/;"	v	typeref:typename:char const *
+info_language_extensions_default	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^const char* info_language_extensions_default = "INFO" ":" "extensions_default["$/;"	v	typeref:typename:const char *
+info_language_extensions_default	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^const char* info_language_extensions_default = "INFO" ":" "extensions_default["$/;"	v	typeref:typename:const char *
+info_language_standard_default	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^const char* info_language_standard_default =$/;"	v	typeref:typename:const char *
+info_language_standard_default	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^const char* info_language_standard_default =$/;"	v	typeref:typename:const char *
+info_platform	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_platform = "INFO" ":" "platform[" PLATFORM_ID "]";$/;"	v	typeref:typename:char const *
+info_platform	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_platform = "INFO" ":" "platform[" PLATFORM_ID "]";$/;"	v	typeref:typename:char const *
+info_simulate	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_simulate = "INFO" ":" "simulate[" SIMULATE_ID "]";$/;"	v	typeref:typename:char const *
+info_simulate	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_simulate = "INFO" ":" "simulate[" SIMULATE_ID "]";$/;"	v	typeref:typename:char const *
+info_simulate_version	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const info_simulate_version[] = {$/;"	v	typeref:typename:char const[]
+info_simulate_version	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const info_simulate_version[] = {$/;"	v	typeref:typename:char const[]
+info_version	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const info_version[] = {$/;"	v	typeref:typename:char const[]
+info_version	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_version = "INFO" ":" "compiler_version[" COMPILER_VERSION "]";$/;"	v	typeref:typename:char const *
+info_version	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const info_version[] = {$/;"	v	typeref:typename:char const[]
+info_version	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_version = "INFO" ":" "compiler_version[" COMPILER_VERSION "]";$/;"	v	typeref:typename:char const *
+info_version_internal	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const info_version_internal[] = {$/;"	v	typeref:typename:char const[]
+info_version_internal	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_version_internal = "INFO" ":" "compiler_version_internal[" COMPILER_VERSION_INT/;"	v	typeref:typename:char const *
+info_version_internal	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const info_version_internal[] = {$/;"	v	typeref:typename:char const[]
+info_version_internal	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* info_version_internal = "INFO" ":" "compiler_version_internal[" COMPILER_VERSION_INT/;"	v	typeref:typename:char const *
+initialized	src/motor_hal.c	/^    bool          initialized;$/;"	m	struct:motor_hal	typeref:typename:bool	file:
+install	build/Makefile	/^install: preinstall$/;"	t
+install/fast	build/Makefile	/^install\/fast: preinstall\/fast$/;"	t
+install/local	build/Makefile	/^install\/local: preinstall$/;"	t
+install/local/fast	build/Makefile	/^install\/local\/fast: preinstall\/fast$/;"	t
+install/strip	build/Makefile	/^install\/strip: preinstall$/;"	t
+install/strip/fast	build/Makefile	/^install\/strip\/fast: preinstall\/fast$/;"	t
+is_fd	inc/motor_hal_types.h	/^    bool     is_fd;                  \/* FD 帧标志 *\/$/;"	m	struct:__anonfd34793d0108	typeref:typename:bool
+joint_state_t	examples/dual_motor_full.c	/^} joint_state_t;$/;"	t	typeref:struct:__anon4b25bc2c0108	file:
+last_fb_us	src/motor_hal.c	/^    uint64_t last_fb_us;$/;"	m	struct:__anonf1dab0120108	typeref:typename:uint64_t	file:
+list_install_components	build/Makefile	/^list_install_components:$/;"	t
+list_install_components/fast	build/Makefile	/^list_install_components\/fast: list_install_components$/;"	t
+lock	src/motor_hal.c	/^    pthread_mutex_t lock;$/;"	m	struct:motor_hal	typeref:typename:pthread_mutex_t	file:
+main	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^int main(argc, argv) int argc; char *argv[];$/;"	f
+main	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^void main() {}$/;"	f	typeref:typename:void
+main	examples/dual_motor.c	/^int main(void)$/;"	f	typeref:typename:int
+main	examples/dual_motor_full.c	/^int main(void)$/;"	f	typeref:typename:int
+main	examples/mit_control.c	/^int main(void)$/;"	f	typeref:typename:int
+main	examples/single_motor.c	/^int main(void)$/;"	f	typeref:typename:int
+main	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^int main(argc, argv) int argc; char *argv[];$/;"	f
+main	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^void main() {}$/;"	f	typeref:typename:void
+main	tools/main.c	/^int main(int argc, char **argv)$/;"	f	typeref:typename:int
+main.c.i	tools/build/Makefile	/^main.c.i:$/;"	t
+main.c.o	tools/build/Makefile	/^main.c.o:$/;"	t
+main.c.s	tools/build/Makefile	/^main.c.s:$/;"	t
+main.i	tools/build/Makefile	/^main.i: main.c.i$/;"	t
+main.o	tools/build/Makefile	/^main.o: main.c.o$/;"	t
+main.s	tools/build/Makefile	/^main.s: main.c.s$/;"	t
+max_args	tools/command_registry.h	/^    int         max_args;   \/* 最大参数 (-1=不限) *\/$/;"	m	struct:__anon1d8b71d20208	typeref:typename:int
+min_args	tools/command_registry.h	/^    int         min_args;   \/* 最小参数 (含命令名自身) *\/$/;"	m	struct:__anon1d8b71d20208	typeref:typename:int
+mode	examples/dual_motor_full.c	/^    uint8_t  mode;$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:uint8_t	file:
+mode	inc/motor_hal_types.h	/^    motor_mode_t mode;$/;"	m	struct:__anonfd34793d0708	typeref:typename:motor_mode_t
+mode	inc/motor_hal_types.h	/^    uint8_t  mode;              \/* 当前控制模式 *\/$/;"	m	struct:__anonfd34793d0408	typeref:typename:uint8_t
+motor_config_t	inc/motor_hal_types.h	/^} motor_config_t;$/;"	t	typeref:struct:__anonfd34793d0508
+motor_config_t — 电机配置	README.md	/^### motor_config_t — 电机配置$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""核心类型
+motor_count	src/motor_hal.c	/^    int             motor_count;$/;"	m	struct:motor_hal	typeref:typename:int	file:
+motor_counts_to_deg	inc/motor_hal.h	/^static inline float motor_counts_to_deg(int16_t counts) {$/;"	f	typeref:typename:float
+motor_deg_to_counts	inc/motor_hal.h	/^static inline int16_t motor_deg_to_counts(float degrees) {$/;"	f	typeref:typename:int16_t
+motor_error_cb_t	inc/motor_hal_types.h	/^typedef void (*motor_error_cb_t)(uint8_t node_id, uint16_t error_code, void *ctx);$/;"	t	typeref:typename:void (*)(uint8_t node_id,uint16_t error_code,void * ctx)
+motor_example_dual	CMakeLists.txt	/^add_executable(motor_example_dual     examples\/dual_motor.c)$/;"	t
+motor_example_dual	build/Makefile	/^motor_example_dual: cmake_check_build_system$/;"	t
+motor_example_dual/fast	build/Makefile	/^motor_example_dual\/fast:$/;"	t
+motor_example_dual_full	CMakeLists.txt	/^add_executable(motor_example_dual_full examples\/dual_motor_full.c)$/;"	t
+motor_example_dual_full	build/Makefile	/^motor_example_dual_full: cmake_check_build_system$/;"	t
+motor_example_dual_full/fast	build/Makefile	/^motor_example_dual_full\/fast:$/;"	t
+motor_example_mit	CMakeLists.txt	/^add_executable(motor_example_mit      examples\/mit_control.c)$/;"	t
+motor_example_mit	build/Makefile	/^motor_example_mit: cmake_check_build_system$/;"	t
+motor_example_mit/fast	build/Makefile	/^motor_example_mit\/fast:$/;"	t
+motor_example_single	CMakeLists.txt	/^add_executable(motor_example_single   examples\/single_motor.c)$/;"	t
+motor_example_single	build/Makefile	/^motor_example_single: cmake_check_build_system$/;"	t
+motor_example_single/fast	build/Makefile	/^motor_example_single\/fast:$/;"	t
+motor_feedback_cb_t	inc/motor_hal_types.h	/^typedef void (*motor_feedback_cb_t)(uint8_t node_id, const motor_feedback_t *fb, void *ctx);$/;"	t	typeref:typename:void (*)(uint8_t node_id,const motor_feedback_t * fb,void * ctx)
+motor_feedback_t	inc/motor_hal_types.h	/^} motor_feedback_t;$/;"	t	typeref:struct:__anonfd34793d0408
+motor_feedback_t — 反馈数据	README.md	/^### motor_feedback_t — 反馈数据$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""核心类型
+motor_hal	CMakeLists.txt	/^    add_library(motor_hal SHARED ${MOTOR_HAL_SOURCES})$/;"	t
+motor_hal	CMakeLists.txt	/^    add_library(motor_hal STATIC ${MOTOR_HAL_SOURCES})$/;"	t
+motor_hal	build/Makefile	/^motor_hal: cmake_check_build_system$/;"	t
+motor_hal	src/motor_hal.c	/^struct motor_hal {$/;"	s	file:
+motor_hal/fast	build/Makefile	/^motor_hal\/fast:$/;"	t
+motor_hal_add_motor	src/motor_hal.c	/^int motor_hal_add_motor(motor_hal_t *hal, const motor_config_t *cfg)$/;"	f	typeref:typename:int
+motor_hal_c	CMakeLists.txt	/^project(motor_hal_c VERSION 1.0.0 LANGUAGES C)$/;"	p
+motor_hal_create	src/motor_hal.c	/^motor_hal_t* motor_hal_create(void)$/;"	f	typeref:typename:motor_hal_t *
+motor_hal_ctrl_raw	src/motor_hal.c	/^int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,$/;"	f	typeref:typename:int
+motor_hal_destroy	src/motor_hal.c	/^void motor_hal_destroy(motor_hal_t *hal)$/;"	f	typeref:typename:void
+motor_hal_disable	src/motor_hal.c	/^int motor_hal_disable(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int
+motor_hal_disable_watchdog	src/motor_hal.c	/^int motor_hal_disable_watchdog(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int
+motor_hal_enable	src/motor_hal.c	/^int motor_hal_enable(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int
+motor_hal_fault_reset	src/motor_hal.c	/^int motor_hal_fault_reset(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int
+motor_hal_get_current	src/motor_hal.c	/^int32_t motor_hal_get_current(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int32_t
+motor_hal_get_feedback	src/motor_hal.c	/^int motor_hal_get_feedback(motor_hal_t *hal, uint8_t node_id, motor_feedback_t *fb)$/;"	f	typeref:typename:int
+motor_hal_get_position	src/motor_hal.c	/^int32_t motor_hal_get_position(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int32_t
+motor_hal_get_state	src/motor_hal.c	/^motor_state_t motor_hal_get_state(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:motor_state_t
+motor_hal_get_statusword	src/motor_hal.c	/^uint16_t motor_hal_get_statusword(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:uint16_t
+motor_hal_get_velocity	src/motor_hal.c	/^int32_t motor_hal_get_velocity(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int32_t
+motor_hal_init	src/motor_hal.c	/^int motor_hal_init(motor_hal_t *hal, const char *iface,$/;"	f	typeref:typename:int
+motor_hal_mit_control	src/motor_hal.c	/^int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,$/;"	f	typeref:typename:int
+motor_hal_multi_ctrl	src/motor_hal.c	/^void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_t count)$/;"	f	typeref:typename:void
+motor_hal_nmt_broadcast	src/motor_hal.c	/^void motor_hal_nmt_broadcast(motor_hal_t *hal, uint8_t cmd)$/;"	f	typeref:typename:void
+motor_hal_poll	src/motor_hal.c	/^void motor_hal_poll(motor_hal_t *hal, int timeout_ms)$/;"	f	typeref:typename:void
+motor_hal_read_pid	src/motor_hal.c	/^int motor_hal_read_pid(motor_hal_t *hal, uint8_t node_id, motor_pid_t *pid)$/;"	f	typeref:typename:int
+motor_hal_recv_is_running	src/motor_hal.c	/^bool motor_hal_recv_is_running(motor_hal_t *hal)$/;"	f	typeref:typename:bool
+motor_hal_recv_start	src/motor_hal.c	/^int motor_hal_recv_start(motor_hal_t *hal)$/;"	f	typeref:typename:int
+motor_hal_recv_stop	src/motor_hal.c	/^int motor_hal_recv_stop(motor_hal_t *hal)$/;"	f	typeref:typename:int
+motor_hal_remove_motor	src/motor_hal.c	/^void motor_hal_remove_motor(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:void
+motor_hal_save_flash	src/motor_hal.c	/^int motor_hal_save_flash(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int
+motor_hal_sdo_read_u32	src/motor_hal.c	/^int motor_hal_sdo_read_u32(motor_hal_t *hal, uint8_t node_id,$/;"	f	typeref:typename:int
+motor_hal_set_accel_decel	src/motor_hal.c	/^int motor_hal_set_accel_decel(motor_hal_t *hal, uint8_t node_id,$/;"	f	typeref:typename:int
+motor_hal_set_error_cb	src/motor_hal.c	/^void motor_hal_set_error_cb(motor_hal_t *hal, uint8_t node_id,$/;"	f	typeref:typename:void
+motor_hal_set_feedback_cb	src/motor_hal.c	/^void motor_hal_set_feedback_cb(motor_hal_t *hal, uint8_t node_id,$/;"	f	typeref:typename:void
+motor_hal_set_limits	src/motor_hal.c	/^int motor_hal_set_limits(motor_hal_t *hal, uint8_t node_id, float pos_deg, float neg_deg)$/;"	f	typeref:typename:int
+motor_hal_set_mode	src/motor_hal.c	/^int motor_hal_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)$/;"	f	typeref:typename:int
+motor_hal_set_pid	src/motor_hal.c	/^int motor_hal_set_pid(motor_hal_t *hal, uint8_t node_id, const motor_pid_t *pid)$/;"	f	typeref:typename:int
+motor_hal_set_position	src/motor_hal.c	/^int motor_hal_set_position(motor_hal_t *hal, uint8_t node_id, float angle_deg)$/;"	f	typeref:typename:int
+motor_hal_set_profile_velocity	src/motor_hal.c	/^int motor_hal_set_profile_velocity(motor_hal_t *hal, uint8_t node_id, uint16_t rpm_out)$/;"	f	typeref:typename:int
+motor_hal_set_state_cb	src/motor_hal.c	/^void motor_hal_set_state_cb(motor_hal_t *hal, uint8_t node_id,$/;"	f	typeref:typename:void
+motor_hal_set_torque	src/motor_hal.c	/^int motor_hal_set_torque(motor_hal_t *hal, uint8_t node_id, int16_t current_ma)$/;"	f	typeref:typename:int
+motor_hal_set_velocity	src/motor_hal.c	/^int motor_hal_set_velocity(motor_hal_t *hal, uint8_t node_id, float rpm_motor)$/;"	f	typeref:typename:int
+motor_hal_set_zero	src/motor_hal.c	/^int motor_hal_set_zero(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int
+motor_hal_startup	src/motor_hal.c	/^int motor_hal_startup(motor_hal_t *hal, uint8_t node_id, int timeout_ms __attribute__((unused)))$/;"	f	typeref:typename:int
+motor_hal_stop	src/motor_hal.c	/^int motor_hal_stop(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int
+motor_hal_sync	src/motor_hal.c	/^void motor_hal_sync(motor_hal_t *hal)$/;"	f	typeref:typename:void
+motor_hal_t	inc/motor_hal.h	/^typedef struct motor_hal motor_hal_t;$/;"	t	typeref:struct:motor_hal
+motor_hal_wait_bootup	src/motor_hal.c	/^int motor_hal_wait_bootup(motor_hal_t *hal, uint8_t node_id, int timeout_ms)$/;"	f	typeref:typename:int
+motor_ma_to_a	inc/motor_hal.h	/^static inline float motor_ma_to_a(int16_t ma) {$/;"	f	typeref:typename:float
+motor_mode_t	inc/motor_hal_types.h	/^} motor_mode_t;$/;"	t	typeref:enum:__anonfd34793d0203
+motor_node_t	src/motor_hal.c	/^} motor_node_t;$/;"	t	typeref:struct:__anonf1dab0120108	file:
+motor_pid_t	inc/motor_hal_types.h	/^} motor_pid_t;$/;"	t	typeref:struct:__anonfd34793d0608
+motor_pid_t — PID 参数	README.md	/^### motor_pid_t — PID 参数$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""核心类型
+motor_register	examples/dual_motor_full.c	/^static int motor_register(motor_hal_t *hal, uint8_t node_id,$/;"	f	typeref:typename:int	file:
+motor_start	examples/dual_motor_full.c	/^static int motor_start(motor_hal_t *hal, uint8_t node_id)$/;"	f	typeref:typename:int	file:
+motor_startup_enable	src/motor_hal_startup.c	/^int motor_startup_enable(can_driver_t *drv, uint8_t node_id)$/;"	f	typeref:typename:int
+motor_startup_full	src/motor_hal_startup.c	/^int motor_startup_full(can_driver_t *drv, const motor_config_t *cfg,$/;"	f	typeref:typename:int
+motor_startup_wait_bootup	src/motor_hal_startup.c	/^int motor_startup_wait_bootup(can_driver_t *drv __attribute__((unused)),$/;"	f	typeref:typename:int
+motor_state_cb_t	inc/motor_hal_types.h	/^typedef void (*motor_state_cb_t)(uint8_t node_id, motor_state_t old_state, motor_state_t new_sta/;"	t	typeref:typename:void (*)(uint8_t node_id,motor_state_t old_state,motor_state_t new_state,void * ctx)
+motor_state_str	inc/motor_hal_types.h	/^static inline const char* motor_state_str(motor_state_t s) {$/;"	f	typeref:typename:const char *
+motor_state_t	inc/motor_hal_types.h	/^} motor_state_t;$/;"	t	typeref:enum:__anonfd34793d0303
+motor_temp_to_c	inc/motor_hal.h	/^static inline float motor_temp_to_c(int16_t raw) {$/;"	f	typeref:typename:float
+motor_tool	tools/CMakeLists.txt	/^add_executable(motor_tool$/;"	t
+motor_tool	tools/CMakeLists.txt	/^project(motor_tool LANGUAGES C)$/;"	p
+motor_tool	tools/build/Makefile	/^motor_tool: cmake_check_build_system$/;"	t
+motor_tool 命令行工具	README.md	/^## motor_tool 命令行工具$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+motor_tool/fast	tools/build/Makefile	/^motor_tool\/fast:$/;"	t
+motor_utils_counts_to_deg	src/utils.c	/^float motor_utils_counts_to_deg(int16_t counts)$/;"	f	typeref:typename:float
+motor_utils_deg_to_counts	src/utils.c	/^int16_t motor_utils_deg_to_counts(float degrees)$/;"	f	typeref:typename:int16_t
+motor_utils_error_str	src/utils.c	/^const char* motor_utils_error_str(uint16_t code)$/;"	f	typeref:typename:const char *
+motor_utils_now_us	src/utils.c	/^uint64_t motor_utils_now_us(void)$/;"	f	typeref:typename:uint64_t
+motor_utils_sleep_ms	src/utils.c	/^void motor_utils_sleep_ms(int ms)$/;"	f	typeref:typename:void
+motors	src/motor_hal.c	/^    motor_node_t    motors[MOTOR_HAL_MAX_MOTORS];$/;"	m	struct:motor_hal	typeref:typename:motor_node_t[]	file:
+multi_axis_cmd_t	inc/motor_hal_types.h	/^} multi_axis_cmd_t;$/;"	t	typeref:struct:__anonfd34793d0708
+multi_axis_cmd_t — 多轴广播命令	README.md	/^### multi_axis_cmd_t — 多轴广播命令$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""核心类型
+mutex	src/sdo_client.c	/^    pthread_mutex_t mutex;$/;"	m	struct:__anon4f6696710108	typeref:typename:pthread_mutex_t	file:
+name	tools/command_registry.h	/^    const char *name;       \/* 命令名, 如 "speed" *\/$/;"	m	struct:__anon1d8b71d20208	typeref:typename:const char *
+nmt_broadcast	src/nmt_master.c	/^void nmt_broadcast(can_driver_t *drv, uint8_t cmd)$/;"	f	typeref:typename:void
+nmt_pre_operational	src/nmt_master.c	/^void nmt_pre_operational(can_driver_t *drv, uint8_t node)$/;"	f	typeref:typename:void
+nmt_reset_comm	src/nmt_master.c	/^void nmt_reset_comm(can_driver_t *drv, uint8_t node)$/;"	f	typeref:typename:void
+nmt_reset_node	src/nmt_master.c	/^void nmt_reset_node(can_driver_t *drv, uint8_t node)$/;"	f	typeref:typename:void
+nmt_send	src/nmt_master.c	/^void nmt_send(can_driver_t *drv, uint8_t cmd, uint8_t node)$/;"	f	typeref:typename:void
+nmt_start	src/nmt_master.c	/^void nmt_start(can_driver_t *drv, uint8_t node)$/;"	f	typeref:typename:void
+nmt_stop	src/nmt_master.c	/^void nmt_stop(can_driver_t *drv, uint8_t node)$/;"	f	typeref:typename:void
+node_id	inc/motor_hal_types.h	/^    uint8_t   node_id;$/;"	m	struct:__anonfd34793d0708	typeref:typename:uint8_t
+node_id	inc/motor_hal_types.h	/^    uint8_t  node_id;             \/* CAN节点 ID (1~127) *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:uint8_t
+node_id	src/motor_hal.c	/^    uint8_t     node_id;$/;"	m	struct:__anonf1dab0120108	typeref:typename:uint8_t	file:
+now_us	examples/dual_motor_full.c	/^static uint64_t now_us(void) {$/;"	f	typeref:typename:uint64_t	file:
+on_error	examples/dual_motor_full.c	/^static void on_error(uint8_t id, uint16_t code, void *ctx)$/;"	f	typeref:typename:void	file:
+on_fb	examples/mit_control.c	/^static void on_fb(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	typeref:typename:void	file:
+on_feedback	examples/single_motor.c	/^static void on_feedback(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	typeref:typename:void	file:
+on_left_fb	examples/dual_motor.c	/^static void on_left_fb(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	typeref:typename:void	file:
+on_left_feedback	examples/dual_motor_full.c	/^static void on_left_feedback(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	typeref:typename:void	file:
+on_right_fb	examples/dual_motor.c	/^static void on_right_fb(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	typeref:typename:void	file:
+on_right_feedback	examples/dual_motor_full.c	/^static void on_right_feedback(uint8_t id, const motor_feedback_t *fb, void *ctx)$/;"	f	typeref:typename:void	file:
+on_state_change	examples/dual_motor_full.c	/^static void on_state_change(uint8_t id,$/;"	f	typeref:typename:void	file:
+pdo_build_rpdo1_canfd_full	src/pdo_mapper.c	/^void pdo_build_rpdo1_canfd_full(uint8_t node,$/;"	f	typeref:typename:void
+pdo_build_rpdo1_position	src/pdo_mapper.c	/^void pdo_build_rpdo1_position(uint8_t node, uint16_t cw, int32_t pos,$/;"	f	typeref:typename:void
+pdo_ctrl_send	src/pdo_handler.c	/^void pdo_ctrl_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,$/;"	f	typeref:typename:void
+pdo_feedback_parse	src/pdo_handler.c	/^void pdo_feedback_parse(const canfd_frame_t *f, motor_feedback_t *fb)$/;"	f	typeref:typename:void
+pdo_map_entry	inc/pdo_mapper.h	/^static inline uint32_t pdo_map_entry(uint16_t index, uint8_t subidx, uint8_t bitlen) {$/;"	f	typeref:typename:uint32_t
+pdo_map_entry	src/pdo_mapper.h	/^static inline uint32_t pdo_map_entry(uint16_t index, uint8_t subidx, uint8_t bitlen) {$/;"	f	typeref:typename:uint32_t
+pdo_mapper_config_rpdo1_canfd_full	src/pdo_mapper.c	/^int pdo_mapper_config_rpdo1_canfd_full(can_driver_t *drv, uint8_t node,$/;"	f	typeref:typename:int
+pdo_mapper_config_rpdo1_position	src/pdo_mapper.c	/^int pdo_mapper_config_rpdo1_position(can_driver_t *drv, uint8_t node,$/;"	f	typeref:typename:int
+pdo_mapper_config_tpdo1_canfd_full	src/pdo_mapper.c	/^int pdo_mapper_config_tpdo1_canfd_full(can_driver_t *drv, uint8_t node,$/;"	f	typeref:typename:int
+pdo_mapper_config_tpdo1_position	src/pdo_mapper.c	/^int pdo_mapper_config_tpdo1_position(can_driver_t *drv, uint8_t node,$/;"	f	typeref:typename:int
+pdo_mit_send	src/pdo_handler.c	/^void pdo_mit_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,$/;"	f	typeref:typename:void
+pdo_multi_send	src/pdo_handler.c	/^void pdo_multi_send(can_driver_t *drv, const multi_axis_cmd_t *cmds, uint8_t count)$/;"	f	typeref:typename:void
+pdo_parse_tpdo1_position	src/pdo_mapper.c	/^void pdo_parse_tpdo1_position(const canfd_frame_t *f,$/;"	f	typeref:typename:void
+pdo_sync_send	src/pdo_handler.c	/^void pdo_sync_send(can_driver_t *drv)$/;"	f	typeref:typename:void
+pos_limit_neg	inc/motor_hal_types.h	/^    float    pos_limit_neg;       \/* 负限位 (度) *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:float
+pos_limit_pos	inc/motor_hal_types.h	/^    float    pos_limit_pos;       \/* 正限位 (度) *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:float
+position	inc/motor_hal_types.h	/^    int16_t  position;          \/* 负载端位置 (-32768~32767, 映射 -180°~180°) *\/$/;"	m	struct:__anonfd34793d0408	typeref:typename:int16_t
+position_i	inc/motor_hal_types.h	/^    uint16_t position_i;$/;"	m	struct:__anonfd34793d0608	typeref:typename:uint16_t
+position_p	inc/motor_hal_types.h	/^    uint16_t position_p;$/;"	m	struct:__anonfd34793d0608	typeref:typename:uint16_t
+preinstall	build/Makefile	/^preinstall: all$/;"	t
+preinstall	tools/build/Makefile	/^preinstall: all$/;"	t
+preinstall/fast	build/Makefile	/^preinstall\/fast:$/;"	t
+preinstall/fast	tools/build/Makefile	/^preinstall\/fast:$/;"	t
+print_feedback	examples/dual_motor_full.c	/^static void print_feedback(float t)$/;"	f	typeref:typename:void	file:
+print_help	tools/main.c	/^static void print_help(void)$/;"	f	typeref:typename:void	file:
+print_usage	tools/main.c	/^static void print_usage(void)$/;"	f	typeref:typename:void	file:
+profile_accel	inc/motor_hal_types.h	/^    uint16_t profile_accel;       \/* 加速度 RPM\/s (电机端, 0~10000) *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:uint16_t
+profile_decel	inc/motor_hal_types.h	/^    uint16_t profile_decel;       \/* 减速度 RPM\/s (电机端, 0~10000) *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:uint16_t
+profile_velocity	inc/motor_hal_types.h	/^    uint16_t profile_velocity;    \/* 轨迹速度 RPM (输出端, 0~30) *\/$/;"	m	struct:__anonfd34793d0508	typeref:typename:uint16_t
+qnxnto	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* qnxnto = "INFO" ":" "qnxnto[]";$/;"	v	typeref:typename:char const *
+qnxnto	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^char const* qnxnto = "INFO" ":" "qnxnto[]";$/;"	v	typeref:typename:char const *
+read_one_fn	tools/tool_hal.c	/^typedef int (*read_one_fn)(uint8_t id);$/;"	t	typeref:typename:int (*)(uint8_t id)	file:
+rebuild_cache	build/Makefile	/^rebuild_cache:$/;"	t
+rebuild_cache	tools/build/Makefile	/^rebuild_cache:$/;"	t
+rebuild_cache/fast	build/Makefile	/^rebuild_cache\/fast: rebuild_cache$/;"	t
+rebuild_cache/fast	tools/build/Makefile	/^rebuild_cache\/fast: rebuild_cache$/;"	t
+recv_running	src/motor_hal.c	/^    bool         recv_running;$/;"	m	struct:motor_hal	typeref:typename:bool	file:
+recv_thread	src/motor_hal.c	/^    pthread_t    recv_thread;$/;"	m	struct:motor_hal	typeref:typename:pthread_t	file:
+release_brake	inc/motor_hal_types.h	/^    bool      release_brake;$/;"	m	struct:__anonfd34793d0708	typeref:typename:bool
+rx_count	src/can_driver.c	/^    uint64_t rx_count;$/;"	m	struct:__anon675df98a0108	typeref:typename:uint64_t	file:
+rx_err	src/can_driver.c	/^    uint64_t rx_err;$/;"	m	struct:__anon675df98a0108	typeref:typename:uint64_t	file:
+sdo_push_response	src/sdo_client.c	/^void sdo_push_response(const canfd_frame_t *f)$/;"	f	typeref:typename:void
+sdo_queue_destroy	src/sdo_client.c	/^void sdo_queue_destroy(void)$/;"	f	typeref:typename:void
+sdo_queue_init	src/sdo_client.c	/^void sdo_queue_init(void)$/;"	f	typeref:typename:void
+sdo_queue_t	src/sdo_client.c	/^} sdo_queue_t;$/;"	t	typeref:struct:__anon4f6696710108	file:
+sdo_read	src/sdo_client.c	/^int sdo_read(can_driver_t *drv, uint8_t node,$/;"	f	typeref:typename:int
+sdo_read_simple	src/sdo_client.c	/^int sdo_read_simple(can_driver_t *drv, uint8_t node,$/;"	f	typeref:typename:int
+sdo_write	src/sdo_client.c	/^int sdo_write(can_driver_t *drv, uint8_t node,$/;"	f	typeref:typename:int
+sdo_write_simple	src/sdo_client.c	/^int sdo_write_simple(can_driver_t *drv, uint8_t node,$/;"	f	typeref:typename:int
+sig_handler	examples/dual_motor.c	/^static void sig_handler(int sig) { g_running = 0; }$/;"	f	typeref:typename:void	file:
+sig_handler	examples/dual_motor_full.c	/^static void sig_handler(int sig)$/;"	f	typeref:typename:void	file:
+sig_handler	examples/mit_control.c	/^static void sig_handler(int sig) { g_running = 0; }$/;"	f	typeref:typename:void	file:
+sig_handler	examples/single_motor.c	/^static void sig_handler(int sig) { g_running = 0; }$/;"	f	typeref:typename:void	file:
+sleep_us	examples/dual_motor_full.c	/^static void sleep_us(uint64_t us) {$/;"	f	typeref:typename:void	file:
+sock_fd	src/can_driver.c	/^    int      sock_fd;$/;"	m	struct:__anon675df98a0108	typeref:typename:int	file:
+src/can_driver.c.i	build/Makefile	/^src\/can_driver.c.i:$/;"	t
+src/can_driver.c.o	build/Makefile	/^src\/can_driver.c.o:$/;"	t
+src/can_driver.c.s	build/Makefile	/^src\/can_driver.c.s:$/;"	t
+src/can_driver.i	build/Makefile	/^src\/can_driver.i: src\/can_driver.c.i$/;"	t
+src/can_driver.o	build/Makefile	/^src\/can_driver.o: src\/can_driver.c.o$/;"	t
+src/can_driver.s	build/Makefile	/^src\/can_driver.s: src\/can_driver.c.s$/;"	t
+src/canopen_frames.c.i	build/Makefile	/^src\/canopen_frames.c.i:$/;"	t
+src/canopen_frames.c.o	build/Makefile	/^src\/canopen_frames.c.o:$/;"	t
+src/canopen_frames.c.s	build/Makefile	/^src\/canopen_frames.c.s:$/;"	t
+src/canopen_frames.i	build/Makefile	/^src\/canopen_frames.i: src\/canopen_frames.c.i$/;"	t
+src/canopen_frames.o	build/Makefile	/^src\/canopen_frames.o: src\/canopen_frames.c.o$/;"	t
+src/canopen_frames.s	build/Makefile	/^src\/canopen_frames.s: src\/canopen_frames.c.s$/;"	t
+src/feedback_parser.c.i	build/Makefile	/^src\/feedback_parser.c.i:$/;"	t
+src/feedback_parser.c.o	build/Makefile	/^src\/feedback_parser.c.o:$/;"	t
+src/feedback_parser.c.s	build/Makefile	/^src\/feedback_parser.c.s:$/;"	t
+src/feedback_parser.i	build/Makefile	/^src\/feedback_parser.i: src\/feedback_parser.c.i$/;"	t
+src/feedback_parser.o	build/Makefile	/^src\/feedback_parser.o: src\/feedback_parser.c.o$/;"	t
+src/feedback_parser.s	build/Makefile	/^src\/feedback_parser.s: src\/feedback_parser.c.s$/;"	t
+src/heartbeat.c.i	build/Makefile	/^src\/heartbeat.c.i:$/;"	t
+src/heartbeat.c.o	build/Makefile	/^src\/heartbeat.c.o:$/;"	t
+src/heartbeat.c.s	build/Makefile	/^src\/heartbeat.c.s:$/;"	t
+src/heartbeat.i	build/Makefile	/^src\/heartbeat.i: src\/heartbeat.c.i$/;"	t
+src/heartbeat.o	build/Makefile	/^src\/heartbeat.o: src\/heartbeat.c.o$/;"	t
+src/heartbeat.s	build/Makefile	/^src\/heartbeat.s: src\/heartbeat.c.s$/;"	t
+src/motor_hal.c.i	build/Makefile	/^src\/motor_hal.c.i:$/;"	t
+src/motor_hal.c.o	build/Makefile	/^src\/motor_hal.c.o:$/;"	t
+src/motor_hal.c.s	build/Makefile	/^src\/motor_hal.c.s:$/;"	t
+src/motor_hal.i	build/Makefile	/^src\/motor_hal.i: src\/motor_hal.c.i$/;"	t
+src/motor_hal.o	build/Makefile	/^src\/motor_hal.o: src\/motor_hal.c.o$/;"	t
+src/motor_hal.s	build/Makefile	/^src\/motor_hal.s: src\/motor_hal.c.s$/;"	t
+src/motor_hal_startup.c.i	build/Makefile	/^src\/motor_hal_startup.c.i:$/;"	t
+src/motor_hal_startup.c.o	build/Makefile	/^src\/motor_hal_startup.c.o:$/;"	t
+src/motor_hal_startup.c.s	build/Makefile	/^src\/motor_hal_startup.c.s:$/;"	t
+src/motor_hal_startup.i	build/Makefile	/^src\/motor_hal_startup.i: src\/motor_hal_startup.c.i$/;"	t
+src/motor_hal_startup.o	build/Makefile	/^src\/motor_hal_startup.o: src\/motor_hal_startup.c.o$/;"	t
+src/motor_hal_startup.s	build/Makefile	/^src\/motor_hal_startup.s: src\/motor_hal_startup.c.s$/;"	t
+src/nmt_master.c.i	build/Makefile	/^src\/nmt_master.c.i:$/;"	t
+src/nmt_master.c.o	build/Makefile	/^src\/nmt_master.c.o:$/;"	t
+src/nmt_master.c.s	build/Makefile	/^src\/nmt_master.c.s:$/;"	t
+src/nmt_master.i	build/Makefile	/^src\/nmt_master.i: src\/nmt_master.c.i$/;"	t
+src/nmt_master.o	build/Makefile	/^src\/nmt_master.o: src\/nmt_master.c.o$/;"	t
+src/nmt_master.s	build/Makefile	/^src\/nmt_master.s: src\/nmt_master.c.s$/;"	t
+src/pdo_handler.c.i	build/Makefile	/^src\/pdo_handler.c.i:$/;"	t
+src/pdo_handler.c.o	build/Makefile	/^src\/pdo_handler.c.o:$/;"	t
+src/pdo_handler.c.s	build/Makefile	/^src\/pdo_handler.c.s:$/;"	t
+src/pdo_handler.i	build/Makefile	/^src\/pdo_handler.i: src\/pdo_handler.c.i$/;"	t
+src/pdo_handler.o	build/Makefile	/^src\/pdo_handler.o: src\/pdo_handler.c.o$/;"	t
+src/pdo_handler.s	build/Makefile	/^src\/pdo_handler.s: src\/pdo_handler.c.s$/;"	t
+src/pdo_mapper.c.i	build/Makefile	/^src\/pdo_mapper.c.i:$/;"	t
+src/pdo_mapper.c.o	build/Makefile	/^src\/pdo_mapper.c.o:$/;"	t
+src/pdo_mapper.c.s	build/Makefile	/^src\/pdo_mapper.c.s:$/;"	t
+src/pdo_mapper.i	build/Makefile	/^src\/pdo_mapper.i: src\/pdo_mapper.c.i$/;"	t
+src/pdo_mapper.o	build/Makefile	/^src\/pdo_mapper.o: src\/pdo_mapper.c.o$/;"	t
+src/pdo_mapper.s	build/Makefile	/^src\/pdo_mapper.s: src\/pdo_mapper.c.s$/;"	t
+src/sdo_client.c.i	build/Makefile	/^src\/sdo_client.c.i:$/;"	t
+src/sdo_client.c.o	build/Makefile	/^src\/sdo_client.c.o:$/;"	t
+src/sdo_client.c.s	build/Makefile	/^src\/sdo_client.c.s:$/;"	t
+src/sdo_client.i	build/Makefile	/^src\/sdo_client.i: src\/sdo_client.c.i$/;"	t
+src/sdo_client.o	build/Makefile	/^src\/sdo_client.o: src\/sdo_client.c.o$/;"	t
+src/sdo_client.s	build/Makefile	/^src\/sdo_client.s: src\/sdo_client.c.s$/;"	t
+src/utils.c.i	build/Makefile	/^src\/utils.c.i:$/;"	t
+src/utils.c.o	build/Makefile	/^src\/utils.c.o:$/;"	t
+src/utils.c.s	build/Makefile	/^src\/utils.c.s:$/;"	t
+src/utils.i	build/Makefile	/^src\/utils.i: src\/utils.c.i$/;"	t
+src/utils.o	build/Makefile	/^src\/utils.o: src\/utils.c.o$/;"	t
+src/utils.s	build/Makefile	/^src\/utils.s: src\/utils.c.s$/;"	t
+state	src/motor_hal.c	/^    motor_state_t state;$/;"	m	struct:__anonf1dab0120108	typeref:typename:motor_state_t	file:
+state_cb	src/motor_hal.c	/^    motor_state_cb_t    state_cb;$/;"	m	struct:__anonf1dab0120108	typeref:typename:motor_state_cb_t	file:
+state_ctx	src/motor_hal.c	/^    void               *state_ctx;$/;"	m	struct:__anonf1dab0120108	typeref:typename:void *	file:
+status_byte	inc/motor_hal_types.h	/^    uint8_t  status_byte;       \/* bit7:使能 bit6:抱闸 bit5:错误 bit4:到位 *\/$/;"	m	struct:__anonfd34793d0408	typeref:typename:uint8_t
+tail	src/sdo_client.c	/^    int           tail;     \/* 读取位置 *\/$/;"	m	struct:__anon4f6696710108	typeref:typename:int	file:
+target1	inc/motor_hal_types.h	/^    int16_t   target1;$/;"	m	struct:__anonfd34793d0708	typeref:typename:int16_t
+target2	inc/motor_hal_types.h	/^    uint16_t  target2;$/;"	m	struct:__anonfd34793d0708	typeref:typename:uint16_t
+target_reached	examples/dual_motor_full.c	/^    bool     target_reached;$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:bool	file:
+temp_c	examples/dual_motor.c	/^    float temp_c;$/;"	m	struct:__anonaca8a77a0108	typeref:typename:float	file:
+temp_c	examples/dual_motor_full.c	/^    float    temp_c;           \/* 温度 (°C) *\/$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:float	file:
+temperature	inc/motor_hal_types.h	/^    int16_t  temperature;       \/* 线圈温度 (0.1°C) *\/$/;"	m	struct:__anonfd34793d0408	typeref:typename:int16_t
+timestamp_us	examples/dual_motor_full.c	/^    uint64_t timestamp_us;$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:uint64_t	file:
+timestamp_us	inc/motor_hal_types.h	/^    uint64_t timestamp_us;      \/* 接收时间戳 *\/$/;"	m	struct:__anonfd34793d0408	typeref:typename:uint64_t
+tool_cleanup	tools/tool_hal.c	/^void tool_cleanup(void)$/;"	f	typeref:typename:void
+tool_hal.c.i	tools/build/Makefile	/^tool_hal.c.i:$/;"	t
+tool_hal.c.o	tools/build/Makefile	/^tool_hal.c.o:$/;"	t
+tool_hal.c.s	tools/build/Makefile	/^tool_hal.c.s:$/;"	t
+tool_hal.i	tools/build/Makefile	/^tool_hal.i: tool_hal.c.i$/;"	t
+tool_hal.o	tools/build/Makefile	/^tool_hal.o: tool_hal.c.o$/;"	t
+tool_hal.s	tools/build/Makefile	/^tool_hal.s: tool_hal.c.s$/;"	t
+tool_init	tools/tool_hal.c	/^int tool_init(const char *iface)$/;"	f	typeref:typename:int
+tool_motor_count	tools/tool_hal.c	/^int tool_motor_count(void) { return g_motor_count; }$/;"	f	typeref:typename:int
+tool_motor_id	tools/tool_hal.c	/^int tool_motor_id(int index) {$/;"	f	typeref:typename:int
+tool_poll	tools/tool_hal.c	/^void tool_poll(int timeout_ms)$/;"	f	typeref:typename:void
+tool_read_all	tools/tool_hal.c	/^int tool_read_all(int id)     { return _read_broadcast(id, _read_one_all); }$/;"	f	typeref:typename:int
+tool_read_angle	tools/tool_hal.c	/^int tool_read_angle(int id)   { return _read_broadcast(id, _read_one_angle); }$/;"	f	typeref:typename:int
+tool_read_current	tools/tool_hal.c	/^int tool_read_current(int id) { return _read_broadcast(id, _read_one_current); }$/;"	f	typeref:typename:int
+tool_read_error	tools/tool_hal.c	/^int tool_read_error(int id)   { return _read_broadcast(id, _read_one_error); }$/;"	f	typeref:typename:int
+tool_read_speed	tools/tool_hal.c	/^int tool_read_speed(int id)   { return _read_broadcast(id, _read_one_speed); }$/;"	f	typeref:typename:int
+tool_read_state	tools/tool_hal.c	/^int tool_read_state(int id)   { return _read_broadcast(id, _read_one_state); }$/;"	f	typeref:typename:int
+tool_read_temp	tools/tool_hal.c	/^int tool_read_temp(int id)    { return _read_broadcast(id, _read_one_temp); }$/;"	f	typeref:typename:int
+tool_read_version	tools/tool_hal.c	/^int tool_read_version(int id) { return _read_broadcast(id, _read_one_version); }$/;"	f	typeref:typename:int
+tool_register_motor	tools/tool_hal.c	/^int tool_register_motor(int node_id)$/;"	f	typeref:typename:int
+tool_set_abs_pos	tools/tool_hal.c	/^int tool_set_abs_pos(int id, int deg_x100)$/;"	f	typeref:typename:int
+tool_set_accel	tools/tool_hal.c	/^int tool_set_accel(int id, int acc_x100)$/;"	f	typeref:typename:int
+tool_set_max_vel	tools/tool_hal.c	/^int tool_set_max_vel(int id, int rpm_x100)$/;"	f	typeref:typename:int
+tool_set_mode	tools/tool_hal.c	/^int tool_set_mode(int id, const char *mode_str)$/;"	f	typeref:typename:int
+tool_set_rel_pos	tools/tool_hal.c	/^int tool_set_rel_pos(int id, int delta_x100)$/;"	f	typeref:typename:int
+tool_set_speed	tools/tool_hal.c	/^int tool_set_speed(int id, int rpm_x100)$/;"	f	typeref:typename:int
+tool_stop	tools/tool_hal.c	/^int tool_stop(int id)$/;"	f	typeref:typename:int
+tool_watch_start	tools/tool_hal.c	/^int tool_watch_start(int period_ms, int out_fd)$/;"	f	typeref:typename:int
+tx_count	src/can_driver.c	/^    uint64_t tx_count;$/;"	m	struct:__anon675df98a0108	typeref:typename:uint64_t	file:
+tx_err	src/can_driver.c	/^    uint64_t tx_err;$/;"	m	struct:__anon675df98a0108	typeref:typename:uint64_t	file:
+update_count	examples/dual_motor_full.c	/^    int      update_count;    \/* 收到反馈次数 *\/$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:int	file:
+usage	tools/command_registry.h	/^    const char *usage;      \/* 用法, 如 "speed <id> <rpm*100>" *\/$/;"	m	struct:__anon1d8b71d20208	typeref:typename:const char *
+velocity	inc/motor_hal_types.h	/^    int16_t  velocity;          \/* 电机端速度 (RPM) *\/$/;"	m	struct:__anonfd34793d0408	typeref:typename:int16_t
+velocity_i	inc/motor_hal_types.h	/^    uint16_t velocity_i;$/;"	m	struct:__anonfd34793d0608	typeref:typename:uint16_t
+velocity_p	inc/motor_hal_types.h	/^    uint16_t velocity_p;$/;"	m	struct:__anonfd34793d0608	typeref:typename:uint16_t
+velocity_rpm	examples/dual_motor.c	/^    float velocity_rpm;$/;"	m	struct:__anonaca8a77a0108	typeref:typename:float	file:
+velocity_rpm	examples/dual_motor_full.c	/^    int16_t  velocity_rpm;    \/* 速度 (RPM) *\/$/;"	m	struct:__anon4b25bc2c0108	typeref:typename:int16_t	file:
+volatile	build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define volatile$/;"	d	file:
+volatile	tools/build/CMakeFiles/3.28.1/CompilerIdC/CMakeCCompilerId.c	/^# define volatile$/;"	d	file:
+交叉引用	README.md	/^## 交叉引用$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+交叉编译 (RV1126B)	README.md	/^### 交叉编译 (RV1126B)$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""编译与链接
+使用模式	README.md	/^## 使用模式$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+依赖	README.md	/^### 依赖$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""编译与链接
+应用链接	README.md	/^### 应用链接$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""编译与链接
+快速开始	README.md	/^## 快速开始$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+控制模式	README.md	/^## 控制模式$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+推荐模式	README.md	/^### 推荐模式$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""使用模式
+本机编译	README.md	/^### 本机编译$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""编译与链接
+架构概览	README.md	/^## 架构概览$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+核心类型	README.md	/^## 核心类型$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+目录	README.md	/^## 目录$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+简单模式	README.md	/^### 简单模式$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""使用模式
+编译与链接	README.md	/^## 编译与链接$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层
+错误处理推荐策略	README.md	/^### 错误处理推荐策略$/;"	S	section:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层""使用模式
+错误码	README.md	/^## 错误码$/;"	s	chapter:Motor HAL — 关节模组 CANopen/CANFD 硬件抽象层

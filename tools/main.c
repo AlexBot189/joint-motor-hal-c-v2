@@ -109,6 +109,11 @@ int main(int argc, char **argv)
         return daemon_stop();
     }
 
+    /* sensor watch → 持续读模式 (长连接, 不断开) */
+    if (strcmp(argv[1], "sensor") == 0 && argc >= 4 && strcmp(argv[2], "watch") == 0) {
+        return client_sensor_watch(argc, argv);
+    }
+
     /* 其他命令 → 客户端模式 */
     return client_send(argc, argv);
 }

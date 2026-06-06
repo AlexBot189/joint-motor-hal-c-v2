@@ -33,6 +33,7 @@
 static volatile int g_daemon_running = 0;
 static int g_listen_fd = -1;
 static int g_client_fd = -1;
+static volatile int g_sensor_watch_active = 0;  /* 传感器看板期间不关 fd */
 
 static void _sig_handler(int sig)
 {
@@ -144,6 +145,12 @@ static void _process_command(int client_fd, char *cmdline)
         g_client_fd = client_fd;
     }
 
+    /* 传感器看板: daemon 不关 fd, 线程关 */
+    if (strcmp(argv[0], "sensor") == 0 && argc >= 2 &&
+        strcmp(argv[1], "watch") == 0) {
+        g_sensor_watch_active = 1;
+    }
+
     /* 对 argv 补一个前缀 (模拟 motor_tool 命令名), 适配 cmd_dispatch */
     char *full_argv[34];
     full_argv[0] = "motor_tool";
@@ -201,7 +208,11 @@ static void _accept_loop(void)
         g_client_fd = client_fd;
         _process_command(client_fd, buf);
 
-        close(client_fd);
+        /* 传感器看板期间不关 fd (线程拥有所有权) */
+        if (!g_sensor_watch_active) {
+            close(client_fd);
+        }
+        g_sensor_watch_active = 0;
         g_client_fd = -1;
     }
 }
@@ -354,6 +365,70 @@ int client_send(int argc, char **argv)
         if (argc >= 2 && strcmp(argv[1], "watch") != 0) break;
     }
 
+    close(fd);
+    return 0;
+}
+
+/* ================================================================
+ * 客户端 sensor watch 模式 — 长连接持续读数
+ * ================================================================ */
+
+static volatile int g_sensor_watch_client_running = 1;
+
+static void _sigint_handler(int sig)
+{
+    (void)sig;
+    g_sensor_watch_client_running = 0;
+}
+
+int client_sensor_watch(int argc, char **argv)
+{
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) { perror("socket"); return -1; }
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, MOTOR_TOOL_SOCK_PATH, sizeof(addr.sun_path) - 1);
+
+    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        fprintf(stderr, "ERROR: daemon not running. Start with:\n");
+        fprintf(stderr, "  motor_tool daemon can0\n");
+        close(fd); return -1;
+    }
+
+    /* 拼命令: sensor watch <id> */
+    char cmdline[256];
+    snprintf(cmdline, sizeof(cmdline), "sensor watch %s", argv[3]);
+    write(fd, cmdline, strlen(cmdline));
+
+    signal(SIGINT, _sigint_handler);
+    signal(SIGTERM, _sigint_handler);
+
+    fprintf(stderr, "Sensor watch started (Ctrl+C to stop)\n");
+
+    char buf[4096];
+    while (g_sensor_watch_client_running) {
+        ssize_t n = read(fd, buf, sizeof(buf) - 1);
+        if (n <= 0) break;
+        buf[n] = '\0';
+
+        /* 逐行解析 JSON 并提取 data 字段 */
+        char *saveptr;
+        char *line = strtok_r(buf, "\n", &saveptr);
+        while (line) {
+            char *data_start = strstr(line, "\"data\":\"");
+            if (data_start) {
+                data_start += 8;
+                char *data_end = strchr(data_start, '"');
+                if (data_end) *data_end = '\0';
+                printf("%s\n", data_start);
+            }
+            line = strtok_r(NULL, "\n", &saveptr);
+        }
+    }
+
+    fprintf(stderr, "\nSensor watch stopped.\n");
     close(fd);
     return 0;
 }

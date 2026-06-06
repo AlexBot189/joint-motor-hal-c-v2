@@ -21,6 +21,7 @@
 int daemon_start(const char *iface);    /* 启动 daemon, 初始化 CAN + 双电机 */
 int daemon_stop(void);                  /* 停止 daemon: 脱使能 + 清理 */
 int client_send(int argc, char **argv); /* 客户端: 连接 daemon, 发送命令, 打印响应 */
+int client_sensor_watch(int argc, char **argv); /* 传感器看板客户端 (长连接) */
 int daemon_get_client_fd(void);         /* 获取当前客户端 fd (供 watch 等使用) */
 
 #endif /* MOTOR_TOOL_DAEMON_H */

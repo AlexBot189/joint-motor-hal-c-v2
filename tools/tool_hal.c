@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 /* ================================================================
  * 全局状态
@@ -578,6 +579,86 @@ int tool_watch_start(int period_ms, int out_fd)
         }
     }
 
+    return 0;
+}
+
+/* ================================================================
+ * 传感器看板 (后台线程) — sensor watch
+ *
+ * 独立线程持续读 motor_hal_get_sensor(), 输出到 daemon client fd。
+ * sensor stop 时 tool_sensor_watch_stop() 设标志 → 线程退出。
+ * ================================================================ */
+
+static volatile int g_sensor_watch_running = 0;
+static pthread_t    g_sensor_watch_thread;
+static int          g_sensor_watch_id   = 0;
+static int          g_sensor_watch_fd   = -1;
+
+static void* _sensor_watch_thread_fn(void *arg)
+{
+    (void)arg;
+    char buf[256];
+    uint64_t last_ts = 0;
+    uint64_t first_ts = 0;
+
+    while (g_sensor_watch_running) {
+        motor_sensor_t s;
+        int ret = motor_hal_get_sensor(g_hal, (uint8_t)g_sensor_watch_id, &s);
+        if (ret == 0 && s.timestamp_us != last_ts) {
+            int64_t delta_us = (last_ts > 0) ? (int64_t)(s.timestamp_us - last_ts) : 0;
+            if (first_ts == 0) first_ts = s.timestamp_us;
+            last_ts = s.timestamp_us;
+
+            double elapsed_s = (double)(s.timestamp_us - first_ts) / 1000000.0;
+            (void)snprintf(buf, sizeof(buf),
+                    "[%8.3fs] #%llu | Hall: %4d %4d %4d | Force: %5d%s | Knee: %4d | SW: %d | Δ=%lldus",
+                    elapsed_s,
+                    (unsigned long long)s.timestamp_us,
+                    s.hall_adc0, s.hall_adc1, s.hall_adc2,
+                    s.force_raw, s.data_valid ? "" : " (inv)",
+                    s.knee_adc, s.hw_sw_pc9,
+                    (long long)delta_us);
+            if (g_sensor_watch_fd >= 0) {
+                char json[512];
+                int jn = snprintf(json, sizeof(json),
+                        "{\"type\":\"watch\",\"data\":\"%s\"}\n", buf);
+                ssize_t wr = write(g_sensor_watch_fd, json, (size_t)jn);
+                if (wr < 0) { g_sensor_watch_running = 0; break; }
+            }
+        }
+        usleep(500);  /* 500us poll, 足够跟 1KHz 透传 */
+    }
+
+    if (g_sensor_watch_fd >= 0) {
+        close(g_sensor_watch_fd);
+        g_sensor_watch_fd = -1;
+    }
+    return NULL;
+}
+
+int tool_sensor_watch_start(int id, int out_fd)
+{
+    if (g_sensor_watch_running) return -1;
+
+    g_sensor_watch_id = id;
+    g_sensor_watch_fd = dup(out_fd);  /* 线程拥有 fd 所有权 */
+    g_sensor_watch_running = 1;
+
+    if (pthread_create(&g_sensor_watch_thread, NULL, _sensor_watch_thread_fn, NULL) != 0) {
+        g_sensor_watch_running = 0;
+        close(g_sensor_watch_fd);
+        g_sensor_watch_fd = -1;
+        return -1;
+    }
+    return 0;
+}
+
+int tool_sensor_watch_stop(void)
+{
+    if (!g_sensor_watch_running) return 0;
+    g_sensor_watch_running = 0;
+    pthread_join(g_sensor_watch_thread, NULL);
+    /* fd 由线程 close */
     return 0;
 }
 
