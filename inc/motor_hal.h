@@ -680,17 +680,48 @@ int motor_hal_sync_stop(motor_hal_t *hal);
 bool motor_hal_sync_is_running(motor_hal_t *hal);
 
 /**
- * @brief 配置从站 TPDO1 为同步周期上报 (CiA 402 标准)
+ * @brief 通用 PDO 映射 — 自定义从站 RPDO/TPDO 映射表
  *
- * 通过 SDO 配置 TPDO1 映射和通信参数:
- *   映射: Statusword(16b) + Position(32b) + Velocity(32b) + Current(16b)
- *   传输类型: sync_count (1=每个SYNC发, 2=每2个SYNC发...)
- *   COB-ID: 0x180 + node_id
- *
- * 配置后, 主站每发一次 SYNC, 从站就上报一帧 12 字节数据。
+ * 映射时序 (CiA 301 标准):
+ *   1. 停用 PDO (写 comm sub0x01 bit31=1)
+ *   2. 清空映射 (写 map sub0x00 = 0)
+ *   3. 写入映射条目 (写 map sub0x01, sub0x02, ...)
+ *   4. 设置映射数量 (写 map sub0x00 = N)
+ *   5. 设置传输类型 (写 comm sub0x02)
+ *   6. 启用 PDO (写 comm sub0x01 = COB-ID)
  *
  * @param node_id    电机 CAN 节点 ID
- * @param sync_count 每 N 个 SYNC 发一次 (1~240), 0=不配置
+ * @param entries    映射条目数组 (用户自由选择 OD 索引/子索引/位宽)
+ * @param count      映射条目数量 (1~8)
+ * @param pdo_idx    PDO 索引: 0=RPDO1/TDO1, 1=RPDO2/TPDO2
+ * @param type       PDO 方向: PDO_TYPE_RPDO 或 PDO_TYPE_TPDO
+ * @param cob_id     COB-ID (如 0x200+node 或 0x180+node)
+ * @param trans_type 传输类型: 1~240=同步周期, 254/255=异步, 0=同步非周期
+ * @return 0=成功; <0=SDO 失败
+ *
+ * @code
+ *   pdo_map_entry_cfg_t tpdo_entries[] = {
+ *       {0x6041, 0x00, 16},  // Statusword
+ *       {0x6064, 0x00, 32},  // Position
+ *       {0x606C, 0x00, 32},  // Velocity
+ *   };
+ *   motor_hal_pdo_map(hal, 1, tpdo_entries, 3, 0, PDO_TYPE_TPDO,
+ *                     0x181, 1);  // 每个 SYNC 上报一次
+ * @endcode
+ */
+int motor_hal_pdo_map(motor_hal_t *hal, uint8_t node_id,
+                      const pdo_map_entry_cfg_t *entries, uint8_t count,
+                      uint8_t pdo_idx, pdo_type_t type,
+                      uint32_t cob_id, uint8_t trans_type);
+
+/**
+ * @brief 配置从站 TPDO1 为同步周期上报 (便捷封装)
+ *
+ * 调用 motor_hal_pdo_map 实现, 映射固定为:
+ *   Statusword(16b) + Position(32b) + Velocity(32b) + Current(16b)
+ *
+ * @param node_id    电机 CAN 节点 ID
+ * @param sync_count 每 N 个 SYNC 发一次 (1~240)
  * @return 0=成功; <0=SDO 失败
  */
 int motor_hal_tpdo_config(motor_hal_t *hal, uint8_t node_id, uint8_t sync_count);

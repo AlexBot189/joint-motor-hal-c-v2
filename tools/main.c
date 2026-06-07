@@ -54,7 +54,9 @@ static void print_help(void)
 
     printf("── 调试命令 ──────────────────────────────────────\n");
     printf("  sdoread <id> <0xIndex> [subidx]   通用 SDO 读\n");
-    printf("  sdowrite <id> <0xIndex> <sub> <val> <size>  通用 SDO 写\n\n");
+    printf("  sdowrite <id> <0xIndex> <sub> <val> <size>  通用 SDO 写\n");
+    printf("  tpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...   TPDO 映射\n");
+    printf("  rpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...   RPDO 映射\n\n");
 
     printf("── 读取命令 ──────────────────────────────────────\n");
     printf("  read angle <id>      角度\n");

@@ -49,6 +49,8 @@ const command_entry_t g_cmd_table[] = {
     { CMD_SENSOR,   "sensor",   "sensor <config|stop|read|watch> ...", "传感器透传",        -1, -1 },
     { CMD_REPORT,   "report",   "report [period_ms]",             "数据上报 (0=停止)",           2, 2 },
     { CMD_CALIB,    "calib",    "calib <start|status|exit> ...", "电机零位校准",                 -1, -1 },
+    { CMD_TPDO_MAP, "tpdo_map", "tpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...", "TPDO映射", -1, -1 },
+    { CMD_RPDO_MAP, "rpdo_map", "rpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...", "RPDO映射", -1, -1 },
 
     /* 其他 */
     { CMD_FAULT_RESET,"fault_reset","fault_reset <id>",          "清零故障",                     2, 2 },
@@ -130,6 +132,8 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
         case CMD_SENSOR:   return cmd_do_sensor(hal, cmd->id, argc, argv);
         case CMD_REPORT:   return cmd_do_report(hal, cmd->id, argc, argv);
         case CMD_CALIB:    return cmd_do_calib(hal, cmd->id, argc, argv);
+        case CMD_TPDO_MAP: return cmd_do_tpdo_map(hal, cmd->id, argc, argv);
+        case CMD_RPDO_MAP: return cmd_do_rpdo_map(hal, cmd->id, argc, argv);
         case CMD_FAULT_RESET: return cmd_do_fault_reset(hal, cmd->id, argc, argv);
         case CMD_REBOOT:   return cmd_do_reboot(hal, cmd->id, argc, argv);
         case CMD_HELP:     return cmd_do_help(hal, cmd->id, argc, argv);

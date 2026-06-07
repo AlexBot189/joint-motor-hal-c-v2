@@ -41,7 +41,7 @@ void pdo_ctrl_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
 void pdo_mit_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
                   bool enable, bool release_brake, bool clear_err,
                   uint16_t position, uint16_t velocity,
-                  uint16_t kp, uint16_t kd, uint16_t torque)
+                  uint16_t kp, uint16_t kd, int16_t torque)
 {
     canfd_frame_t f;
     canopen_mit_pdo_build(node, mode, enable, release_brake, clear_err,

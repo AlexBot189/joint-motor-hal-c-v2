@@ -52,6 +52,7 @@ typedef struct {
     uint8_t  dlc;                    /* 数据长度 */
     uint8_t  data[CANFD_MAX_DLC];    /* 数据 */
     bool     is_fd;                  /* FD 帧标志 */
+    bool     use_brs;                /* 数据段切换高速率 (CANFD BRS), SDO=false, PDO=true */
 } canfd_frame_t;
 
 /* ============================================================================
@@ -347,6 +348,23 @@ typedef struct {
     uint16_t  target2;
     int16_t   feedforward;
 } multi_axis_cmd_t;
+
+/* ============================================================================
+ * PDO 映射配置
+ * ============================================================================ */
+
+/** PDO 映射条目 — 用户自定义哪些 OD 映射到 RPDO/TPDO */
+typedef struct {
+    uint16_t index;     /* 对象字典索引, 如 0x6040 */
+    uint8_t  subidx;    /* 子索引, 通常 0x00 */
+    uint8_t  bitlen;    /* 位宽: 8 / 16 / 32 */
+} pdo_map_entry_cfg_t;
+
+/* PDO 类型 */
+typedef enum {
+    PDO_TYPE_RPDO = 0,  /* 主站→从站 (控制) */
+    PDO_TYPE_TPDO = 1,  /* 从站→主站 (上报) */
+} pdo_type_t;
 
 /* ============================================================================
  * 回调

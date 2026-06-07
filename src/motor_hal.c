@@ -66,7 +66,7 @@ void pdo_ctrl_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
 void pdo_mit_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
                   bool enable, bool release_brake, bool clear_err,
                   uint16_t position, uint16_t velocity,
-                  uint16_t kp, uint16_t kd, uint16_t torque);
+                  uint16_t kp, uint16_t kd, int16_t torque);
 void pdo_multi_send(can_driver_t *drv, const multi_axis_cmd_t *cmds, uint8_t count);
 void pdo_sync_send(can_driver_t *drv);
 void pdo_feedback_parse(const canfd_frame_t *f, motor_feedback_t *fb);
@@ -403,25 +403,57 @@ int motor_hal_fault_reset(motor_hal_t *hal, uint8_t node_id)
 
 int motor_hal_set_position(motor_hal_t *hal, uint8_t node_id, float angle_deg)
 {
+    if (!hal || !hal->drv) return -ENODEV;
+
     int16_t counts = motor_deg_to_counts(angle_deg);
+
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
+    bool enabled = m ? m->enabled : false;
+    uint16_t accel = m ? m->config.profile_accel : 0;
+    pthread_mutex_unlock(&hal->lock);
+
     if (!m) return -ENOENT;
-    return motor_hal_ctrl_raw(hal, node_id, MOTOR_MODE_PROFILE_POS,
-                              counts, m->config.profile_accel, 0);
+    if (!enabled) return -EAGAIN;
+
+    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_POS,
+                  true, true, false, counts, accel, 0);
+    return 0;
 }
 
 int motor_hal_set_velocity(motor_hal_t *hal, uint8_t node_id, float rpm_motor)
 {
+    if (!hal || !hal->drv) return -ENODEV;
+
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
+    bool enabled = m ? m->enabled : false;
+    uint16_t accel = m ? m->config.profile_accel : 0;
+    pthread_mutex_unlock(&hal->lock);
+
     if (!m) return -ENOENT;
-    return motor_hal_ctrl_raw(hal, node_id, MOTOR_MODE_PROFILE_VEL,
-                              (int16_t)rpm_motor, m->config.profile_accel, 0);
+    if (!enabled) return -EAGAIN;
+
+    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_VEL,
+                  true, true, false, (int16_t)rpm_motor, accel, 0);
+    return 0;
 }
 
 int motor_hal_set_torque(motor_hal_t *hal, uint8_t node_id, int16_t current_ma)
 {
-    return motor_hal_ctrl_raw(hal, node_id, MOTOR_MODE_CURRENT,
-                              current_ma, 0, 0);
+    if (!hal || !hal->drv) return -ENODEV;
+
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    bool enabled = m ? m->enabled : false;
+    pthread_mutex_unlock(&hal->lock);
+
+    if (!m) return -ENOENT;
+    if (!enabled) return -EAGAIN;
+
+    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_CURRENT,
+                  true, true, false, current_ma, 0, 0);
+    return 0;
 }
 
 int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
@@ -430,15 +462,19 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
 {
     if (!hal || !hal->drv) return -ENODEV;
 
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
+    bool enabled = m ? m->enabled : false;
+    pthread_mutex_unlock(&hal->lock);
+
     if (!m) return -ENOENT;
-    if (!m->enabled) return -EAGAIN;
+    if (!enabled) return -EAGAIN;
 
     uint16_t pos  = (uint16_t)(position * 65535.0f / 360.0f);
     uint16_t vel  = (uint16_t)((int16_t)velocity);  /* 保留符号, 由电机按有符号12bit解析 */
     uint16_t kp_v = (uint16_t)(kp * 100.0f);
     uint16_t kd_v = (uint16_t)(kd * 100.0f);
-    uint16_t torq = (uint16_t)(torque * 1000.0f);
+    int16_t  torq = (int16_t)(torque * 1000.0f);
 
     pdo_mit_send(hal->drv, node_id, MOTOR_MODE_MIT,
                  true, true, false,
@@ -452,9 +488,13 @@ int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,
 {
     if (!hal || !hal->drv) return -ENODEV;
 
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
+    bool enabled = m ? m->enabled : false;
+    pthread_mutex_unlock(&hal->lock);
+
     if (!m) return -ENOENT;
-    if (!m->enabled) return -EAGAIN;
+    if (!enabled) return -EAGAIN;
 
     pdo_ctrl_send(hal->drv, node_id, mode, true, true, false,
                   target1, target2, feedforward);
@@ -465,8 +505,12 @@ int motor_hal_stop(motor_hal_t *hal, uint8_t node_id)
 {
     if (!hal || !hal->drv) return -ENODEV;
 
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m || !m->enabled) return 0;
+    bool enabled = m ? m->enabled : false;
+    pthread_mutex_unlock(&hal->lock);
+
+    if (!m || !enabled) return 0;
 
     pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_POS,
                   true, true, false, 0, 0, 0);
@@ -477,9 +521,13 @@ int motor_hal_set_brake(motor_hal_t *hal, uint8_t node_id, bool release)
 {
     if (!hal || !hal->drv) return -ENODEV;
 
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
+    bool enabled = m ? m->enabled : false;
+    pthread_mutex_unlock(&hal->lock);
+
     if (!m) return -ENOENT;
-    if (!m->enabled) return -EAGAIN;
+    if (!enabled) return -EAGAIN;
 
     /* 通过 PDO data[0] bit6 控制抱闸, 保持当前模式和使能状态 */
     pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_POS,
@@ -1127,62 +1175,145 @@ bool motor_hal_sync_is_running(motor_hal_t *hal)
 }
 
 /* =====================================================
- * TPDO 配置 — 同步周期上报
+ * TPDO/RPDO 配置 — 通用映射 (按巨蟹文档时序)
+ *
+ * 巨蟹文档 PDO 映射流程 (以 TPDO1 为例):
+ *   1. 关闭不需要的 PDO 通道 (1801/1802/1803 sub01 bit31=1, best-effort)
+ *   2. 设置传输类型 (1800 sub02)
+ *   3. 清空映射 (1A00 sub00=0)
+ *   4. 写入映射条目 (1A00 sub01/sub02/...)
+ *   5. 保存映射数量 (1A00 sub00=N)
+ *   6. 启用 PDO (1800 sub01=COB-ID)
+ *
+ * RPDO 同理, 使用 140x/160x 索引。
  * ===================================================== */
+
+static int _pdo_map_core(motor_hal_t *hal, uint8_t node_id,
+                         const pdo_map_entry_cfg_t *entries, uint8_t count,
+                         uint16_t comm_idx, uint16_t map_idx,
+                         uint32_t cob_id, uint8_t trans_type)
+{
+    int ret;
+
+    /* 1. 设置传输类型 (trans_type, 1字节) */
+    ret = sdo_write_simple(hal->drv, node_id, comm_idx, 0x02,
+                           trans_type, 1);
+    if (ret != 0) {
+        fprintf(stderr, "[PDO] node=%d set trans_type=%d failed\n",
+                node_id, trans_type);
+        return ret;
+    }
+
+    /* 2. 清空映射 (map sub00=0, 1字节) */
+    ret = sdo_write_simple(hal->drv, node_id, map_idx, 0x00, 0, 1);
+    if (ret != 0) {
+        fprintf(stderr, "[PDO] node=%d clear map failed\n", node_id);
+        return ret;
+    }
+
+    /* 3. 写入映射条目 */
+    for (uint8_t i = 0; i < count; i++) {
+        /* 映射条目编码: Index[31:16] SubIdx[15:8] BitLen[7:0] */
+        uint32_t entry = ((uint32_t)entries[i].index << 16)
+                       | ((uint32_t)entries[i].subidx << 8)
+                       | (uint32_t)entries[i].bitlen;
+        ret = sdo_write_simple(hal->drv, node_id, map_idx,
+                               (uint8_t)(i + 1), entry, 4);
+        if (ret != 0) {
+            fprintf(stderr, "[PDO] node=%d map[%d] 0x%04X.%02X@%db failed\n",
+                    node_id, i, entries[i].index,
+                    entries[i].subidx, entries[i].bitlen);
+            return ret;
+        }
+    }
+
+    /* 4. 保存映射数量 (1字节) */
+    ret = sdo_write_simple(hal->drv, node_id, map_idx, 0x00, count, 1);
+    if (ret != 0) {
+        fprintf(stderr, "[PDO] node=%d set map count=%d failed\n",
+                node_id, count);
+        return ret;
+    }
+
+    /* 5. 启用 PDO + 设置 COB-ID */
+    ret = sdo_write_simple(hal->drv, node_id, comm_idx, 0x01, cob_id, 4);
+    if (ret != 0) {
+        fprintf(stderr, "[PDO] node=%d set COB=0x%03X failed\n",
+                node_id, cob_id);
+        return ret;
+    }
+
+    return 0;
+}
+
+/* ---------- 关闭其他 PDO 通道 (best-effort) ---------- */
+
+static void _pdo_disable_others(motor_hal_t *hal, uint8_t node_id,
+                                pdo_type_t type, uint8_t keep_idx)
+{
+    /* 关闭 TPDO2/3/4 或 RPDO2/3/4 (跳过 keep_idx) */
+    const uint16_t comm_base = (type == PDO_TYPE_RPDO)
+                               ? OD_RPDO1_COMM : OD_TPDO1_COMM;
+
+    for (uint8_t i = 1; i <= 3; i++) {  /* PDO2/PDO3/PDO4 */
+        if (i == keep_idx) continue;
+        /* COB-ID bit31=1 → 停用, 其他位保留原始 COB-ID (任意非零值) */
+        uint16_t idx = comm_base + (uint16_t)i;
+        sdo_write_simple(hal->drv, node_id, idx, 0x01, 0x80000000UL | (uint32_t)(0x80 + (i + 1)), 4);
+    }
+}
+
+/* ---------- 公共 API ---------- */
+
+int motor_hal_pdo_map(motor_hal_t *hal, uint8_t node_id,
+                      const pdo_map_entry_cfg_t *entries, uint8_t count,
+                      uint8_t pdo_idx, pdo_type_t type,
+                      uint32_t cob_id, uint8_t trans_type)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    if (!entries || count == 0 || count > 8) return -EINVAL;
+    if (pdo_idx > 1) return -EINVAL;
+
+    /* 选择通信参数和映射表索引 */
+    uint16_t comm_idx, map_idx;
+    if (type == PDO_TYPE_RPDO) {
+        comm_idx = (pdo_idx == 0) ? OD_RPDO1_COMM : OD_RPDO2_COMM;
+        map_idx  = (pdo_idx == 0) ? OD_RPDO1_MAP  : OD_RPDO2_MAP;
+    } else {
+        comm_idx = (pdo_idx == 0) ? OD_TPDO1_COMM : OD_TPDO2_COMM;
+        map_idx  = (pdo_idx == 0) ? OD_TPDO1_MAP  : OD_TPDO2_MAP;
+    }
+
+    const char *dir = (type == PDO_TYPE_RPDO) ? "RPDO" : "TPDO";
+
+    /* 0. 关闭其他 PDO 通道 (best-effort, 失败不阻塞) */
+    _pdo_disable_others(hal, node_id, type, pdo_idx);
+
+    /* 1-5. 核心映射时序 */
+    int ret = _pdo_map_core(hal, node_id, entries, count,
+                            comm_idx, map_idx, cob_id, trans_type);
+    if (ret == 0) {
+        fprintf(stderr, "[%s] node=%d COB=0x%03X, %d entries, ttype=%d\n",
+                dir, node_id, cob_id, count, trans_type);
+    }
+    return ret;
+}
 
 int motor_hal_tpdo_config(motor_hal_t *hal, uint8_t node_id, uint8_t sync_count)
 {
     if (!hal || !hal->drv) return -ENODEV;
     if (sync_count == 0 || sync_count > 240) return -EINVAL;
 
-    uint32_t cob_id = (uint32_t)PDO_TPDO1_COB(node_id);
-    int ret;
+    pdo_map_entry_cfg_t entries[] = {
+        {OD_STATUSWORD,      0x00, 16},  /* Statusword */
+        {OD_POSITION_ACTUAL, 0x00, 32},  /* Position */
+        {OD_VELOCITY_ACTUAL, 0x00, 32},  /* Velocity */
+        {OD_CURRENT_ACTUAL,  0x00, 16},  /* Current */
+    };
 
-    /* 1. 停用 TPDO1 */
-    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_COMM, 0x01,
-                           cob_id | 0x80000000UL, 4);
-    if (ret != 0) { fprintf(stderr, "[TPDO] node=%d disable failed\n", node_id); return ret; }
-
-    /* 2. 清映射 */
-    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x00, 0, 1);
-    if (ret != 0) return ret;
-
-    /* 3. 写入映射: Statusword(0x6041, 16b) */
-    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x01,
-                           pdo_map_entry(OD_STATUSWORD, 0x00, 16), 4);
-    if (ret != 0) return ret;
-
-    /* 4. Position Actual (0x6064, 32b) */
-    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x02,
-                           pdo_map_entry(OD_POSITION_ACTUAL, 0x00, 32), 4);
-    if (ret != 0) return ret;
-
-    /* 5. Velocity Actual (0x606C, 32b) */
-    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x03,
-                           pdo_map_entry(OD_VELOCITY_ACTUAL, 0x00, 32), 4);
-    if (ret != 0) return ret;
-
-    /* 6. Current Actual (0x6078, 16b) */
-    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x04,
-                           pdo_map_entry(OD_CURRENT_ACTUAL, 0x00, 16), 4);
-    if (ret != 0) return ret;
-
-    /* 7. 设映射数量 = 4 */
-    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_MAP, 0x00, 4, 1);
-    if (ret != 0) return ret;
-
-    /* 8. 设传输类型 = sync_count (同步周期) */
-    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_COMM, 0x02,
-                           sync_count, 1);
-    if (ret != 0) return ret;
-
-    /* 9. 启用 TPDO1 */
-    ret = sdo_write_simple(hal->drv, node_id, OD_TPDO1_COMM, 0x01, cob_id, 4);
-    if (ret != 0) return ret;
-
-    fprintf(stderr, "[TPDO] node=%d configured: COB=0x%03X, sync_every=%d\n",
-            node_id, cob_id, sync_count);
-    return 0;
+    return motor_hal_pdo_map(hal, node_id, entries, 4, 0,
+                             PDO_TYPE_TPDO,
+                             PDO_TPDO1_COB(node_id), sync_count);
 }
 
 void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_t count)

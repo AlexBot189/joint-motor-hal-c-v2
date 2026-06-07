@@ -791,3 +791,16 @@ int tool_sensor_watch_stop(void)
     pthread_join(g_sensor_watch_thread, NULL);
     return 0;
 }
+
+/* ================================================================
+ * PDO 映射 — 调用 motor_hal_pdo_map 通用接口
+ * ================================================================ */
+
+int tool_pdo_map(uint8_t id, pdo_type_t type,
+                 const pdo_map_entry_cfg_t *entries, uint8_t count,
+                 uint32_t cob_id, uint8_t trans_type)
+{
+    if (!g_hal) return -1;
+    return motor_hal_pdo_map(g_hal, id, entries, count, 0,
+                             type, cob_id, trans_type);
+}

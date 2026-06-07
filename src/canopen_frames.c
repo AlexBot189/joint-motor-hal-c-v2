@@ -146,7 +146,8 @@ void canopen_custom_pdo_build(uint8_t node, motor_mode_t mode,
     memset(f, 0, sizeof(*f));
     f->id    = COB_PDO_CTRL_BASE + node;
     f->dlc   = 7;
-    f->is_fd = true;
+    f->is_fd  = true;
+    f->use_brs = true;  /* PDO 数据段切 5Mbps */
 
     uint8_t flags = 0;
     if (enable)        flags |= (1 << 7);
@@ -171,13 +172,14 @@ void canopen_custom_pdo_build(uint8_t node, motor_mode_t mode,
 void canopen_mit_pdo_build(uint8_t node, motor_mode_t mode,
                             bool enable, bool release_brake, bool clear_err,
                             uint16_t position, uint16_t velocity,
-                            uint16_t kp, uint16_t kd, uint16_t torque,
+                            uint16_t kp, uint16_t kd, int16_t torque,
                             canfd_frame_t *f)
 {
     memset(f, 0, sizeof(*f));
     f->id    = COB_PDO_MIT_BASE + node;
     f->dlc   = 9;
-    f->is_fd = true;
+    f->is_fd  = true;
+    f->use_brs = true;  /* PDO 数据段切 5Mbps */
 
     uint8_t flags = 0;
     if (enable)        flags |= (1 << 7);
@@ -212,7 +214,8 @@ void canopen_multi_ctrl_build(const multi_axis_cmd_t *cmds, uint8_t count,
     memset(f, 0, sizeof(*f));
     f->id    = COB_MULTI_CTRL;
     f->dlc   = 64;
-    f->is_fd = true;
+    f->is_fd  = true;
+    f->use_brs = true;  /* PDO 数据段切 5Mbps */
 
     if (count > 8) count = 8;
 
