@@ -454,8 +454,30 @@ motor_hal_sync_stop(hal);
 
 ### 7.2 TPDO 映射 (从站→主站, 反馈上报)
 
+> **TL;DR**: TPDO 是驱动板自动上报的通道。映射多个观测参数完全合理,
+> 因为位置/速度/电流/温度是同时存在的, 不依赖控制模式。
+
+#### CLI — 快捷映射 (推荐)
+
+```bash
+# 语法: motor_tool tpdo <id> <sync_count> <item> [item...]
+# TPDO items: cur vel pos status temp err
+motor_tool tpdo 1 1 cur pos vel            # 每SYNC上报: Current+Position+Velocity
+motor_tool tpdo 1 1 status pos cur         # 每SYNC上报: Statusword+Position+Current
+motor_tool tpdo 1 2 pos vel                # 每2个SYNC上报: Position+Velocity
+```
+
+#### CLI — 详细映射
+
+```bash
+# 旧接口保留 (需要完整控制 COB-ID 时使用)
+motor_tool tpdo_map 1 0x181 1 0x6041 0 16 0x6064 0 32 0x606C 0 32 0x6078 0 16
+```
+
+#### C API
+
 ```c
-// C API — 自定义映射
+// 自定义映射
 pdo_map_entry_cfg_t tpdo[] = {
     {0x6041, 0x00, 16},  // Statusword
     {0x6064, 0x00, 32},  // Position Actual
@@ -467,50 +489,100 @@ motor_hal_pdo_map(hal, 1, tpdo, 4, 0, PDO_TYPE_TPDO, 0x181, 1);
 // 便捷封装 (固定映射 Statusword+Position+Velocity+Current)
 motor_hal_tpdo_config(hal, 1, 1);  // 每个 SYNC 上报一次
 
-// 注册自定义 TPDO 解析回调
+// 注册自定义 TPDO 解析回调 (有回调时跳过硬编码解析)
 void my_tpdo_cb(uint8_t id, const canfd_frame_t *f, void *ctx) {
-    int16_t cur  = f->data[0] | (f->data[1] << 8);
-    int32_t pos  = f->data[2] | (f->data[3] << 8) | ...;
+    int16_t cur = f->data[0] | (f->data[1] << 8);
+    int32_t pos = f->data[2] | (f->data[3] << 8) | ...;
     printf("id=%d cur=%d pos=%d\n", id, cur, pos);
 }
 motor_hal_set_tpdo_cb(hal, 1, my_tpdo_cb, NULL);
 ```
 
-```bash
-# CLI — TPDO 映射
-motor_tool tpdo_map 1 0x181 1 0x6041 0 16 0x6064 0 32 0x606C 0 32 0x6078 0 16
-```
-
 ### 7.3 RPDO 映射 (主站→从站, 控制命令)
 
+> ⚠️ **重要**: 电机同一时刻只工作在一种控制模式 (由 0x6060 决定)。
+> RPDO 里只需要映射 `Controlword + 当前模式对应的目标参数`。
+> 映射 CW+Position+Current 三个目标参数没意义 — 电机只看当前模式的那个。
+> 切换模式时, 先 SDO 改 0x6060, 再发对应参数的 RPDO。
+
+#### CLI — 快捷映射 (推荐)
+
+```bash
+# 语法: motor_tool rpdo <id> <trans_type> <item> [item...]
+# RPDO items: cw(controlword) / pos / cur / vel
+# ★ 通常只选一个目标参数 (cw + 当前模式的那一个)
+motor_tool rpdo 1 255 cw pos            # CSP 模式: CW+TargetPosition
+motor_tool rpdo 1 255 cw cur            # 电流模式: CW+TargetCurrent
+motor_tool rpdo 1 255 cw vel            # 速度模式: CW+TargetVelocity
+```
+
+#### CLI — 详细映射
+
+```bash
+# 旧接口保留
+motor_tool rpdo_map 1 0x201 255 0x6040 0 16 0x607A 0 32
+```
+
+#### C API
+
 ```c
-// C API — 映射 RPDO1
+// 映射 RPDO1: Controlword + Target Position
 pdo_map_entry_cfg_t rpdo[] = {
     {0x6040, 0x00, 16},  // Controlword
     {0x607A, 0x00, 32},  // Target Position
-    {0x6071, 0x00, 16},  // Target Current
 };
-motor_hal_pdo_map(hal, 1, rpdo, 3, 0, PDO_TYPE_RPDO, 0x201, 255);
+motor_hal_pdo_map(hal, 1, rpdo, 2, 0, PDO_TYPE_RPDO, 0x201, 255);
 
 // 发送 RPDO 帧 (数据小端, 按映射顺序)
-uint8_t data[8] = {
-    0x0F, 0x00,              // Controlword = 0x000F (EnableOp)
-    0x00, 0x40, 0x00, 0x00, // TargetPos = 16384 cnt (90°)
-    0xE8, 0x03,              // TargetCur = 1000 mA
+uint8_t data[6] = {
+    0x0F, 0x00,              // CW = EnableOp
+    0x00, 0x40, 0x00, 0x00,  // TargetPos = 16384cnt (90°)
 };
-motor_hal_rpdo_send(hal, 1, data, 8);
+motor_hal_rpdo_send(hal, 1, data, 6);
+
+// 切换模式: SDO 改 0x6060 + 重新发 RPDO
+motor_hal_set_mode(hal, 1, MOTOR_MODE_CURRENT);
+uint8_t cur_data[4] = {0x0F, 0x00, 0xE8, 0x03};  // CW+1000mA
+motor_hal_rpdo_send(hal, 1, cur_data, 4);
 ```
+
+#### CLI — 发送 RPDO
 
 ```bash
-# CLI — RPDO 映射
-motor_tool rpdo_map 1 0x201 255 0x6040 0 16 0x607A 0 32 0x6071 0 16
-
-# CLI — 发送 RPDO 帧
-motor_tool rpdo_send 1 0F00 00004000 03E8
-#                       CW   Pos=90°   Cur=1000mA
+motor_tool rpdo_send 1 0F00 00004000       # CSP: CW+Pos=90°
+motor_tool rpdo_send 1 0F00 03E8           # 电流: CW+1000mA
 ```
 
-### 7.4 PDO 传输类型
+### 7.4 完整映射时序 (参考巨蟹文档)
+
+```
+上电反馈 (0x700+ID)       → 驱动板自动发
+开启节点 (NMT Start)      → SDO 0x000: 01 <id>
+设置心跳 (0x1017)         → SDO 写
+┌─ TPDO 映射 ─────────────────────────────┐
+│ 关闭多余 TPDO 通道 (1801~1803)          │
+│ 设置 TPDO 传输模式 (1800 sub02)         │
+│ 清空 TPDO 映射 (1A00 sub00=0)           │
+│ 写入 TPDO 映射条目 (1A00 sub01/02/...)  │
+│ 保存 TPDO 数量 (1A00 sub00=N)           │
+│ 启用 TPDO (1800 sub01=COB-ID)           │
+└─────────────────────────────────────────┘
+┌─ RPDO 映射 (可选) ──────────────────────┐
+│ 关闭多余 RPDO 通道 (1401~1403)          │
+│ 设置 RPDO 传输模式 (1400 sub02)         │
+│ 清空 RPDO 映射 (1600 sub00=0)           │
+│ 写入 RPDO 映射条目 (1600 sub01/02/...)  │
+│ 保存 RPDO 数量 (1600 sub00=N)           │
+│ 启用 RPDO (1400 sub01=COB-ID)           │
+└─────────────────────────────────────────┘
+设置运行模式 (0x6060)      → SDO 写
+发 SYNC (0x080)            → 触发 PDO 传输
+```
+
+> `motor_hal_pdo_map` 自动完成 TPDO/RPDO 各自 6 步, 不需要手动操作。
+> TPDO 和 RPDO 可以单独映射, 不需要同时。
+
+### 7.5 PDO 传输类型
 
 | 值 | 含义 |
 |----|------|
