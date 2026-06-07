@@ -130,3 +130,128 @@ int cmd_do_rpdo_map(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     else fprintf(stderr, "✗ RPDO config failed (ret=%d)\n", ret);
     return ret;
 }
+
+/* ================================================================
+ * 快捷映射命令: tpdo / rpdo
+ *
+ * 用法:
+ *   motor_tool tpdo <id> <sync_count> <item1> [item2] [item3] ...
+ *   motor_tool rpdo <id> <trans_type> <item1> [item2] ...
+ *
+ *   TPDO items: cur(pos) / vel / status / temp / err
+ *   RPDO items: cw(controlword) / pos / cur / vel (★ 通常只选一个目标参数)
+ *
+ * 示例:
+ *   motor_tool tpdo 1 1 cur pos vel          # TPDO: Current+Position+Velocity
+ *   motor_tool rpdo 1 255 cw pos             # RPDO: Controlword+TargetPosition
+ *   motor_tool rpdo 1 255 cw cur             # RPDO: Controlword+TargetCurrent
+ * ================================================================ */
+
+static int _lookup_item(const char *name, uint16_t *index, uint8_t *bitlen, pdo_type_t type)
+{
+    if (strcmp(name, "cur") == 0) {
+        *index = (type == PDO_TYPE_TPDO) ? OD_CURRENT_ACTUAL : OD_TARGET_TORQUE;
+        *bitlen = 16;
+    } else if (strcmp(name, "vel") == 0) {
+        *index = (type == PDO_TYPE_TPDO) ? OD_VELOCITY_ACTUAL : OD_TARGET_VELOCITY;
+        *bitlen = 32;
+    } else if (strcmp(name, "pos") == 0) {
+        *index = (type == PDO_TYPE_TPDO) ? OD_POSITION_ACTUAL : OD_TARGET_POS;
+        *bitlen = 32;
+    } else if (strcmp(name, "status") == 0) {
+        if (type != PDO_TYPE_TPDO) return -1;
+        *index = OD_STATUSWORD; *bitlen = 16;
+    } else if (strcmp(name, "temp") == 0) {
+        if (type != PDO_TYPE_TPDO) return -1;
+        *index = 0x2663; *bitlen = 16;  /* 电机线圈温度 */
+    } else if (strcmp(name, "err") == 0) {
+        if (type != PDO_TYPE_TPDO) return -1;
+        *index = 0x603F; *bitlen = 16;  /* 故障码 */
+    } else if (strcmp(name, "cw") == 0) {
+        if (type != PDO_TYPE_RPDO) return -1;
+        *index = OD_CONTROLWORD; *bitlen = 16;
+    } else {
+        return -1;
+    }
+    return 0;
+}
+
+static int _do_pdo_quick(uint8_t id, pdo_type_t type,
+                         uint32_t cob_id, uint8_t trans_type,
+                         int argc, char **argv, int start)
+{
+    int count = argc - start;
+    if (count < 1 || count > 8) {
+        fprintf(stderr, "ERROR: 1~8 items required\n");
+        return -1;
+    }
+
+    pdo_map_entry_cfg_t entries[8];
+    for (int i = 0; i < count; i++) {
+        uint16_t idx; uint8_t bits;
+        if (_lookup_item(argv[start + i], &idx, &bits, type) != 0) {
+            fprintf(stderr, "ERROR: unknown item '%s'\n", argv[start + i]);
+            return -1;
+        }
+        entries[i].index  = idx;
+        entries[i].subidx = 0x00;
+        entries[i].bitlen = bits;
+    }
+
+    const char *dir = (type == PDO_TYPE_TPDO) ? "TPDO" : "RPDO";
+    printf("Configuring %s: node=%d COB=0x%03X ttype=%d items=", dir, id, cob_id, trans_type);
+    for (int i = 0; i < count; i++) printf("%s ", argv[start + i]);
+    printf("\n");
+
+    int ret = tool_pdo_map(id, type, entries, (uint8_t)count,
+                           cob_id, trans_type);
+    if (ret == 0) printf("✓ %s configured\n", dir);
+    else fprintf(stderr, "✗ %s config failed (ret=%d)\n", dir, ret);
+    return ret;
+}
+
+int cmd_do_tpdo_quick(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+
+    if (argc < 5) {
+        fprintf(stderr, "Usage: motor_tool tpdo <id> <sync_count> <item> [item...]\n");
+        fprintf(stderr, "  TPDO items: cur vel pos status temp err\n");
+        fprintf(stderr, "  sync_count: 1=every SYNC, 2=every 2nd SYNC, ...\n");
+        fprintf(stderr, "Examples:\n");
+        fprintf(stderr, "  motor_tool tpdo 1 1 cur pos vel       # Current+Position+Velocity\n");
+        fprintf(stderr, "  motor_tool tpdo 1 1 status pos cur    # Statusword+Position+Current\n");
+        return -1;
+    }
+
+    int id         = atoi(argv[2]);
+    int sync_count = atoi(argv[3]);
+    return _do_pdo_quick((uint8_t)id, PDO_TYPE_TPDO,
+                         (uint32_t)(0x180 + id), (uint8_t)sync_count,
+                         argc, argv, 4);
+}
+
+int cmd_do_rpdo_quick(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+
+    if (argc < 5) {
+        fprintf(stderr, "Usage: motor_tool rpdo <id> <trans_type> <item> [item...]\n");
+        fprintf(stderr, "  RPDO items: cw pos cur vel\n");
+        fprintf(stderr, "  ★ 通常只选一个目标参数 (cw + 当前模式对应的目标)\n");
+        fprintf(stderr, "  trans_type: 255=async, 1~240=sync, 0=sync_acyclic\n");
+        fprintf(stderr, "Examples:\n");
+        fprintf(stderr, "  motor_tool rpdo 1 255 cw pos           # CSP: CW+TargetPosition\n");
+        fprintf(stderr, "  motor_tool rpdo 1 255 cw cur           # 电流: CW+TargetCurrent\n");
+        fprintf(stderr, "  motor_tool rpdo 1 255 cw vel           # 速度: CW+TargetVelocity\n");
+        return -1;
+    }
+
+    int id        = atoi(argv[2]);
+    int trans_type = atoi(argv[3]);
+    return _do_pdo_quick((uint8_t)id, PDO_TYPE_RPDO,
+                         (uint32_t)(0x200 + id), (uint8_t)trans_type,
+                         argc, argv, 4);
+}

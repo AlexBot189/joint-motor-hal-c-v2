@@ -52,7 +52,9 @@ const command_entry_t g_cmd_table[] = {
     { CMD_TPDO_MAP, "tpdo_map", "tpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...", "TPDO映射", -1, -1 },
     { CMD_RPDO_MAP, "rpdo_map", "rpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...", "RPDO映射", -1, -1 },
     { CMD_RPDO_SEND, "rpdo_send", "rpdo_send <id> <hex_bytes...>", "RPDO发送", 3, -1 },
-    { CMD_PDO,  "pdo",  "pdo <id> <pos|vel|cur|csp> <val>", "PDO单轴控制", 4, -1 },
+    { CMD_TPDO,  "tpdo",  "tpdo <id> <sync> <item> ...",  "TPDO快捷映射", 4, -1 },
+    { CMD_RPDO,  "rpdo",  "rpdo <id> <ttype> <item> ...", "RPDO快捷映射", 4, -1 },
+    { CMD_PDO,   "pdo",   "pdo <id> <pos|vel|cur|csp> <val>", "PDO单轴控制", 4, -1 },
     { CMD_MULTI,"multi","multi <pos|vel|cur|csp> <id:val> ...", "PDO多轴广播", 3, -1 },
     { CMD_MIT,  "mit",  "mit <id> <pos> <vel> <kp> <kd> <torque>", "MIT阻抗控制", 7, 7 },
 
@@ -139,6 +141,8 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
         case CMD_TPDO_MAP: return cmd_do_tpdo_map(hal, cmd->id, argc, argv);
         case CMD_RPDO_MAP: return cmd_do_rpdo_map(hal, cmd->id, argc, argv);
         case CMD_RPDO_SEND: return cmd_do_rpdo_send(hal, cmd->id, argc, argv);
+        case CMD_TPDO:     return cmd_do_tpdo_quick(hal, cmd->id, argc, argv);
+        case CMD_RPDO:     return cmd_do_rpdo_quick(hal, cmd->id, argc, argv);
         case CMD_PDO:      return cmd_do_pdo(hal, cmd->id, argc, argv);
         case CMD_MULTI:    return cmd_do_multi(hal, cmd->id, argc, argv);
         case CMD_MIT:      return cmd_do_mit(hal, cmd->id, argc, argv);
