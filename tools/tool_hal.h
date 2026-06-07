@@ -112,6 +112,9 @@ int tool_pdo_map(uint8_t id, pdo_type_t type,
                  const pdo_map_entry_cfg_t *entries, uint8_t count,
                  uint32_t cob_id, uint8_t trans_type);
 
+/** @brief 发送标准 RPDO 控制帧 */
+int tool_rpdo_send(uint8_t id, const uint8_t *data, uint8_t dlc);
+
 /* ================================================================
  * watch 模式
  * ================================================================ */

@@ -804,3 +804,9 @@ int tool_pdo_map(uint8_t id, pdo_type_t type,
     return motor_hal_pdo_map(g_hal, id, entries, count, 0,
                              type, cob_id, trans_type);
 }
+
+int tool_rpdo_send(uint8_t id, const uint8_t *data, uint8_t dlc)
+{
+    if (!g_hal) return -1;
+    return motor_hal_rpdo_send(g_hal, id, data, dlc);
+}

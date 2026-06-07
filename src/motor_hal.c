@@ -106,10 +106,12 @@ typedef struct {
     motor_error_cb_t    err_cb;
     motor_state_cb_t    state_cb;
     motor_sensor_cb_t   sensor_cb;
+    motor_tpdo_raw_cb_t tpdo_raw_cb;  /* 标准 TPDO 原始帧回调 */
     void               *fb_ctx;
     void               *err_ctx;
     void               *state_ctx;
     void               *sensor_ctx;
+    void               *tpdo_raw_ctx;
 
     /* 传感器缓存 */
     pthread_mutex_t  sensor_lock;
@@ -965,9 +967,16 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
     case 0x180: {  /* 标准 TPDO1 (同步周期上报: 0x180+node) */
         uint8_t node = (uint8_t)(f->id & 0x7F);
         motor_node_t *m = _find_motor(hal, node);
-        if (!m || f->dlc < 8) break;
+        if (!m) break;
 
-        /* 解析: Statusword(16b) + Position(32b) + Velocity(32b) = 10 bytes */
+        /* 优先调用户自定义回调 (自定义映射时) */
+        if (m->tpdo_raw_cb) {
+            m->tpdo_raw_cb(node, f, m->tpdo_raw_ctx);
+            break;
+        }
+
+        /* 回退: 默认硬编码解析 Statusword+Position+Velocity+Current */
+        if (f->dlc < 8) break;
         uint16_t sw = (uint16_t)f->data[0] | ((uint16_t)f->data[1] << 8);
         int32_t  pos = (int32_t)((uint32_t)f->data[2]
                       | ((uint32_t)f->data[3] << 8)
@@ -1314,6 +1323,41 @@ int motor_hal_tpdo_config(motor_hal_t *hal, uint8_t node_id, uint8_t sync_count)
     return motor_hal_pdo_map(hal, node_id, entries, 4, 0,
                              PDO_TYPE_TPDO,
                              PDO_TPDO1_COB(node_id), sync_count);
+}
+
+/* =====================================================
+ * 标准 RPDO 发送 — 用户自定义映射后发送控制帧
+ * ===================================================== */
+
+int motor_hal_rpdo_send(motor_hal_t *hal, uint8_t node_id,
+                        const uint8_t *data, uint8_t dlc)
+{
+    if (!hal || !hal->drv || !data) return -ENODEV;
+    if (dlc == 0 || dlc > 8) return -EINVAL;
+
+    canfd_frame_t f;
+    memset(&f, 0, sizeof(f));
+    f.id     = (uint32_t)(COB_RPDO1_BASE + node_id);  /* 0x200 + node */
+    f.dlc    = dlc;
+    f.is_fd  = false;   /* 标准 CAN 帧 */
+    f.use_brs = false;
+    memcpy(f.data, data, dlc);
+
+    return can_driver_send(hal->drv, &f) >= 0 ? 0 : -errno;
+}
+
+/* =====================================================
+ * 标准 TPDO 原始帧回调
+ * ===================================================== */
+
+void motor_hal_set_tpdo_cb(motor_hal_t *hal, uint8_t node_id,
+                           motor_tpdo_raw_cb_t cb, void *ctx)
+{
+    if (!hal) return;
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) return;
+    m->tpdo_raw_cb   = cb;
+    m->tpdo_raw_ctx  = ctx;
 }
 
 void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_t count)

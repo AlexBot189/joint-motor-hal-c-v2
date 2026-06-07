@@ -35,6 +35,7 @@ add_executable(motor_tool
     cmd_report.c
     cmd_calib.c
     cmd_pdo.c
+    cmd_rpdo.c
 )
 
 target_include_directories(motor_tool PRIVATE

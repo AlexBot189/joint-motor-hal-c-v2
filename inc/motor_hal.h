@@ -727,6 +727,50 @@ int motor_hal_pdo_map(motor_hal_t *hal, uint8_t node_id,
 int motor_hal_tpdo_config(motor_hal_t *hal, uint8_t node_id, uint8_t sync_count);
 
 /**
+ * @brief 发送标准 RPDO 控制帧 (用户自定义映射后使用)
+ *
+ * 标准 RPDO 需要通过 SDO 先配置映射 (motor_hal_pdo_map + PDO_TYPE_RPDO),
+ * 然后调用此函数按映射格式发送控制帧。
+ *
+ * COB-ID 固定为 0x200 + node_id (CiA 预定义 RPDO1)。
+ *
+ * @param node_id  电机 CAN 节点 ID
+ * @param data     数据字节 (小端, 按映射顺序排列)
+ * @param dlc      数据长度 (映射条目总字节数)
+ * @return 0=成功
+ *
+ * @code
+ *   // 映射: Controlword(16b) + TargetPosition(32b) = 6 bytes
+ *   uint8_t data[] = {0x0F, 0x00,  // CW=EnableOp
+ *                      0x00, 0x40, 0x00, 0x00};  // Pos=16384cnt(90°)
+ *   motor_hal_rpdo_send(hal, 1, data, 6);
+ * @endcode
+ */
+int motor_hal_rpdo_send(motor_hal_t *hal, uint8_t node_id,
+                        const uint8_t *data, uint8_t dlc);
+
+/**
+ * @brief 注册标准 TPDO 原始帧回调
+ *
+ * 当自定义 TPDO 映射后, 接收线程收到 TPDO 帧 (COB=0x180+node) 时,
+ * 如果注册了此回调, 则调用回调并跳过默认硬编码解析。
+ * 回调中用户根据自己的映射配置自行解析数据。
+ *
+ * @param cb  回调函数, 传 NULL 取消注册
+ *
+ * @code
+ * void my_tpdo(uint8_t id, const canfd_frame_t *f, void *ctx) {
+ *     int16_t sw  = f->data[0] | (f->data[1] << 8);
+ *     int32_t pos = f->data[2] | (f->data[3] << 8) | ...;
+ *     ...
+ * }
+ * motor_hal_set_tpdo_cb(hal, 1, my_tpdo, NULL);
+ * @endcode
+ */
+void motor_hal_set_tpdo_cb(motor_hal_t *hal, uint8_t node_id,
+                           motor_tpdo_raw_cb_t cb, void *ctx);
+
+/**
  * @brief 多轴广播控制 — 一帧 CANFD 控制最多 8 个电机
  *
  * 利用 CANFD 的 64 字节数据段, 一帧同时下发 8 条 PDO 命令。
