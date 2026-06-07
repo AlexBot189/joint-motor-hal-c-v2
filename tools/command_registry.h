@@ -41,6 +41,9 @@ enum {
     /* PDO 映射 */
     CMD_TPDO_MAP, CMD_RPDO_MAP, CMD_RPDO_SEND,
 
+    /* PDO 实时控制 */
+    CMD_PDO, CMD_MULTI, CMD_MIT,
+
     /* 其他系统 */
     CMD_FAULT_RESET, CMD_REBOOT,
     CMD_STOP, CMD_HELP,
@@ -101,6 +104,11 @@ int cmd_do_calib(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_tpdo_map(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_rpdo_map(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_rpdo_send(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+
+/* PDO 实时控制 */
+int cmd_do_pdo(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_multi(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_mit(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 
 /* 其他 */
 int cmd_do_help(motor_hal_t *hal, int cmd_id, int argc, char **argv);

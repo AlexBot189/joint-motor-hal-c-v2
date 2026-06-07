@@ -91,7 +91,9 @@ cfg.profile_accel     = 5000;    // 加速度 RPM/s
 cfg.profile_decel     = 5000;    // 减速度 RPM/s
 cfg.profile_velocity  = 20;      // 最大轨迹速度 RPM
 cfg.disable_watchdog  = true;    // 关闭看门狗 (推荐)
-cfg.auto_enable       = true;    // startup 自动使能
+cfg.auto_enable       = true;    // ★ 控制 startup 内部是否自动走 DS402 使能
+                                  //    true: startup 一步到位 (Bootup+配置+使能)
+                                  //    false: startup 只配置不使能, 后面手动 motor_hal_enable()
 cfg.bootup_timeout_ms = 5000;    // 启动超时
 motor_hal_add_motor(hal, &cfg);
 
@@ -133,7 +135,15 @@ SDO 通过队列+条件变量实现同步阻塞调用，每次 50~200ms。
 
 ### 3.1 电流（力矩）控制 — 带时序
 
-**时序**: 使能(SD0 0x6040) → 切电流模式(0x6060=0x0A) → 写目标电流(0x6071)
+> **重要**: motor_tool (CLI) 层自动完成了使能+切模式+写目标的完整时序。
+> 如果直接用 HAL C API 做 SDO 电流控制, 需要**自己调用使能**:
+> ```c
+> motor_hal_enable(hal, 1);                               // 步骤1: 使能
+> motor_hal_set_mode(hal, 1, MOTOR_MODE_CURRENT);         // 步骤2: 切模式
+> motor_hal_sdo_write(hal, 1, 0x6071, 0x00, 1000, 2);    // 步骤3: 写目标
+> ```
+
+**时序**: 使能(SDO 0x6040) → 切电流模式(0x6060=0x0A) → 写目标电流(0x6071)
 
 ```c
 // C API
@@ -300,9 +310,21 @@ motor_hal_set_canfd_baud(hal, 1, 1);           // 1=5M, 2=4M, 3=2M, 4=1M
 motor_tool setzero 1                         # 零位标定 (自动失能)
 motor_tool limit_pos 1 9000                  # 正限位 90°
 motor_tool limit_neg 1 -9000                 # 负限位 -90°
-motor_tool save 1                            # 保存到 Flash
+
+# PID 设置 — 写入 0x2532~0x2537 (只改 RAM, 断电丢失!)
 motor_tool pid 1 100 50 200 30 80 10        # CP CI VP VI PP PI
-```
+#                │  │   │   │  │  └─ PP  位置环 P 增益
+#                │  │   │   │  └─── PI  位置环 I 增益
+#                │  │   │   └────── VI  速度环 I 增益
+#                │  │   └────────── VP  速度环 P 增益
+#                │  └────────────── CI  电流环 I 增益
+#                └──────────────── CP  电流环 P 增益
+
+# 读 PID
+motor_tool read pid 1                        # 读 PID 参数
+
+# ★ 保存到 Flash (PID/限位等参数需手动保存, 否则断电丢失)
+motor_tool save 1                            # 保存到 Flash
 
 ---
 
@@ -348,15 +370,30 @@ motor_hal_stop(hal, 1);
 motor_hal_ctrl_raw(hal, 1, MOTOR_MODE_CSP, 0, 0, 0);
 ```
 
-#### CLI
+#### CLI — 单轴 PDO 控制 (实时)
 
 ```bash
-# 注意: CLI 的 torque/speed/abs 命令走的是 SDO 时序, 非 PDO
-# PDO 控制主要用于上层代码实时循环
+# PDO 单轴 (不经过 SDO, <100μs)
+motor_tool pdo 1 pos 4500          # 电机1: 位置 45°
+motor_tool pdo 1 pos -9000        # 电机1: 位置 -90°
+motor_tool pdo 1 vel 5000         # 电机1: 速度 50 RPM
+motor_tool pdo 1 cur 1000         # 电机1: 电流 1000 mA
+motor_tool pdo 1 csp 16384        # 电机1: CSP 16384cnt
 
-# CLI 持续监控模式 — 读反馈缓存 (不触 SDO)
-motor_tool watch 200         # 200ms 周期轮询反馈 (Ctrl+C 退出)
+# PDO 多轴广播 (一帧控制多个电机, 时间同步)
+motor_tool multi pos 1:4500 2:-4500          # 双关节位置
+motor_tool multi vel 1:5000 2:-3000          # 双关节速度
+motor_tool multi cur 1:1000 2:500            # 双关节电流
+motor_tool multi csp 1:16384 2:-16384       # 双关节 CSP (每帧回显反馈)
+
+# MIT 阻抗控制
+motor_tool mit 1 0 0 30 5 0                 # 柔顺模式 (低刚度, 可被人推动)
+motor_tool mit 1 3000 0 200 30 0            # 刚性位置 30°
 ```
+
+> **PDO vs SDO 对比**:
+> - `motor_tool pdo` = PDO 自定义帧 (0x100+ID, 7B), <100μs, 适合实时循环
+> - `motor_tool torque/speed/abs` = SDO 串行命令, 300~500ms, 适合手动调试
 
 ### 6.2 MIT 阻抗控制 PDO (0x110+ID, 9字节)
 
@@ -486,6 +523,18 @@ motor_tool rpdo_send 1 0F00 00004000 03E8
 
 ## 8. 反馈缓存读取
 
+> **watch / report / sensor 三者区别**:
+
+| 命令 | 数据来源 | 需要配置？ | 原理 |
+|------|---------|:---:|------|
+| `watch 200` | 反馈帧 0x300 缓存 | ❌ 零配置 | motor_tool 轮询 `motor_hal_get_feedback()` 缓存 |
+| `report 5` | 反馈缓存 + 传感器缓存 | 需先 `sensor config` | 类似 GD32 的 @CA, 独立线程周期输出两者 |
+| `sensor watch 1` | 透传帧 0x680 缓存 | 需先 `sensor config` | motor_tool 轮询 `motor_hal_get_sensor()` 缓存 |
+
+- **watch**: 读 PDO 反馈帧 (0x300), 驱动板收到任何 PDO/SYNC 后自动上报, 不需配置
+- **report**: 读 feedback+sensor 两者, 用于类似 GD32 的完整数据上报场景
+- **sensor watch**: 读透传帧 (0x680), 必须先 SDO 配 0x5503 开启透传, 驱动板按配置周期上报
+
 反馈数据来自驱动板周期性上报的反馈帧 (0x300+ID, 12字节)，由接收线程自动更新缓存。
 
 **读取缓存不触发 SDO，延迟 ~100ns，RT 安全。**
@@ -591,7 +640,7 @@ motor_tool sensor stop 1            # 停止透传
 
 ## 10. 电机校准
 
-移植自 GD32 校准逻辑：设零位 → 检测位置 ±1° → 使能 + 电流模式 + 开透传。
+设零位 → 检测位置 ±1° → 使能 + 电流模式 + 开透传。
 
 ### 10.1 C API
 
@@ -643,6 +692,7 @@ Byte[56-63]  = ID 映射表 (8×1字节)
 ```
 
 **反馈**: 每个电机会各自回复一帧 `0x300+ID` (12字节)，由接收线程自动捕获。
+`motor_tool multi` 命令在发送后自动等待 20ms 并回显所有电机反馈。
 
 ### 11.1 C API
 
@@ -668,6 +718,16 @@ multi_axis_cmd_t cmds[2] = {
     },
 };
 motor_hal_multi_ctrl(hal, cmds, 2);
+```
+
+#### CLI
+
+```bash
+# 多轴广播 — 一帧同时控制, 自动回显反馈
+motor_tool multi pos 1:4500 2:-4500          # 双关节位置 45°/-45°
+motor_tool multi vel 1:5000 2:-3000          # 双关节速度 50/-30 RPM
+motor_tool multi cur 1:1000 2:500            # 双关节电流 1000/500mA
+motor_tool multi csp 1:16384 2:-16384       # 双关节 CSP
 ```
 
 ---

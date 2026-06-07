@@ -45,6 +45,16 @@ static void print_help(void)
     printf("  abs_accel <acc*100>        位置加减速 RPM/s×100 (默认2000)\n");
     printf("  abs_speed <rpm*100>        位置轨迹速度 RPM×100 输出端(默认10)\n\n");
 
+    printf("── PDO 实时控制 (直接发帧, <100μs) ────────────\n");
+    printf("  pdo <id> pos <deg*100>     单轴位置控制 PDO\n");
+    printf("  pdo <id> vel <rpm*100>     单轴速度控制 PDO\n");
+    printf("  pdo <id> cur <mA>           单轴电流控制 PDO\n");
+    printf("  pdo <id> csp <cnt>          单轴 CSP 控制 PDO\n");
+    printf("  multi pos 1:4500 2:-4500   多轴广播位置\n");
+    printf("  multi vel 1:5000 2:-3000   多轴广播速度\n");
+    printf("  multi cur 1:1000 2:500     多轴广播电流\n");
+    printf("  mit <id> <pos> <vel> <kp> <kd> <torque>  MIT 阻抗\n\n");
+
     printf("── 配置命令 ──────────────────────────────────────\n");
     printf("  setzero <id>               零位标定 (自动失能)\n");
     printf("  limit_pos <id> <deg*100>   正限位 (失能→写→Flash)\n");
