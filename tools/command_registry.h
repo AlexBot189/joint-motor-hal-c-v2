@@ -47,7 +47,7 @@ enum {
 
     /* 其他系统 */
     CMD_FAULT_RESET, CMD_REBOOT,
-    CMD_STOP, CMD_HELP,
+    CMD_STOP, CMD_HELP, CMD_PROBE,
 
     CMD_COUNT
 };
@@ -118,6 +118,7 @@ int cmd_do_help(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_fault_reset(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_reboot(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_stop(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_probe(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 
 int cmd_dispatch(motor_hal_t *hal, int argc, char **argv);
 

@@ -221,7 +221,7 @@ void motor_hal_destroy(motor_hal_t *hal)
     }
 
     /* 3. 销毁 mutex */
-    for (int i = 0; i < hal->motor_count; i++) {
+    for (int i = 0; i < MOTOR_HAL_MAX_MOTORS; i++) {
         pthread_mutex_destroy(&hal->motors[i].fb_lock);
         pthread_mutex_destroy(&hal->motors[i].sensor_lock);
     }
@@ -472,7 +472,7 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
 
-    uint16_t pos  = (uint16_t)(position * 65535.0f / 360.0f);
+    uint16_t pos  = (uint16_t)((position + 180.0f) / 360.0f * 65535.0f);  /* [0~65535]→(-180°~+180°) */
     uint16_t vel  = (uint16_t)((int16_t)velocity);  /* 保留符号, 由电机按有符号12bit解析 */
     uint16_t kp_v = (uint16_t)(kp * 100.0f);
     uint16_t kd_v = (uint16_t)(kd * 100.0f);
@@ -555,7 +555,7 @@ int motor_hal_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)
     /* 巨蟹协议: PDO mode flag 和 SDO 0x6060 是两套编码 */
     static const uint8_t sdo_mode_map[] = {
         [MOTOR_MODE_PROFILE_POS] = 0x01,  /* PP:      CiA 402 标准值  1 */
-        [MOTOR_MODE_PROFILE_VEL] = 0x02,  /* PV:      CiA 402 标准值  2 */
+        [MOTOR_MODE_PROFILE_VEL] = 0x03,  /* PV:      PDF 确认值  3 */
         [MOTOR_MODE_CSP]         = 0x03,  /* CSP:     CiA 402 标准值  3 */
         [MOTOR_MODE_CSV]         = 0x04,  /* CSV:     CiA 402 标准值  4 */
         [MOTOR_MODE_CURRENT]     = 0x0A,  /* 电流环:  CiA 402 标准值 10 */
@@ -768,37 +768,49 @@ int motor_hal_get_feedback(motor_hal_t *hal, uint8_t node_id, motor_feedback_t *
 void motor_hal_set_feedback_cb(motor_hal_t *hal, uint8_t node_id,
                                motor_feedback_cb_t cb, void *ctx)
 {
+    if (!hal) return;
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return;
+    if (!m) { pthread_mutex_unlock(&hal->lock); return; }
     m->fb_cb  = cb;
     m->fb_ctx = ctx;
+    pthread_mutex_unlock(&hal->lock);
 }
 
 void motor_hal_set_error_cb(motor_hal_t *hal, uint8_t node_id,
                             motor_error_cb_t cb, void *ctx)
 {
+    if (!hal) return;
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return;
+    if (!m) { pthread_mutex_unlock(&hal->lock); return; }
     m->err_cb  = cb;
     m->err_ctx = ctx;
+    pthread_mutex_unlock(&hal->lock);
 }
 
 void motor_hal_set_state_cb(motor_hal_t *hal, uint8_t node_id,
                             motor_state_cb_t cb, void *ctx)
 {
+    if (!hal) return;
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return;
+    if (!m) { pthread_mutex_unlock(&hal->lock); return; }
     m->state_cb  = cb;
     m->state_ctx = ctx;
+    pthread_mutex_unlock(&hal->lock);
 }
 
 void motor_hal_set_sensor_cb(motor_hal_t *hal, uint8_t node_id,
                              motor_sensor_cb_t cb, void *ctx)
 {
+    if (!hal) return;
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return;
+    if (!m) { pthread_mutex_unlock(&hal->lock); return; }
     m->sensor_cb  = cb;
     m->sensor_ctx = ctx;
+    pthread_mutex_unlock(&hal->lock);
 }
 
 /* =====================================================
@@ -1140,9 +1152,19 @@ static void* _sync_thread_fn(void *arg)
     motor_hal_t *hal = (motor_hal_t*)arg;
     uint32_t period_us = hal->sync_period_us;
 
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+
     while (hal->sync_running) {
         pdo_sync_send(hal->drv);
-        usleep(period_us);
+
+        /* 绝对时间基准, 无累积漂移 */
+        next.tv_nsec += (long)(period_us * 1000UL);
+        if (next.tv_nsec >= 1000000000L) {
+            next.tv_sec++;
+            next.tv_nsec -= 1000000000L;
+        }
+        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next, NULL);
     }
     return NULL;
 }
@@ -1354,10 +1376,12 @@ void motor_hal_set_tpdo_cb(motor_hal_t *hal, uint8_t node_id,
                            motor_tpdo_raw_cb_t cb, void *ctx)
 {
     if (!hal) return;
+    pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (!m) return;
+    if (!m) { pthread_mutex_unlock(&hal->lock); return; }
     m->tpdo_raw_cb   = cb;
     m->tpdo_raw_ctx  = ctx;
+    pthread_mutex_unlock(&hal->lock);
 }
 
 void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_t count)

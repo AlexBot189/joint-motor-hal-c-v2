@@ -62,6 +62,7 @@ const command_entry_t g_cmd_table[] = {
     { CMD_FAULT_RESET,"fault_reset","fault_reset <id>",          "清零故障",                     2, 2 },
     { CMD_REBOOT,   "reboot",   "reboot <id>",                   "电机重启",                     2, 2 },
     { CMD_STOP,     "stop",     "stop",                           "停止 daemon",                   1, 1 },
+    { CMD_PROBE,    "probe",    "probe [id]",                     "主动探测电机在线",              1, 2 },
     { CMD_HELP,     "help",     "help",                          "帮助",                         1, 1 },
 };
 
@@ -149,6 +150,7 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
         case CMD_FAULT_RESET: return cmd_do_fault_reset(hal, cmd->id, argc, argv);
         case CMD_REBOOT:   return cmd_do_reboot(hal, cmd->id, argc, argv);
         case CMD_HELP:     return cmd_do_help(hal, cmd->id, argc, argv);
+        case CMD_PROBE:    return cmd_do_probe(hal, cmd->id, argc, argv);
         case CMD_STOP:     return cmd_do_stop(hal, cmd->id, argc, argv);
         default: return 1;
     }

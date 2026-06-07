@@ -35,7 +35,8 @@ static void print_help(void)
     printf("  startup <id>         上电启动 (0=双电机)\n");
     printf("  enable <id>          使能电机\n");
     printf("  disable <id>         脱使能\n");
-    printf("  reset <id>           故障复位\n\n");
+    printf("  reset <id>           故障复位\n");
+    printf("  probe [id]           主动探测电机在线 (0=全部)\n\n");
 
     printf("── 控制命令 (SDO, 自动时序) ×100 精度 ────────\n");
     printf("  torque <id> <mA>           电流控制 (0~20000mA) 使能→切模式→写目标\n");
