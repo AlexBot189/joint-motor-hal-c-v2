@@ -1,1 +1,0 @@
-/usr/bin/cc CMakeFiles/motor_example_dual_full.dir/examples/dual_motor_full.c.o -o motor_example_dual_full  libmotor_hal.a -lm -lpthread -lm 

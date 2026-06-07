@@ -1,1 +1,0 @@
-/usr/bin/cc CMakeFiles/motor_example_mit.dir/examples/mit_control.c.o -o motor_example_mit  libmotor_hal.a -lpthread -lm 
