@@ -16,12 +16,14 @@ include_directories(
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/interface
-    ${MOTOR_HAL_DIR}/inc
+    ${CMAKE_SOURCE_DIR}/log_helper          # log_helper 头文件
+    ${MOTOR_HAL_DIR}/inc                    # motor_hal 头文件
 )
 
 # 链接路径
 link_directories(
-    ${MOTOR_HAL_DIR}/build
+    ${MOTOR_HAL_DIR}/build                  # libmotor_hal.a
+    ${CMAKE_SOURCE_DIR}/log_helper/build    # liblog_helper.so
 )
 
 # 源文件
@@ -52,6 +54,7 @@ add_executable(stark_periph_manager_node ${SOURCES} ${HEADERS})
 target_link_libraries(stark_periph_manager_node
     motor_hal
     motor_calib
+    log_helper
     pthread
     rt
 )

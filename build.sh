@@ -14,15 +14,17 @@ CMAKE="/opt/gcc-arm-12.4-x86_64-aarch64-linux-gnu/bin/cmake"
 
 BUILD_DIR="$PROJECT_DIR/build"
 TOOLS_BUILD_DIR="$PROJECT_DIR/tools/build"
+EXO_BUILD_DIR="$PROJECT_DIR/exo_node/build"
 
 #==============================================================================
 # 清理函数
 #==============================================================================
 _clean() {
     echo "清理构建目录..."
-    rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR"
+    rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR" "$EXO_BUILD_DIR"
     echo "  ✓ build/       已删除"
     echo "  ✓ tools/build/ 已删除"
+    echo "  ✓ exo_node/build/ 已删除"
 }
 
 CMD="${1:-shared}"
@@ -83,6 +85,23 @@ $CMAKE -S "$PROJECT_DIR/tools" -B "$TOOLS_BUILD_DIR" \
 $CMAKE --build "$TOOLS_BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
+# 3. 编译 stark_periph_manager_node (exo_node)
+#==============================================================================
+echo ""
+echo "=========================================="
+echo "  [3/3] 编译 stark_periph_manager_node"
+echo "=========================================="
+
+mkdir -p "$EXO_BUILD_DIR"
+$CMAKE -S "$PROJECT_DIR/exo_node" -B "$EXO_BUILD_DIR" \
+    -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
+    -DENABLE_ROS=OFF \
+    -DENABLE_WEBSERVER=OFF \
+    $SHARED_FLAG
+
+$CMAKE --build "$EXO_BUILD_DIR" -j"$(nproc)"
+
+#==============================================================================
 # 结果
 #==============================================================================
 echo ""
@@ -103,6 +122,10 @@ ls -lh "$LIB_FILE"
 echo ""
 echo "工具:"
 ls -lh "$TOOLS_BUILD_DIR/motor_tool"
+
+echo ""
+echo "exo_node:"
+ls -lh "$EXO_BUILD_DIR/stark_periph_manager_node" 2>/dev/null || true
 
 echo ""
 echo "示例:"
