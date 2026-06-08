@@ -296,22 +296,151 @@ isolcpus=2,3    # core2→RT工作线程, core3→CAN recv
 
 ---
 
-## 10. 文件规划
+## 10. 套用 petrobot 框架适配
+
+### 可复用模式
+
+| petrobot 组件 | exo_node 对应 | 改动 |
+|--------------|--------------|------|
+| `IMsgInternalDispatcher` | `CanDispatcher` | 实现相同接口，传输层从 UART 换 CANFD |
+| `IListener` | 不变 | 接口不动 |
+| `Factory` | 不变 | 创建模式保留 |
+| `RosAdapter` | `RosAdapter` | **改数据源**: push(Observer回调) → pull(SHM 定时读) |
+| `WebServer` | `WebServer` | **改数据源**: push → pull(SHM 定时读) |
+| `ConfigStorage` | `ConfigStorage` | 保留 JSON 配置，扩展 motor 参数 |
+
+### CanDispatcher vs UartDispatcher
+
+UartDispatcher 有三条独立线程(recv/send/heart) + 15+ 帧解析函数。
+CanDispatcher 砍掉全部——motor_hal 内部闭环了 CAN 收发:
+
+```
+UartDispatcher (petrobot):              CanDispatcher (exo_node):
+  recvThread  → read串口 + 帧解析         砍掉 → motor_hal recv 线程内部完成
+  sendThread  → 串口发送队列              砍掉 → SDO 走 HAL 内置队列+condvar
+  heartThread → 定时心跳                   砍掉 → 电机 0x1017 自带心跳
+  Decode*Msg  → 15+ 函数                  砍掉 → motor_hal _dispatch_frame
+  
+  新增:                                   新增:
+  -                                       m_hal    → motor_hal_t 实例
+  -                                       m_shm    → exo_shm_t 共享内存
+  -                                       m_rtWorker → RT 工作线程
+  -                                       m_state  → 状态机
+```
+
+### Observer 数据流反转
+
+```
+petrobot (push):  recvThread → NotifyObserver → listener.Update()
+exo_node (pull):   独立线程定时读 SHM → Topic/WebSocket
+```
+
+RosAdapter 和 WebServer 都是 IListener，但不再依赖 CanDispatcher 的 NotifyObserver 回调。
+它们各自启动独立线程，定期从 SHM 的 fb_buffer 读最新反馈帧。
+
+优势：消费者各自独立，算法 crash 不影响 ROS 显示，ROS crash 不影响算法控制。
+
+## 11. 配置文件 (config.json)
+
+```json
+{
+  "can": {
+    "interface": "can0",
+    "arbitration_rate": 1000000,
+    "data_rate": 5000000
+  },
+  "motors": [
+    {
+      "id": 1,
+      "name": "right_hip",
+      "heartbeat_ms": 2000,
+      "profile_accel": 5000,
+      "profile_velocity": 20,
+      "disable_watchdog": true,
+      "auto_enable": true,
+      "bootup_timeout_ms": 3000,
+      "tpdo_sync_count": 1
+    },
+    {
+      "id": 2,
+      "name": "left_hip",
+      "heartbeat_ms": 2000,
+      "profile_accel": 5000,
+      "profile_velocity": 20,
+      "disable_watchdog": true,
+      "auto_enable": true,
+      "bootup_timeout_ms": 3000,
+      "tpdo_sync_count": 1
+    }
+  ],
+  "calib": {
+    "timeout_ms": 10000,
+    "threshold_deg": 1.0
+  },
+  "safety": {
+    "algo_timeout_ms": 200,
+    "algo_shutdown_ms": 500,
+    "overtemp_threshold": 80,
+    "can_offline_ms": 2000,
+    "encoder_stall_s": 3
+  },
+  "shm": {
+    "name": "/exo_shm",
+    "size_kb": 64
+  },
+  "rt": {
+    "control_priority": 90,
+    "control_period_us": 1000,
+    "report_divider": 5,
+    "cpu_affinity": [2, 3]
+  },
+  "ros": {
+    "enabled": false,
+    "feedback_topic": "/motor/feedback",
+    "state_topic": "/motor/state",
+    "service_prefix": "/motor"
+  },
+  "web": {
+    "enabled": false,
+    "port": 8080
+  }
+}
+```
+
+ConfigStorage 加载后填充 `motor_config_t` / `exo_config_t` 结构体。
+生产环境不编 ROS/Web，对应的 json 段无效也不会报错。
+
+## 12. 文件规划
 
 ```
 exo_node/
 ├── CMakeLists.txt              # 编译控制 (ENABLE_ROS=OFF/ON)
 ├── exo_shm.h                   # ★ 算法和系统侧共享的唯一头文件
+├── config/
+│   ├── exo_config.json         # 默认配置
+│   └── ConfigStorage.cpp       # JSON 配置加载 (复用 petrobot 模式)
+├── interface/
+│   ├── IMsgInternalDispatcher.hpp  # 被观察者接口 (来自 petrobot)
+│   ├── IListener.hpp               # 观察者接口 (来自 petrobot)
+│   └── Defines.hpp                 # ListenerType 枚举
 ├── src/
-│   ├── main.cpp                # 入口: 状态机同步执行 + main loop
+│   ├── main.cpp                # 入口: 加载config → Factory → 状态机 → 主循环
+│   ├── CanDispatcher.cpp       # IMsgInternalDispatcher 实现
+│   ├── CanDispatcher.h
 │   ├── exo_state_machine.cpp   # 7状态 enter/exit + state_transition
+│   ├── exo_state_machine.h
 │   ├── exo_rt_worker.cpp       # RT 工作线程 (控制+上报+安全)
-│   ├── exo_log.cpp             # ring buffer + log_helper 适配
+│   ├── exo_rt_worker.h
 │   ├── exo_shm.cpp             # SHM open/close/mmap
-│   └── exo_calib.cpp           # 校准流程封装
+│   ├── exo_log.cpp             # ring buffer + log_helper 适配
+│   ├── exo_calib.cpp           # 校准流程封装
+│   └── Factory.cpp             # 创建 CanDispatcher/RosAdapter/WebServer
 ├── ros/
-│   ├── RosAdapter.cpp          # ROS Service/Topic (编译可选)
-│   └── RosAdapter.h
+│   ├── RosAdapter.cpp          # ROS Topic/Service (IListener, pull SHM)
+│   └── RosAdapter.h            # 编译可选 (ENABLE_ROS=ON)
+├── web/
+│   ├── WebServer.cpp           # WebServer (IListener, pull SHM)
+│   └── WebServer.h             # 编译可选 (ENABLE_WEBSERVER=ON)
 └── tools/
     └── motor_tool              # 已有, 调试用 CLI
 
@@ -319,11 +448,12 @@ exo_node/
   libmotor_hal.a    — CANFD HAL
   libmotor_calib.a  — 校准模块
   log_helper        — 量产日志库 (需 RV1126B 交叉编译版本)
+  nlohmann/json      — JSON 解析 (已有, petrobot 同款)
 ```
 
 ---
 
-## 11. 关键设计决策索引
+## 13. 关键设计决策索引
 
 | 决策 | 结论 | 详见 |
 |------|------|------|
@@ -337,3 +467,9 @@ exo_node/
 | ABA 保护 | uint64_t seq, 永不回绕 | known_issues.md Q8 |
 | 使能分离 | daemon 启动时做一次, 控制不再重复 | tool_hal.c fix |
 | CRIT-1 死锁 | auto-startup 移出 recv 线程 | motor_hal.c fix |
+| recv 线程位置 | 留在 HAL, 保持自闭环 | arch §3 |
+| SDO 不进 RT | 阻塞 50ms+ 会毁实时性 | arch §3 |
+| SHM 多消费者 | 单 SHM 多读安全, 所有消费者 pull | arch §4 |
+| 套用 petrobot | Observer+Factory保留, 线程/帧解析砍掉 | arch §10 |
+| config.json | 灵活配置CAN/电机/安全/RT/ROS/Web参数 | arch §11 |
+| push→pull反转 | RosAdapter/WebServer 独立线程读SHM | arch §10 |
