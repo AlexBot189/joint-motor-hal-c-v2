@@ -299,69 +299,79 @@ void CanDispatcher::NotifyObserver(const boost::any& data)
 /*
  * LoadMotorConfig()
  *
- * 从 config/exo_config.json 读取电机列表,
- * 填充 motor_config_t 并调用 motor_hal_add_motor 注册。
- *
- * 配置路径: m_config_path (默认 "exo_node/config/exo_config.json")
+ * 优先从 config.json 读取电机列表, 文件不存在时用硬编码默认值。
+ * 生产部署时通过 -c 参数指定配置文件路径。
  */
 bool CanDispatcher::LoadMotorConfig()
 {
+    /* 先尝试加载配置文件 */
     std::ifstream ifs(m_config_path);
-    if (!ifs.is_open()) {
-        fprintf(stderr, "[CanDispatcher] Cannot open config: %s\n",
-                m_config_path.c_str());
-        return false;
-    }
-
-    nlohmann::json cfg;
-    try {
-        ifs >> cfg;
-    } catch (const nlohmann::json::parse_error& e) {
-        fprintf(stderr, "[CanDispatcher] Config JSON parse error: %s\n",
-                e.what());
-        return false;
-    }
-
-    /* 读取电机列表 */
-    if (!cfg.contains("motors") || !cfg["motors"].is_array()) {
-        fprintf(stderr, "[CanDispatcher] Config: missing 'motors' array\n");
-        return false;
-    }
-
-    for (const auto& m : cfg["motors"]) {
-        motor_config_t motor_cfg = {};
-        motor_cfg.node_id           = m.value("id",           0);
-        motor_cfg.heartbeat_ms      = m.value("heartbeat_ms", 2000);
-        motor_cfg.profile_accel     = m.value("profile_accel", 5000u);
-        motor_cfg.profile_decel     = m.value("profile_decel", 5000u);
-        motor_cfg.profile_velocity  = m.value("profile_velocity", 20u);
-        motor_cfg.disable_watchdog  = m.value("disable_watchdog",  true);
-        motor_cfg.auto_enable       = m.value("auto_enable",       true);
-        motor_cfg.bootup_timeout_ms = m.value("bootup_timeout_ms", 3000);
-        motor_cfg.tpdo_sync_count   = m.value("tpdo_sync_count",   (uint8_t)1);
-        motor_cfg.pos_limit_pos     = m.value("pos_limit_pos", 180.0f);
-        motor_cfg.pos_limit_neg     = m.value("pos_limit_neg", -180.0f);
-
-        if (motor_cfg.node_id == 0) {
-            fprintf(stderr, "[CanDispatcher] Invalid motor id=0, skip\n");
-            continue;
-        }
-
-        int ret = motor_hal_add_motor(m_hal, &motor_cfg);
-        if (ret < 0) {
-            fprintf(stderr, "[CanDispatcher] add_motor(id=%d) failed: %d\n",
-                    motor_cfg.node_id, ret);
+    if (ifs.is_open()) {
+        nlohmann::json cfg;
+        try {
+            ifs >> cfg;
+        } catch (const nlohmann::json::parse_error& e) {
+            fprintf(stderr, "[CanDispatcher] Config JSON parse error: %s\n",
+                    e.what());
             return false;
         }
+        ifs.close();
 
-        /* 读取 SHM 安全参数 (仅首次有效) */
-        if (cfg.contains("safety")) {
-            /* 参数由 ExoRtWorker 在构造时读取, 此处仅记录可用 */
+        if (cfg.contains("motors") && cfg["motors"].is_array()) {
+            for (const auto& m : cfg["motors"]) {
+                motor_config_t motor_cfg = {};
+                motor_cfg.node_id           = m.value("id",           0);
+                motor_cfg.heartbeat_ms      = m.value("heartbeat_ms", 2000);
+                motor_cfg.profile_accel     = m.value("profile_accel", 5000u);
+                motor_cfg.profile_decel     = m.value("profile_decel", 5000u);
+                motor_cfg.profile_velocity  = m.value("profile_velocity", 20u);
+                motor_cfg.disable_watchdog  = m.value("disable_watchdog",  true);
+                motor_cfg.auto_enable       = m.value("auto_enable",       true);
+                motor_cfg.bootup_timeout_ms = m.value("bootup_timeout_ms", 3000);
+                motor_cfg.tpdo_sync_count   = m.value("tpdo_sync_count",   (uint8_t)1);
+
+                if (motor_cfg.node_id == 0) continue;
+                int ret = motor_hal_add_motor(m_hal, &motor_cfg);
+                if (ret < 0) {
+                    fprintf(stderr, "[CanDispatcher] config motor id=%d failed: %d\n",
+                            motor_cfg.node_id, ret);
+                    return false;
+                }
+            }
+            printf("[CanDispatcher] Loaded %zu motors from %s\n",
+                   cfg["motors"].size(), m_config_path.c_str());
+            return true;
         }
     }
 
-    printf("[CanDispatcher] Loaded %zu motors from config\n",
-           cfg["motors"].size());
+    /* 配置文件不存在 → 使用硬编码默认值 (髋关节电机 ID 1,2) */
+    fprintf(stderr, "[CanDispatcher] Config '%s' not found, using hardcoded defaults\n",
+            m_config_path.c_str());
+
+    motor_config_t default_cfg = {};
+    default_cfg.heartbeat_ms      = 2000;
+    default_cfg.profile_accel     = 5000;
+    default_cfg.profile_decel     = 5000;
+    default_cfg.profile_velocity  = 20;
+    default_cfg.disable_watchdog  = true;
+    default_cfg.auto_enable       = true;
+    default_cfg.bootup_timeout_ms = 3000;
+    default_cfg.tpdo_sync_count   = 1;
+
+    int motor_ids[] = {1, 2};
+    int motor_count = sizeof(motor_ids) / sizeof(motor_ids[0]);
+
+    for (int i = 0; i < motor_count; i++) {
+        default_cfg.node_id = (uint8_t)motor_ids[i];
+        int ret = motor_hal_add_motor(m_hal, &default_cfg);
+        if (ret < 0 && ret != -EEXIST) {
+            fprintf(stderr, "[CanDispatcher] default motor id=%d failed: %d\n",
+                    motor_ids[i], ret);
+            return false;
+        }
+    }
+
+    printf("[CanDispatcher] Registered %d motors (hardcoded defaults)\n", motor_count);
     return true;
 }
 

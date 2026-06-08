@@ -55,6 +55,9 @@ public:
     /* ── 运行状态查询 ── */
     bool IsRunning() const { return m_running; }
 
+    /* ── 设置配置文件路径 (InitDispatcher 之前调用) ── */
+    void SetConfigPath(const std::string& path) { m_config_path = path; }
+
 private:
     /* ── 内部辅助 ── */
     bool LoadMotorConfig();                         /* 读 config.json 注册电机 */

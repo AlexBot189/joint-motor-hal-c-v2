@@ -124,8 +124,17 @@ int main(int argc, char** argv)
 
     ECO_INFO("stark_periph_manager_node starting...");
 
+    /* ── 解析命令行参数 ── */
+    std::string config_path = "/data/config/stark/exo_config.json";
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-c") == 0 && i + 1 < argc) {
+            config_path = argv[++i];
+        }
+    }
+
     /* ── 1. 创建 CanDispatcher (初始化 CAN + 注册电机 + 启动 recv) ── */
     g_dispatcher = new CanDispatcher();
+    g_dispatcher->SetConfigPath(config_path);
     if (!g_dispatcher->InitDispatcher()) {
         ECO_ERROR("CanDispatcher init failed");
         delete g_dispatcher;
