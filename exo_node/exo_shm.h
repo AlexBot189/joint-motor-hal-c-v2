@@ -1,0 +1,152 @@
+/*
+ * @file exo_shm.h
+ * @brief 共享内存布局 — 算法进程和 stark_periph_manager_node 共享的唯一接口文件
+ *
+ * 数据方向:
+ *   motor_node 写 → fb_buffer (反馈帧) → 算法/ROS/Web 读
+ *   算法写      → mailbox.cmd (控制命令) → motor_node 读
+ *
+ * 并发模型: 所有字段单写者，多读者安全。不需要锁。
+ *   - fb_buffer: 双 Buffer, RT 工作线程写, 多个非 RT 读者
+ *   - mailbox:   算法进程写, RT 工作线程读 (seq_begin/seq_end snapshot 保护)
+ *   - 状态字段:  motor_node 内部写, 算法只读
+ */
+#pragma once
+
+#include <stdint.h>
+
+#define EXO_SHM_NAME    "/exo_shm"
+#define EXO_SHM_SIZE    (64 * 1024)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ============================================================================
+ * 数据类型
+ * ============================================================================ */
+
+/* 电机反馈 (来自 CAN 反馈帧 0x300, 大端字节序) */
+typedef struct {
+    int16_t  position;          /* 编码器角度, counts, [-32768,32767] → [-180°,180°] */
+    int16_t  velocity;          /* 转速, RPM                                         */
+    int16_t  current_iq;        /* Q轴电流, mA                                      */
+    int16_t  temperature;       /* 温度, 0.1°C                                     */
+    uint8_t  status_byte;       /* bit7:使能 bit6:抱闸 bit5:错误 bit4:到位          */
+    uint8_t  mode;              /* 当前控制模式 (CiA 402)                            */
+    uint8_t  error_code;        /* 故障码                                           */
+    uint8_t  _pad;
+} motor_data_t;
+
+/* 传感器透传 (来自 CAN 0x680 帧, 小端 bit-packed) */
+typedef struct {
+    uint16_t hall_adc0;         /* 线性霍尔 A, 0~4095                               */
+    uint16_t hall_adc1;         /* 线性霍尔 B, 0~4095                               */
+    uint16_t hall_adc2;         /* 线性霍尔 C, 0~4095                               */
+    uint16_t force_raw;         /* DF181 力矩, 0~16383                              */
+    uint16_t knee_adc;          /* 膝关节电位器, 0~4095                             */
+    uint8_t  key_landing;       /* 着地开关, 0=低 1=高                              */
+    uint8_t  data_valid;        /* 力矩数据有效标志                                  */
+} motor_sensor_t;
+
+/* IMU 数据 (来自 ICM45608 SPI 直连) */
+typedef struct {
+    float    roll;              /* 横滚角, °                                        */
+    float    pitch;             /* 俯仰角, °                                        */
+    float    yaw;               /* 偏航角, °                                        */
+    float    acc_x;             /* 加速度 X, m/s²                                   */
+    float    acc_y;             /* 加速度 Y, m/s²                                   */
+    float    acc_z;             /* 加速度 Z, m/s²                                   */
+    float    gyro_x;            /* 角速度 X, °/s                                    */
+    float    gyro_y;            /* 角速度 Y, °/s                                    */
+    float    gyro_z;            /* 角速度 Z, °/s                                    */
+    uint64_t timestamp_us;      /* IMU 采样时刻, μs                                  */
+} imu_data_t;
+
+/* 反馈帧 — motor_node 组装后写入 SHM 双 Buffer */
+typedef struct {
+    motor_data_t   motor[4];    /* [0]=右髋 [1]=左髋 [2]=右膝 [3]=左膝              */
+    motor_sensor_t sensor[4];   /* 传感器透传, 与电机一一对应                         */
+    imu_data_t     imu;         /* IMU 姿态数据                                      */
+    uint64_t       timestamp_us;/* 组装时刻, μs                                      */
+    uint8_t        _pad[4];     /* 对齐到字边界                                       */
+} feedback_frame_t;
+
+/* 电机控制命令 */
+typedef enum {
+    EXO_CMD_TORQUE = 1,         /* 力矩模式, value=mA                                */
+    EXO_CMD_SPEED  = 2,         /* 速度模式, value=RPM×100                           */
+    EXO_CMD_POS    = 3,         /* 位置模式, value=°×100                             */
+} exo_cmd_type_t;
+
+typedef struct {
+    uint8_t  motor_id;          /* 1=右 2=左 0=双电机                                */
+    uint8_t  cmd;               /* exo_cmd_type_t                                    */
+    int32_t  value;             /* 目标值, 单位取决于 cmd                             */
+    uint64_t timestamp_us;      /* 算法下发时刻                                       */
+} motor_command_t;
+
+/* 故障严重级别 */
+typedef enum {
+    MOTOR_OK    = 0,            /* 正常运行                                           */
+    MOTOR_WARN  = 1,            /* 降额: torque=0, 保持使能 (可自动恢复)               */
+    MOTOR_FAULT = 2,            /* 停机: DS402 Shutdown (需人工干预)                  */
+} motor_severity_t;
+
+/* 故障原因 */
+typedef enum {
+    FAULT_NONE             = 0,
+    FAULT_ALGO_TIMEOUT,         /* 算法失联 (seq_begin 200ms 不变)                    */
+    FAULT_CMD_STALL,            /* 输出停滞 (同一 cmd 重复 500ms)                     */
+    FAULT_CAN_OFFLINE,          /* CAN 断线 (2s 无帧)                                */
+    FAULT_ENCODER_FAULT,        /* 编码器异常 (position 恒定 3s)                      */
+    FAULT_OVERTEMP,             /* 驱动器过温 (> 80°C)                               */
+    FAULT_HANDSHAKE_TIMEOUT,    /* 握手超时 (ENABLED 状态 10s 无 cmd)                 */
+    FAULT_CALIB_TIMEOUT,        /* 校准超时                                           */
+} fault_reason_t;
+
+/* 节点状态机 */
+typedef enum {
+    STATE_INIT        = 0,
+    STATE_DISCOVERY   = 1,
+    STATE_READY       = 2,
+    STATE_CALIBRATING = 3,
+    STATE_ENABLED     = 4,
+    STATE_RUNNING     = 5,
+    STATE_FAULT       = 6,
+} exo_state_t;
+
+/* ============================================================================
+ * 共享内存总结构 (64KB)
+ * ============================================================================ */
+
+typedef struct {
+    /* ── 双 Buffer 反馈区 (motor_node 写, 算法/ROS/Web 读) ── */
+    uint32_t          active_idx;         /* 0 或 1, atomic release/acquire           */
+    feedback_frame_t  fb_buffer[2];       /* 双 Buffer 防撕裂                          */
+
+    /* ── Mailbox 命令区 (算法写, motor_node 读) ── */
+    struct {
+        uint64_t          seq_begin;      /* ★ 一机制三用途: 命令传输/握手信号/心跳      */
+        motor_command_t   cmd;            /* 覆盖写, 只保留最新值                       */
+        uint64_t          seq_end;        /* 写完置为 seq_begin, reader 对比防撕裂        */
+    } mailbox;
+
+    /* ── 状态区 (motor_node 写, 算法只读) ── */
+    uint8_t   motor_online;               /* bit0=右 bit1=左 bit2=右膝 bit3=左膝        */
+    uint8_t   calib_state;                /* 0=空闲 1=校准中 2=完成 3=超时               */
+    uint8_t   motor_enabled;              /* 每 bit 对应电机使能状态                      */
+    uint8_t   motor_severity;             /* 0=OK 1=WARN 2=FAULT                       */
+    uint8_t   fault_reason;               /* fault_reason_t 枚举                        */
+    uint8_t   node_state;                 /* exo_state_t                                */
+
+    uint8_t   _pad[4008];                 /* 对齐 64KB                                  */
+} exo_shm_t;
+
+/* 编译期强制检查 */
+_Static_assert(sizeof(feedback_frame_t) <= 1024, "feedback_frame_t too large");
+_Static_assert(sizeof(exo_shm_t) == EXO_SHM_SIZE, "exo_shm_t must be 64KB");
+
+#ifdef __cplusplus
+}
+#endif
