@@ -134,11 +134,18 @@ int tool_torque_sdo(int id, int ma)
         uint8_t mid = (uint8_t)ids[i];
         int ret;
 
-        /* 使能: Shutdown→SwitchOn→EnableOp */
-        ret  = motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x06, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x07, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x0F, 2);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); errors++; continue; }
+        /* 使能: 只在未使能时操作 (避免无故 Shutdown 导致电机失能) */
+        {
+            motor_feedback_t fb;
+            int already_on = 0;
+            if (motor_hal_get_feedback(g_hal, mid, &fb) == 0) {
+                if ((fb.status_byte & 0x0F) == 0x07) already_on = 1; /* OP_ENABLED */
+            }
+            if (!already_on) {
+                ret = motor_hal_enable(g_hal, mid);
+                if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); errors++; continue; }
+            }
+        }
 
         /* 切电流模式 0x0A */
         ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_CURRENT);
@@ -178,11 +185,18 @@ int tool_speed_sdo(int id, int rpm_x100, int acc_x100, int dec_x100)
         uint8_t mid = (uint8_t)ids[i];
         int ret;
 
-        /* 使能 */
-        ret  = motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x06, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x07, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x0F, 2);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); errors++; continue; }
+        /* 使能: 只在未使能时操作 */
+        {
+            motor_feedback_t fb;
+            int already_on = 0;
+            if (motor_hal_get_feedback(g_hal, mid, &fb) == 0) {
+                if ((fb.status_byte & 0x0F) == 0x07) already_on = 1;
+            }
+            if (!already_on) {
+                ret = motor_hal_enable(g_hal, mid);
+                if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); errors++; continue; }
+            }
+        }
 
         /* PV 模式 0x03 */
         ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_VEL);
@@ -248,11 +262,18 @@ int tool_abs_sdo(int id, int deg_x100)
         uint8_t mid = (uint8_t)ids[i];
         int ret;
 
-        /* 使能 */
-        ret  = motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x06, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x07, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x0F, 2);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); errors++; continue; }
+        /* 使能: 只在未使能时操作 (避免无故 Shutdown 导致电机失能) */
+        {
+            motor_feedback_t fb;
+            int already_on = 0;
+            if (motor_hal_get_feedback(g_hal, mid, &fb) == 0) {
+                if ((fb.status_byte & 0x0F) == 0x07) already_on = 1; /* OP_ENABLED */
+            }
+            if (!already_on) {
+                ret = motor_hal_enable(g_hal, mid);
+                if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); errors++; continue; }
+            }
+        }
 
         /* PP 模式 0x01 */
         ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_POS);
