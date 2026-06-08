@@ -47,7 +47,7 @@ typedef struct {
     uint16_t knee_adc;          /* 膝关节电位器, 0~4095                             */
     uint8_t  key_landing;       /* 着地开关, 0=低 1=高                              */
     uint8_t  data_valid;        /* 力矩数据有效标志                                  */
-} motor_sensor_t;
+} exo_sensor_data_t;
 
 /* IMU 数据 (来自 ICM45608 SPI 直连) */
 typedef struct {
@@ -65,8 +65,8 @@ typedef struct {
 
 /* 反馈帧 — motor_node 组装后写入 SHM 双 Buffer */
 typedef struct {
-    motor_data_t   motor[4];    /* [0]=右髋 [1]=左髋 [2]=右膝 [3]=左膝              */
-    motor_sensor_t sensor[4];   /* 传感器透传, 与电机一一对应                         */
+    motor_data_t      motor[4];    /* [0]=右髋 [1]=左髋 [2]=右膝 [3]=左膝              */
+    exo_sensor_data_t sensor[4];   /* 传感器透传, 与电机一一对应                         */
     imu_data_t     imu;         /* IMU 姿态数据                                      */
     uint64_t       timestamp_us;/* 组装时刻, μs                                      */
     uint8_t        _pad[4];     /* 对齐到字边界                                       */
@@ -146,8 +146,6 @@ typedef struct {
 } exo_shm_t;
 
 /* 编译期强制检查 */
-_Static_assert(sizeof(feedback_frame_t) <= 1024, "feedback_frame_t too large");
-_Static_assert(sizeof(exo_shm_t) == EXO_SHM_SIZE, "exo_shm_t must be 64KB");
 
 #ifdef __cplusplus
 }

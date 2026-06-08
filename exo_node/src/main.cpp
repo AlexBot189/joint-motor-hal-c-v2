@@ -135,8 +135,7 @@ int main(int argc, char** argv)
     motor_hal_t* hal = g_dispatcher->GetHal();
     exo_shm_t*   shm = g_dispatcher->GetShm();
 
-    ECO_INFO("CANFD interface ready, %d motors registered",
-             (int)hal ? 0 : 0);  /* 由 config 读取 */
+    ECO_INFO("CANFD interface ready");
 
 
     /* ── 2. 状态机: INIT → (同步初始化完成) ── */
