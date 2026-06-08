@@ -33,12 +33,11 @@ Factory::CreateSingletonDispatcher()
     return dispatcher;
 }
 
+#ifdef ENABLE_ROS
 std::shared_ptr<IListener>
 Factory::CreateRosListener(std::shared_ptr<ros::NodeHandle> nh,
                            std::shared_ptr<IMsgInternalDispatcher> dispatcher)
-{
-#ifdef ENABLE_ROS
-    if (!nh || !dispatcher) {
+{    if (!nh || !dispatcher) {
         fprintf(stderr, "[Factory] CreateRosListener: invalid arguments\n");
         return nullptr;
     }
@@ -62,12 +61,7 @@ Factory::CreateRosListener(std::shared_ptr<ros::NodeHandle> nh,
 
     printf("[Factory] RosAdapter created (pull from SHM)\n");
     return adapter;
-#else
-    (void)nh;
-    (void)dispatcher;
-    fprintf(stderr, "[Factory] ENABLE_ROS not defined, RosAdapter disabled\n");
-    return nullptr;
-#endif
 }
+#endif  /* ENABLE_ROS */
 
 }  /* namespace stark_periph_manager_node */
