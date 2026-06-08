@@ -94,6 +94,7 @@ typedef struct {
     motor_state_t state;
     bool        enabled;
     bool        bootup_received;
+    bool        pending_startup;   /* auto_enable 触发的待处理启动, 由主线程消费 */
     motor_config_t config;
 
     /* 反馈缓存 */
@@ -277,6 +278,7 @@ int motor_hal_add_motor(motor_hal_t *hal, const motor_config_t *cfg)
     m->state    = MOTOR_STATE_NOT_READY;
     m->enabled  = false;
     m->bootup_received = false;
+    m->pending_startup = false;
     memcpy(&m->config, cfg, sizeof(motor_config_t));
 
     hal->motor_count++;
@@ -665,9 +667,10 @@ motor_state_t motor_hal_get_state(motor_hal_t *hal, uint8_t node_id)
     uint16_t sw = (uint16_t)(sw_raw & SW_STATE_MASK);
 
     if (sw & SW_FAULT)  return MOTOR_STATE_FAULT;
-    /* CiA 402: Quick Stop 是位模式 0x0007 (bits 0,1,2=1, bit3=0, bit6=0) */
-    /* 不能简单用 sw & SW_QUICK_STOP, 因为 OP_ENABLED(0x0027) bit5 也是1 */
-    if ((sw & 0x004F) == 0x0007) return MOTOR_STATE_QUICK_STOP;
+    /* Operation Enabled 必须在 Quick Stop 之前判定:
+       0x0027(OP) & 0x004F == 0x0007 会误匹配 Quick Stop 过滤器 */
+    if (sw == SW_OP_ENABLED) return MOTOR_STATE_OP_ENABLED;
+    if ((sw & 0x004F) == SW_QUICK_STOP_STATE) return MOTOR_STATE_QUICK_STOP;
 
     switch (sw) {
         case SW_NOT_READY:      return MOTOR_STATE_NOT_READY;
@@ -925,17 +928,10 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
             if (m) {
                 m->bootup_received = true;
                 fprintf(stderr, "  → Bootup node=%d\n", node);
-                /* 自动启动 (如果配置了 auto_enable) */
+                /* 自动启动: 只设标志, 由主线程 motor_hal_process_pending_startups() 消费 */
+                /* 不能在 recv 线程里调 motor_startup_full — SDO 阻塞会导致自己收不到响应 */
                 if (m->config.auto_enable && m->state == MOTOR_STATE_NOT_READY) {
-                    fprintf(stderr, "  → auto-startup node=%d...\n", node);
-                    int ret = motor_startup_full(hal->drv, &m->config, &m->bootup_received);
-                    if (ret == 0) {
-                        m->enabled = true;
-                        _set_state(hal, m, MOTOR_STATE_OP_ENABLED);
-                        fprintf(stderr, "  → node=%d OPERATION_ENABLED (auto)\n", node);
-                    } else {
-                        fprintf(stderr, "  → node=%d auto-startup failed (ret=%d)\n", node, ret);
-                    }
+                    m->pending_startup = true;
                 }
             } else {
                 fprintf(stderr, "  → WARN: Bootup node=%d not registered\n", node);
@@ -1125,6 +1121,54 @@ void motor_hal_poll(motor_hal_t *hal, int timeout_ms)
     int ret = can_driver_recv(hal->drv, &f, timeout_ms);
     if (ret <= 0) return;
     _dispatch_frame(hal, &f);
+}
+
+/* =====================================================
+ * 公共 API: 处理待启动电机 (主线程调用, 不能从 recv 线程调)
+ *
+ * 当 recv 线程收到 bootup 帧且 auto_enable=true 时,
+ * 只设 pending_startup 标志, 由主线程定期调用此函数执行
+ * motor_startup_full (SDO 操作).
+ * 这样 SDO 响应由 recv 线程正常接收, 避免死锁.
+ * ===================================================== */
+
+int motor_hal_process_pending_startups(motor_hal_t *hal)
+{
+    if (!hal || !hal->drv) return 0;
+
+    int started = 0;
+
+    for (int i = 0; i < hal->motor_count; i++) {
+        motor_node_t *m = &hal->motors[i];
+
+        /* 快速检查: 无需持锁 */
+        if (!m->pending_startup) continue;
+
+        pthread_mutex_lock(&hal->lock);
+        /* 双重检查 — 可能被其他 startup 命令抢走 */
+        if (!m->pending_startup || m->state != MOTOR_STATE_NOT_READY) {
+            pthread_mutex_unlock(&hal->lock);
+            continue;
+        }
+        m->pending_startup = false;
+        pthread_mutex_unlock(&hal->lock);
+
+        /* 放锁后调 SDO — recv 线程可以正常收帧 */
+        fprintf(stderr, "  → processing auto-startup node=%d...\n", m->node_id);
+        int ret = motor_startup_full(hal->drv, &m->config, &m->bootup_received);
+        if (ret == 0) {
+            pthread_mutex_lock(&hal->lock);
+            m->enabled = true;
+            _set_state(hal, m, MOTOR_STATE_OP_ENABLED);
+            pthread_mutex_unlock(&hal->lock);
+            fprintf(stderr, "  → node=%d OPERATION_ENABLED (auto)\n", m->node_id);
+        } else {
+            fprintf(stderr, "  → node=%d auto-startup failed (ret=%d)\n", m->node_id, ret);
+        }
+        started++;
+    }
+
+    return started;
 }
 
 /* =====================================================

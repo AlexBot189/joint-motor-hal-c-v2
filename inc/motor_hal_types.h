@@ -34,7 +34,7 @@ extern "C" {
 #define LOAD_ANGLE_MAX          (180.0f)
 
 /** 最大节点数 */
-#define MOTOR_HAL_MAX_MOTORS    (2)   /* 外骨骼: 左右两个电机 */
+#define MOTOR_HAL_MAX_MOTORS    (4)   /* 髋关节×2 + 膝关节×2 */
 
 /** 默认超时 (ms) */
 #define MOTOR_SDO_TIMEOUT_MS    (200)

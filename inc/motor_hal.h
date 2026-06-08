@@ -639,6 +639,18 @@ void motor_hal_set_state_cb(motor_hal_t *hal, uint8_t node_id,
  */
 void motor_hal_poll(motor_hal_t *hal, int timeout_ms);
 
+/**
+ * @brief 处理 auto_enable 触发的待启动电机 (主线程定期调用)
+ *
+ * recv 线程收到 bootup 后只设 pending_startup 标志,
+ * 主线程调用此函数执行 motor_startup_full (含 SDO 操作).
+ * 必须在 motor_hal_recv_start 之后调用.
+ *
+ * @param hal HAL 实例
+ * @return 本次启动的电机数量
+ */
+int motor_hal_process_pending_startups(motor_hal_t *hal);
+
 /* ============================================================================
  * 11. 全局控制 — 影响总线上所有节点
  * ============================================================================ */

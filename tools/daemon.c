@@ -193,6 +193,9 @@ static void _accept_loop(void)
     char buf[4096];
 
     while (g_daemon_running) {
+        /* 处理 auto_enable 触发的待启动电机 (recv 线程收到 bootup 时只设标志) */
+        motor_hal_process_pending_startups(g_hal);
+
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(g_listen_fd, &fds);

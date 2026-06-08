@@ -134,13 +134,7 @@ int tool_torque_sdo(int id, int ma)
         uint8_t mid = (uint8_t)ids[i];
         int ret;
 
-        /* 使能: Shutdown→SwitchOn→EnableOp */
-        ret  = motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x06, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x07, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x0F, 2);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); errors++; continue; }
-
-        /* 切电流模式 0x0A */
+        /* 切电流模式 (使能在 daemon startup 阶段完成, 控制命令只做模式切换) */
         ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_CURRENT);
         if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(CUR) failed\n", mid); errors++; continue; }
 
@@ -178,13 +172,7 @@ int tool_speed_sdo(int id, int rpm_x100, int acc_x100, int dec_x100)
         uint8_t mid = (uint8_t)ids[i];
         int ret;
 
-        /* 使能 */
-        ret  = motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x06, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x07, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x0F, 2);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); errors++; continue; }
-
-        /* PV 模式 0x03 */
+        /* 切 PV 模式 (使能在 daemon startup 阶段完成) */
         ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_VEL);
         if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(PV) failed\n", mid); errors++; continue; }
 
@@ -248,13 +236,7 @@ int tool_abs_sdo(int id, int deg_x100)
         uint8_t mid = (uint8_t)ids[i];
         int ret;
 
-        /* 使能 */
-        ret  = motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x06, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x07, 2);
-        ret |= motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x0F, 2);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); errors++; continue; }
-
-        /* PP 模式 0x01 */
+        /* 切 PP 模式 (使能在 daemon startup 阶段完成) */
         ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_POS);
         if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(PP) failed\n", mid); errors++; continue; }
 
