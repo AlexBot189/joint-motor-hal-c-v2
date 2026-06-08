@@ -70,33 +70,25 @@ static bool wait_all_motors_online(motor_hal_t* hal, exo_shm_t* shm, int timeout
             ECO_INFO("auto-startup: %d motor(s) initialized", started);
         }
 
-        /* 检查已注册电机的状态 */
-        int online_count = 0;
-        int total_motors = 0;
+        /* 用反馈缓存检测在线 (零延迟, 不触发 SDO 轮询) */
         uint8_t online_mask = 0;
+        int     online_count = 0;
 
         for (uint8_t id = 1; id <= 4; ++id) {
-            motor_state_t state = motor_hal_get_state(hal, id);
-            if (state == MOTOR_STATE_UNKNOWN || state == MOTOR_STATE_NOT_READY) {
-                continue;  /* 电机未注册或未启动 */
-            }
-            total_motors++;
-
-            if (state == MOTOR_STATE_OP_ENABLED ||
-                state == MOTOR_STATE_SWITCH_ON_DIS ||
-                state == MOTOR_STATE_READY_TO_SW_ON) {
-                online_count++;
+            motor_feedback_t fb;
+            if (motor_hal_get_feedback(hal, id, &fb) == 0 && fb.status_byte != 0) {
                 online_mask |= (1 << (id - 1));
+                online_count++;
             }
         }
 
-        /* 更新 SHM 状态区 */
+        /* 更新 SHM */
         if (shm) {
             shm->motor_online = online_mask;
         }
 
-        /* 所有已注册电机在线 → 完成 */
-        if (total_motors > 0 && online_count == total_motors) {
+        /* 至少一个电机在线 → 继续 (不要求全部) */
+        if (online_count > 0) {
             ECO_INFO("All %d motors online (mask=0x%02X)", total_motors, online_mask);
             state_transition(STATE_DISCOVERY);
             /* DISCOVERY → READY (电机全部在线) */
@@ -147,8 +139,8 @@ int main(int argc, char** argv)
     ECO_INFO("CANFD interface ready");
 
 
-    /* ── 2. 状态机: INIT → (同步初始化完成) ── */
-    state_transition(STATE_INIT);
+    /* ── 2. 状态机: 执行 INIT 进入逻辑 ── */
+    enter_init();
 
 
     /* ── 3. 启动 RT 工作线程 (先发 torque=0, 等算法 cmd) ── */
