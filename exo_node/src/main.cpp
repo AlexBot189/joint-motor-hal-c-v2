@@ -21,7 +21,7 @@ extern "C" {
 #include "motor_hal.h"
 }
 
-#include "src/exo_log.h"
+#include <log_helper/LogHelper.h>
 #include "src/CanDispatcher.h"
 #include "src/exo_rt_worker.h"
 #include "src/exo_state_machine.h"
@@ -61,13 +61,13 @@ static bool wait_all_motors_online(motor_hal_t* hal, exo_shm_t* shm, int timeout
     int elapsed_ms = 0;
     const int poll_interval_ms = 200;
 
-    EXO_INFO("Waiting for motor auto-startup...");
+    ECO_INFO("Waiting for motor auto-startup...");
 
     while (elapsed_ms < timeout_sec * 1000) {
         int started = motor_hal_process_pending_startups(hal);
 
         if (started > 0) {
-            EXO_INFO("auto-startup: %d motor(s) initialized", started);
+            ECO_INFO("auto-startup: %d motor(s) initialized", started);
         }
 
         /* 检查已注册电机的状态 */
@@ -97,7 +97,7 @@ static bool wait_all_motors_online(motor_hal_t* hal, exo_shm_t* shm, int timeout
 
         /* 所有已注册电机在线 → 完成 */
         if (total_motors > 0 && online_count == total_motors) {
-            EXO_INFO("All %d motors online (mask=0x%02X)", total_motors, online_mask);
+            ECO_INFO("All %d motors online (mask=0x%02X)", total_motors, online_mask);
             state_transition(STATE_DISCOVERY);
             /* DISCOVERY → READY (电机全部在线) */
             state_transition(STATE_READY);
@@ -108,7 +108,7 @@ static bool wait_all_motors_online(motor_hal_t* hal, exo_shm_t* shm, int timeout
         elapsed_ms += poll_interval_ms;
     }
 
-    EXO_ERROR("Motor startup timeout (%ds), %d motors still offline",
+    ECO_ERROR("Motor startup timeout (%ds), %d motors still offline",
               timeout_sec, 0);
     return false;
 }
@@ -122,12 +122,12 @@ int main(int argc, char** argv)
     signal(SIGINT,  sig_handler);
     signal(SIGTERM, sig_handler);
 
-    EXO_INFO("stark_periph_manager_node starting...");
+    ECO_INFO("stark_periph_manager_node starting...");
 
     /* ── 1. 创建 CanDispatcher (初始化 CAN + 注册电机 + 启动 recv) ── */
     g_dispatcher = new CanDispatcher();
     if (!g_dispatcher->InitDispatcher()) {
-        EXO_ERROR("CanDispatcher init failed");
+        ECO_ERROR("CanDispatcher init failed");
         delete g_dispatcher;
         return 1;
     }
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
     motor_hal_t* hal = g_dispatcher->GetHal();
     exo_shm_t*   shm = g_dispatcher->GetShm();
 
-    EXO_INFO("CANFD interface ready, %d motors registered",
+    ECO_INFO("CANFD interface ready, %d motors registered",
              (int)hal ? 0 : 0);  /* 由 config 读取 */
 
 
@@ -147,7 +147,7 @@ int main(int argc, char** argv)
     g_rt_worker = new ExoRtWorker(hal, shm);
     g_rt_worker->Start();
 
-    EXO_INFO("RT worker started (1KHz, SCHED_FIFO 90)");
+    ECO_INFO("RT worker started (1KHz, SCHED_FIFO 90)");
 
 
     /* ── 4. 等待电机上电 → auto-startup ── */
@@ -156,7 +156,7 @@ int main(int argc, char** argv)
     bool all_online = wait_all_motors_online(hal, shm, 30);
 
     if (!all_online) {
-        EXO_WARN("Not all motors online, continuing with partial set");
+        ECO_WARN("Not all motors online, continuing with partial set");
         /* 不退出 — 部分电机在线也可以运行 */
     }
 
@@ -169,14 +169,14 @@ int main(int argc, char** argv)
                         std::shared_ptr<IMsgInternalDispatcher>(g_dispatcher,
                         [](CanDispatcher*){}));  /* noop deleter */
     g_dispatcher->RegisterObserver(ListenerType::ROS, ros_adapter);
-    EXO_INFO("ROS adapter enabled");
+    ECO_INFO("ROS adapter enabled");
 #endif
 
 
     /* ── 6. 主循环 ── */
-    EXO_INFO("stark_periph_manager_node ready");
-    EXO_INFO("  State: %s", state_name(g_exo_state));
-    EXO_INFO("  Motors online: 0x%02X", shm ? shm->motor_online : 0);
+    ECO_INFO("stark_periph_manager_node ready");
+    ECO_INFO("  State: %s", state_name(g_exo_state));
+    ECO_INFO("  Motors online: 0x%02X", shm ? shm->motor_online : 0);
 
     while (g_running) {
 #ifdef ENABLE_ROS
@@ -215,7 +215,7 @@ int main(int argc, char** argv)
 
 
     /* ── 7. 清理 ── */
-    EXO_INFO("Shutting down...");
+    ECO_INFO("Shutting down...");
 
     if (g_rt_worker) {
         g_rt_worker->Stop();
@@ -229,6 +229,6 @@ int main(int argc, char** argv)
         g_dispatcher = nullptr;
     }
 
-    EXO_INFO("stark_periph_manager_node stopped");
+    ECO_INFO("stark_periph_manager_node stopped");
     return 0;
 }

@@ -6,7 +6,7 @@
  * 数据类型由 exo_shm.h 定义 (跨进程共享布局)。
  */
 #include "exo_shm_mgr.h"
-#include "exo_log.h"
+#include <log_helper/LogHelper.h>
 
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -19,19 +19,19 @@
 exo_shm_mgr_t* exo_shm_mgr_open(const char* name, bool create, size_t size)
 {
     if (!name || size == 0) {
-        EXO_ERROR("SHM: invalid name or size");
+        ECO_ERROR("SHM: invalid name or size");
         return nullptr;
     }
 
     exo_shm_mgr_t* mgr = new (std::nothrow) exo_shm_mgr_t();
     if (!mgr) {
-        EXO_ERROR("SHM: alloc failed");
+        ECO_ERROR("SHM: alloc failed");
         return nullptr;
     }
 
     mgr->name = new (std::nothrow) char[strlen(name) + 1];
     if (!mgr->name) {
-        EXO_ERROR("SHM: name alloc failed");
+        ECO_ERROR("SHM: name alloc failed");
         delete mgr;
         return nullptr;
     }
@@ -46,7 +46,7 @@ exo_shm_mgr_t* exo_shm_mgr_open(const char* name, bool create, size_t size)
 
     mgr->fd = shm_open(name, flags, 0666);
     if (mgr->fd < 0) {
-        EXO_ERROR("SHM: shm_open(%s) failed: %s", name, strerror(errno));
+        ECO_ERROR("SHM: shm_open(%s) failed: %s", name, strerror(errno));
         delete[] mgr->name;
         delete mgr;
         return nullptr;
@@ -54,7 +54,7 @@ exo_shm_mgr_t* exo_shm_mgr_open(const char* name, bool create, size_t size)
 
     if (create) {
         if (ftruncate(mgr->fd, (off_t)size) < 0) {
-            EXO_ERROR("SHM: ftruncate failed: %s", strerror(errno));
+            ECO_ERROR("SHM: ftruncate failed: %s", strerror(errno));
             close(mgr->fd);
             delete[] mgr->name;
             delete mgr;
@@ -65,14 +65,14 @@ exo_shm_mgr_t* exo_shm_mgr_open(const char* name, bool create, size_t size)
     mgr->ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE,
                     MAP_SHARED, mgr->fd, 0);
     if (mgr->ptr == MAP_FAILED) {
-        EXO_ERROR("SHM: mmap failed: %s", strerror(errno));
+        ECO_ERROR("SHM: mmap failed: %s", strerror(errno));
         close(mgr->fd);
         delete[] mgr->name;
         delete mgr;
         return nullptr;
     }
 
-    EXO_INFO("SHM: %s opened, size=%zu, ptr=%p",
+    ECO_INFO("SHM: %s opened, size=%zu, ptr=%p",
              mgr->name, mgr->size, mgr->ptr);
     return mgr;
 }
@@ -88,7 +88,7 @@ void exo_shm_mgr_close(exo_shm_mgr_t* mgr)
         close(mgr->fd);
     }
     /* 不调 shm_unlink — 让最后一个引用者决定 */
-    EXO_INFO("SHM: %s closed", mgr->name ? mgr->name : "(null)");
+    ECO_INFO("SHM: %s closed", mgr->name ? mgr->name : "(null)");
 
     delete[] mgr->name;
     delete mgr;

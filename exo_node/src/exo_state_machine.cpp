@@ -9,12 +9,9 @@
  * 默认操作为空 (只打日志)。
  */
 #include "exo_state_machine.h"
-#include "exo_log.h"
+#include <log_helper/LogHelper.h>
 
 #include <cstdio>
-
-namespace stark_periph_manager_node
-{
 
 /* ================================================================
  * 全局状态
@@ -46,37 +43,37 @@ const char* state_name(exo_state_t s)
 
 void enter_init(void)
 {
-    EXO_INFO("[StateMachine] enter INIT — CAN/SHM initialized, waiting for motors");
+    ECO_INFO("[StateMachine] enter INIT — CAN/SHM initialized, waiting for motors");
 }
 
 void enter_discovery(void)
 {
-    EXO_INFO("[StateMachine] enter DISCOVERY — probing motor online status");
+    ECO_INFO("[StateMachine] enter DISCOVERY — probing motor online status");
 }
 
 void enter_ready(void)
 {
-    EXO_INFO("[StateMachine] enter READY — motors online, waiting for calibration");
+    ECO_INFO("[StateMachine] enter READY — motors online, waiting for calibration");
 }
 
 void enter_calibrating(void)
 {
-    EXO_INFO("[StateMachine] enter CALIBRATING — executing zero-position calibration");
+    ECO_INFO("[StateMachine] enter CALIBRATING — executing zero-position calibration");
 }
 
 void enter_enabled(void)
 {
-    EXO_INFO("[StateMachine] enter ENABLED — motors enabled (torque=0), waiting for algorithm cmd");
+    ECO_INFO("[StateMachine] enter ENABLED — motors enabled (torque=0), waiting for algorithm cmd");
 }
 
 void enter_running(void)
 {
-    EXO_INFO("[StateMachine] enter RUNNING — algorithm controlling motors");
+    ECO_INFO("[StateMachine] enter RUNNING — algorithm controlling motors");
 }
 
 void enter_fault(void)
 {
-    EXO_INFO("[StateMachine] enter FAULT — emergency stop, waiting for manual recovery");
+    ECO_INFO("[StateMachine] enter FAULT — emergency stop, waiting for manual recovery");
 }
 
 /* ================================================================
@@ -111,13 +108,13 @@ void exit_enabled(void)
 void exit_running(void)
 {
     /* RUNNING 退出: 正常停止或故障 */
-    EXO_WARN("[StateMachine] exit RUNNING — motor control suspended");
+    ECO_WARN("[StateMachine] exit RUNNING — motor control suspended");
 }
 
 void exit_fault(void)
 {
     /* FAULT 退出: 故障恢复 */
-    EXO_INFO("[StateMachine] exit FAULT — attempting recovery");
+    ECO_INFO("[StateMachine] exit FAULT — attempting recovery");
 }
 
 /* ================================================================
@@ -192,7 +189,7 @@ bool state_transition(exo_state_t to)
     exo_state_t from = g_exo_state;
 
     if (!state_transition_allowed(from, to)) {
-        EXO_WARN("[StateMachine] invalid transition: %s → %s (denied)",
+        ECO_WARN("[StateMachine] invalid transition: %s → %s (denied)",
                  state_name(from), state_name(to));
         return false;
     }
@@ -210,8 +207,6 @@ bool state_transition(exo_state_t to)
         enter_hooks[to]();
     }
 
-    EXO_INFO("[StateMachine] %s → %s", state_name(from), state_name(to));
+    ECO_INFO("[StateMachine] %s → %s", state_name(from), state_name(to));
     return true;
 }
-
-}  /* namespace stark_periph_manager_node */

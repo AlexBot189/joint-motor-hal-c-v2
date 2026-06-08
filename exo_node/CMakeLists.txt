@@ -34,13 +34,13 @@ set(SOURCES
     src/Factory.cpp
 )
 
-# 头文件
+# 头文件 (用于 IDE 索引, 不影响编译)
 set(HEADERS
     exo_shm.h
+    src/exo_shm_mgr.h
     src/CanDispatcher.h
     src/exo_state_machine.h
     src/exo_rt_worker.h
-    src/exo_log.h
     src/Factory.h
     interface/Defines.hpp
     interface/IListener.hpp
