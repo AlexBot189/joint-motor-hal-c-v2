@@ -61,6 +61,7 @@ public:
 private:
     /* ── 内部辅助 ── */
     bool LoadMotorConfig();                         /* 读 config.json 注册电机 */
+    void _send_to_motor(const std::string& cmd, uint8_t id, int value); /* 单电机控制 */
 
     motor_hal_t*     m_hal;                         /* HAL 实例 (PDO/SDO/CAN) */
     exo_shm_mgr_t*   m_shm_mgr;                     /* SHM 管理器 (用于清理)    */

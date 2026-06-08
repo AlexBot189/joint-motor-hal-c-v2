@@ -194,56 +194,18 @@ void CanDispatcher::Send(const std::string& data)
             return;
         }
 
-        /* 双电机模式: motor_id=0 → 遍历所有在线电机 */
+        /* broadcast: motor_id=0 → 遍历所有在线电机 */
         if (motor_id == 0) {
             uint8_t online = (m_shm) ? m_shm->motor_online : 0;
             for (uint8_t id = 1; id <= 4; ++id) {
                 if (online & (1 << (id - 1))) {
-                    /* 递归调用简化 —— 分别发到每个电机 */
+                    _send_to_motor(cmd, id, value);
                 }
             }
+            return;
         }
 
-        if (cmd == "torque") {
-            /* 电流模式 */
-            motor_hal_set_mode(m_hal, (uint8_t)motor_id, MOTOR_MODE_CURRENT);
-            motor_hal_sdo_write(m_hal, (uint8_t)motor_id,
-                                OD_TARGET_TORQUE, 0x00,
-                                (uint32_t)(int32_t)value, 2);
-        }
-        else if (cmd == "speed") {
-            /* 速度模式 — value 单位 RPM×100 */
-            motor_hal_set_mode(m_hal, (uint8_t)motor_id, MOTOR_MODE_PROFILE_VEL);
-            motor_hal_sdo_write(m_hal, (uint8_t)motor_id,
-                                OD_TARGET_VELOCITY, 0x00,
-                                (uint32_t)value, 4);
-        }
-        else if (cmd == "position") {
-            /* 位置模式 — value 单位 °×100 */
-            float angle = value / 100.0f;
-            motor_hal_set_position(m_hal, (uint8_t)motor_id, angle);
-        }
-        else if (cmd == "stop") {
-            motor_hal_stop(m_hal, (uint8_t)motor_id);
-        }
-        else if (cmd == "enable") {
-            motor_hal_enable(m_hal, (uint8_t)motor_id);
-        }
-        else if (cmd == "disable") {
-            motor_hal_disable(m_hal, (uint8_t)motor_id);
-        }
-        else if (cmd == "mode") {
-            /* 切换控制模式: { "cmd":"mode", "motor_id":1, "value":1 }
-             * value = motor_mode_t 枚举值 */
-            motor_hal_set_mode(m_hal, (uint8_t)motor_id, (motor_mode_t)value);
-        }
-        else if (cmd == "fault_reset") {
-            motor_hal_fault_reset(m_hal, (uint8_t)motor_id);
-        }
-        else {
-            fprintf(stderr, "[CanDispatcher] Send: unknown cmd '%s'\n",
-                    cmd.c_str());
-        }
+        _send_to_motor(cmd, (uint8_t)motor_id, value);
 
     } catch (const nlohmann::json::parse_error& e) {
         fprintf(stderr, "[CanDispatcher] JSON parse error: %s\n", e.what());
@@ -373,6 +335,43 @@ bool CanDispatcher::LoadMotorConfig()
 
     printf("[CanDispatcher] Registered %d motors (hardcoded defaults)\n", motor_count);
     return true;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * _send_to_motor — 单电机控制分发
+ * ──────────────────────────────────────────────────────────────────── */
+void CanDispatcher::_send_to_motor(const std::string& cmd, uint8_t id, int val)
+{
+    if (cmd == "torque") {
+        motor_hal_set_mode(m_hal, id, MOTOR_MODE_CURRENT);
+        motor_hal_sdo_write(m_hal, id, 0x6071, 0x00, (uint32_t)(int32_t)val, 2);
+    }
+    else if (cmd == "speed") {
+        motor_hal_set_mode(m_hal, id, MOTOR_MODE_PROFILE_VEL);
+        motor_hal_sdo_write(m_hal, id, 0x60FF, 0x00, (uint32_t)val, 4);
+    }
+    else if (cmd == "position") {
+        float angle = val / 100.0f;
+        motor_hal_set_position(m_hal, id, angle);
+    }
+    else if (cmd == "stop") {
+        motor_hal_stop(m_hal, id);
+    }
+    else if (cmd == "enable") {
+        motor_hal_enable(m_hal, id);
+    }
+    else if (cmd == "disable") {
+        motor_hal_disable(m_hal, id);
+    }
+    else if (cmd == "mode") {
+        motor_hal_set_mode(m_hal, id, (motor_mode_t)val);
+    }
+    else if (cmd == "fault_reset") {
+        motor_hal_fault_reset(m_hal, id);
+    }
+    else {
+        fprintf(stderr, "[CanDispatcher] unknown cmd '%s'\n", cmd.c_str());
+    }
 }
 
 }  /* namespace stark_periph_manager_node */

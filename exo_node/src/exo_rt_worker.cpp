@@ -58,6 +58,8 @@ ExoRtWorker::ExoRtWorker(motor_hal_t* hal, exo_shm_t* shm)
 {
     memset(m_last_position, 0, sizeof(m_last_position));
     memset(m_pos_stall_us, 0, sizeof(m_pos_stall_us));
+    memset(m_sensor_notified, 0, sizeof(m_sensor_notified));
+    m_imu_notified = false;
 }
 
 ExoRtWorker::~ExoRtWorker()
@@ -265,29 +267,41 @@ void ExoRtWorker::PublishFeedback()
         }
     }
 
-    /* ── 填充传感器透传 (TODO: 从 motor_hal_get_sensor 读取) ── */
-    /*
+    /* ── 填充传感器透传 (从 motor_hal_get_sensor 读取) ── */
     for (uint8_t id = 1; id <= 4; ++id) {
         motor_sensor_t s;
-        if (motor_hal_get_sensor(m_hal, id, &s) == 0) {
-            fb->sensor[id-1].hall_adc0   = s.hall_adc0;
-            fb->sensor[id-1].hall_adc1   = s.hall_adc1;
-            fb->sensor[id-1].hall_adc2   = s.hall_adc2;
-            fb->sensor[id-1].force_raw   = s.force_raw;
-            fb->sensor[id-1].knee_adc    = s.knee_adc;
-            fb->sensor[id-1].key_landing = s.hw_sw_pc9;
-            fb->sensor[id-1].data_valid  = s.data_valid;
+        int ret = motor_hal_get_sensor(m_hal, id, &s);
+        if (ret == 0) {
+            uint8_t idx = id - 1;
+            fb->sensor[idx].hall_adc0   = s.hall_adc0;
+            fb->sensor[idx].hall_adc1   = s.hall_adc1;
+            fb->sensor[idx].hall_adc2   = s.hall_adc2;
+            fb->sensor[idx].force_raw   = s.force_raw;
+            fb->sensor[idx].knee_adc    = s.knee_adc;
+            fb->sensor[idx].key_landing = s.hw_sw_pc9;
+            fb->sensor[idx].data_valid  = s.data_valid;
+        } else if (!m_sensor_notified[id - 1]) {
+            /* 传感器未配置/不可用, 仅打印一次 */
+            printf("[ExoRtWorker] sensor not configured for motor %d (ret=%d)\n",
+                   id, ret);
+            m_sensor_notified[id - 1] = true;
         }
     }
-    */
 
-    /* ── 填充 IMU (TODO: 从 IMU HAL 读取) ── */
+    /* ── 填充 IMU (从 IMU HAL 读取, 当前未集成) ── */
     /*
-    imu_data_t imu;
-    if (imu_read(&imu) == 0) {
-        fb->imu = imu;
+     * IMU (ICM45608) 通过 SPI 直连 SoC, 由独立的 imu_hal 模块采集。
+     * 待 imu_hal 模块集成后, 取消注释以下代码:
+     *
+     *   imu_data_t imu;
+     *   if (imu_read(&imu) == 0) {
+     *       fb->imu = imu;
+     *   }
+     */
+    if (!m_imu_notified) {
+        printf("[ExoRtWorker] IMU read not integrated (imu_hal module pending)\n");
+        m_imu_notified = true;
     }
-    */
 
     /* ── 时间戳 ── */
     struct timespec ts;

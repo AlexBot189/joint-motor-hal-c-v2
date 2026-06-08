@@ -105,6 +105,10 @@ private:
     /* ── 编码器停滞检测 ── */
     int16_t  m_last_position[4];        /* 上次位置快照, 按 motor index */
     uint64_t m_pos_stall_us[4];         /* 位置停滞起始时间 */
+
+    /* ── 一次性日志控制 ── */
+    bool     m_sensor_notified[4];      /* 传感器未配置已打印 flag, 每 motor 一次 */
+    bool     m_imu_notified;            /* IMU 未集成已打印 flag, 仅一次 */
 };
 
 }  /* namespace stark_periph_manager_node */

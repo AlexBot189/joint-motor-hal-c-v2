@@ -71,5 +71,6 @@ endif()
 
 # WebServer 模块 (编译可选)
 if(ENABLE_WEBSERVER)
-    # 预留
+    target_sources(stark_periph_manager_node PRIVATE web/WebServer.cpp)
+    add_definitions(-DENABLE_WEBSERVER)
 endif()
