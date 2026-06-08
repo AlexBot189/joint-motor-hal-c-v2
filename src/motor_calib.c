@@ -79,8 +79,8 @@ int motor_calib_start(motor_calib_t *cal, const motor_calib_config_t *cfg)
 
     /* Step 1: Shutdown 左右电机 (GD32: jx_motor_enable(0x06,...)) */
     int ret;
-    ret  = motor_hal_sdo_write(cal->hal, cfg->motor_id_r, 0x6040, 0, 0x06, 3);
-    ret |= motor_hal_sdo_write(cal->hal, cfg->motor_id_l, 0x6040, 0, 0x06, 3);
+    ret  = motor_hal_sdo_write(cal->hal, cfg->motor_id_r, 0x6040, 0, 0x06, 2);
+    ret |= motor_hal_sdo_write(cal->hal, cfg->motor_id_l, 0x6040, 0, 0x06, 2);
     if (ret != 0) {
         CALIB_LOG("shutdown failed");
         return -1;
@@ -143,14 +143,14 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
         uint8_t id_r = cal->cfg.motor_id_r;
         uint8_t id_l = cal->cfg.motor_id_l;
 
-        ret  = motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 3);
-        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 3);
+        ret  = motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 2);
+        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 2);
         usleep(20000);
-        ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x07, 3);
-        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x07, 3);
+        ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x07, 2);
+        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x07, 2);
         usleep(20000);
-        ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x0F, 3);
-        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x0F, 3);
+        ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x0F, 2);
+        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x0F, 2);
 
         if (ret != 0) {
             CALIB_LOG("enable failed");
@@ -195,8 +195,8 @@ int motor_calib_exit(motor_calib_t *cal)
     motor_hal_sdo_write(cal->hal, id_l, 0x6071, 0, 0, 3);
 
     /* 脱使能 */
-    motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 3);
-    motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 3);
+    motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 2);
+    motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 2);
 
     cal->state = MOTOR_CALIB_IDLE;
     return 0;
