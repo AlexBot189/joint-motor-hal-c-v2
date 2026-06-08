@@ -1,13 +1,11 @@
 /*
  * @file Factory.h
- * @brief 对象工厂 — CanDispatcher + RosAdapter 创建/组装
+ * @brief 对象工厂 — 创建 stark_periph_manager_node 核心组件
  *
- * 职责:
- *   1. CreateSingletonDispatcher  → 创建单例 CanDispatcher + 初始化
- *   2. CreateRosListener           → 创建 RosAdapter + 注入 Dispatcher + 启动
- *
- * 与 petrobot 的 Factory 模式一致:
- *   main() 通过 Factory 创建组件，解耦构造逻辑与启动流程。
+ * 参考 petrobot Factory 模式, 集中管理组件创建和依赖注入:
+ *   - CanDispatcher (HAL + SHM 管理)
+ *   - RosAdapter   (ROS Topic/Service)
+ *   - WebServer    (WebSocket, 预留)
  */
 #pragma once
 
@@ -16,18 +14,35 @@
 #include "interface/IMsgInternalDispatcher.hpp"
 #include "interface/IListener.hpp"
 
-namespace stark_periph_manager_node {
+namespace stark_periph_manager_node
+{
 
 class CanDispatcher;
-class RosAdapter;
 
-class Factory {
+class Factory
+{
 public:
-    /* 创建单例 CanDispatcher (打开 CAN / 注册电机 / 启动 recv) */
+    /*
+     * 创建 CanDispatcher 单例
+     *
+     * 内部完成:
+     *   - motor_hal_create + motor_hal_init (CANFD)
+     *   - 从 config.json 读取电机列表并注册
+     *   - motor_hal_recv_start (CAN 接收线程)
+     *   - SHM 创建 + 初始化
+     */
     static std::shared_ptr<IMsgInternalDispatcher>
     CreateSingletonDispatcher();
 
-    /* 创建 RosAdapter (需要 Dispatcher 引用用于控制下发) */
+    /*
+     * 创建 RosAdapter
+     *
+     * @param nh          ROS NodeHandle
+     * @param dispatcher  CanDispatcher 引用 (控制命令下发路径)
+     * @return            RosAdapter (IListener 接口)
+     *
+     * 内部: 从 dispatcher 获取 SHM 指针 → RosAdapter 构造 → RosAdapter->Start()
+     */
     static std::shared_ptr<IListener>
     CreateRosListener(std::shared_ptr<ros::NodeHandle> nh,
                       std::shared_ptr<IMsgInternalDispatcher> dispatcher);

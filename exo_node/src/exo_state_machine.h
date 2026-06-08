@@ -1,92 +1,66 @@
 /*
  * @file exo_state_machine.h
- * @brief 7 状态机 — 声明
+ * @brief 7 状态机声明 — stark_periph_manager_node 状态管理
  *
- * 状态流转:
- *   INIT(0) → DISCOVERY(1) → READY(2) → CALIBRATING(3) → ENABLED(4) → RUNNING(5)
- *   任意状态 → FAULT(6)   (异常)
- *   FAULT → READY         (人工恢复)
+ * 状态枚举定义在 exo_shm.h (跨进程共享):
+ *   STATE_INIT → DISCOVERY → READY → CALIBRATING → ENABLED → RUNNING
+ *   任意状态 → STATE_FAULT
  *
- * 所有 enter_*() / exit_*() 仅声明，实现留空供后续填充。
+ * 使用方式:
+ *   state_transition(STATE_READY);  // 一次调用完成 exit+enter
  */
 #pragma once
 
 #include "exo_shm.h"
 
-/* ============================================================================
- *  全局状态变量 (extern)
- * ============================================================================ */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/** @brief 系统当前状态，由 state_machine 模块维护 */
+/* ── 函数指针类型 ── */
+typedef void (*enter_fn)(void);
+typedef void (*exit_fn)(void);
+
+/* ── 全局状态 ── */
 extern exo_state_t g_exo_state;
 
-/* ============================================================================
- *  状态转换控制
- * ============================================================================ */
+/* ── 状态名 ── */
+const char* state_name(exo_state_t s);
 
-/**
- * @brief 执行状态转换
- *
- * 顺序: exit_hooks[旧状态] → 设置新状态 → 日志 → enter_hooks[新状态]
- *
- * @param new_state 目标状态
- * @return true 转换成功, false 非法转换（不执行任何操作）
- */
-bool state_transition(exo_state_t new_state);
+/* ── 钩子函数声明 (实现可在不同 .cpp 中填充具体逻辑) ── */
+extern void enter_init(void);
+extern void enter_discovery(void);
+extern void enter_ready(void);
+extern void enter_calibrating(void);
+extern void enter_enabled(void);
+extern void enter_running(void);
+extern void enter_fault(void);
 
-/**
- * @brief 检查状态转换是否合法
- *
- * @param from 当前状态
- * @param to   目标状态
- * @return true 允许转换
+extern void exit_init(void);
+extern void exit_discovery(void);
+extern void exit_ready(void);
+extern void exit_calibrating(void);
+extern void exit_enabled(void);
+extern void exit_running(void);
+extern void exit_fault(void);
+
+/* ── 钩子函数表 (可被外部替换) ── */
+extern enter_fn enter_hooks[EXO_STATE_COUNT];
+extern exit_fn  exit_hooks[EXO_STATE_COUNT];
+
+/* ── 状态操作 ── */
+
+/*
+ * 检查状态转换是否允许
  */
 bool state_transition_allowed(exo_state_t from, exo_state_t to);
 
-/**
- * @brief 获取状态的可读名称字符串
- *
- * @param state 状态枚举值
- * @return C 风格字符串（静态常量，调用方不得释放）
+/*
+ * 执行状态转换: exit_hooks[旧] → 设新状态 → enter_hooks[新]
+ * 返回: true=转换成功, false=不允许的转换
  */
-const char* state_name(exo_state_t state);
+bool state_transition(exo_state_t to);
 
-/* ============================================================================
- *  状态钩子函数声明 (enter / exit)
- *
- *  各函数实现留空，由业务模块按需填充。
- * ============================================================================ */
-
-/* ---------- enter 钩子 ---------- */
-void enter_init(exo_state_t prev);
-void enter_discovery(exo_state_t prev);
-void enter_ready(exo_state_t prev);
-void enter_calibrating(exo_state_t prev);
-void enter_enabled(exo_state_t prev);
-void enter_running(exo_state_t prev);
-void enter_fault(exo_state_t prev);
-
-/* ---------- exit 钩子 ---------- */
-void exit_init(void);
-void exit_discovery(void);
-void exit_ready(void);
-void exit_calibrating(void);
-void exit_enabled(void);
-void exit_running(void);
-void exit_fault(void);
-
-/* ============================================================================
- *  钩子函数表类型 (内部使用，头文件暴露供测试)
- * ============================================================================ */
-
-/** @brief enter 钩子函数指针类型 */
-using enter_hook_t = void (*)(exo_state_t);
-
-/** @brief exit 钩子函数指针类型 */
-using exit_hook_t = void (*)(void);
-
-/** @brief enter 钩子表，下标对应 exo_state_t 枚举值 */
-extern enter_hook_t enter_hooks[EXO_STATE_COUNT];
-
-/** @brief exit 钩子表，下标对应 exo_state_t 枚举值 */
-extern exit_hook_t exit_hooks[EXO_STATE_COUNT];
+#ifdef __cplusplus
+}
+#endif

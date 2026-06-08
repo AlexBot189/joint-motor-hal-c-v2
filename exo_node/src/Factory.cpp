@@ -2,97 +2,72 @@
  * @file Factory.cpp
  * @brief 对象工厂实现
  *
- * CreateSingletonDispatcher:
- *   1. new CanDispatcher
- *   2. CanDispatcher::InitDispatcher (打开 CAN / 注册电机 / 启动接收线程)
- *   3. 返回 shared_ptr<IMsgInternalDispatcher>
- *
- * CreateRosListener:
- *   1. 从 dispatcher 中获取 SHM (CanDispatcher::GetShm)
- *   2. new RosAdapter(nh, shm)
- *   3. RosAdapter::SetDispatcher (注入控制命令转发器)
- *   4. RosAdapter::Start (启动 pull 线程)
- *   5. 返回 shared_ptr<IListener>
+ * 参考 petrobot Factory::CreateSingletonDispatcher / CreateWebListener 模式。
+ * stark_periph_manager_node 简化:
+ *   - 不需要 DeviceOption (配置走 config.json)
+ *   - 不需要 CreateTouchAdapter (外骨骼没有触摸传感器)
  */
 #include "Factory.h"
 #include "CanDispatcher.h"
+
+#ifdef ENABLE_ROS
 #include "ros/RosAdapter.h"
-#include "exo_log.h"
+#endif
 
-namespace stark_periph_manager_node {
+#include <cstdio>
 
-/* ============================================================================
- *  CreateSingletonDispatcher
- * ============================================================================ */
+namespace stark_periph_manager_node
+{
 
 std::shared_ptr<IMsgInternalDispatcher>
 Factory::CreateSingletonDispatcher()
 {
-    EXO_INFO("[Factory] 创建 CanDispatcher 单例...");
-
     auto dispatcher = std::make_shared<CanDispatcher>();
-    if (!dispatcher) {
-        EXO_ERROR("[Factory] CanDispatcher 内存分配失败");
-        return nullptr;
-    }
 
     if (!dispatcher->InitDispatcher()) {
-        EXO_ERROR("[Factory] CanDispatcher::InitDispatcher 失败");
+        fprintf(stderr, "[Factory] CanDispatcher::InitDispatcher() failed\n");
         return nullptr;
     }
 
-    EXO_INFO("[Factory] CanDispatcher 创建并初始化完成");
+    printf("[Factory] CanDispatcher created successfully\n");
     return dispatcher;
 }
-
-/* ============================================================================
- *  CreateRosListener
- * ============================================================================ */
 
 std::shared_ptr<IListener>
 Factory::CreateRosListener(std::shared_ptr<ros::NodeHandle> nh,
                            std::shared_ptr<IMsgInternalDispatcher> dispatcher)
 {
-    EXO_INFO("[Factory] 创建 RosAdapter...");
-
-    if (!nh) {
-        EXO_ERROR("[Factory] CreateRosListener: NodeHandle 为空");
+#ifdef ENABLE_ROS
+    if (!nh || !dispatcher) {
+        fprintf(stderr, "[Factory] CreateRosListener: invalid arguments\n");
         return nullptr;
     }
 
-    if (!dispatcher) {
-        EXO_ERROR("[Factory] CreateRosListener: Dispatcher 为空");
+    /* 从 CanDispatcher 获取 SHM 指针 */
+    auto can_disp = std::dynamic_pointer_cast<CanDispatcher>(dispatcher);
+    if (!can_disp) {
+        fprintf(stderr, "[Factory] dispatcher is not CanDispatcher\n");
         return nullptr;
     }
 
-    /* ── 从 CanDispatcher 获取 SHM ── */
-    auto* can = dynamic_cast<CanDispatcher*>(dispatcher.get());
-    if (!can) {
-        EXO_ERROR("[Factory] CreateRosListener: dispatcher 不是 CanDispatcher 类型");
-        return nullptr;
-    }
-
-    exo_shm_t* shm = can->GetShm();
+    exo_shm_t* shm = can_disp->GetShm();
     if (!shm) {
-        EXO_ERROR("[Factory] CreateRosListener: SHM 未初始化");
+        fprintf(stderr, "[Factory] SHM not available for RosAdapter\n");
         return nullptr;
     }
 
-    /* ── 创建 RosAdapter ── */
-    auto rosAdapter = std::make_shared<RosAdapter>(nh, shm);
-    if (!rosAdapter) {
-        EXO_ERROR("[Factory] RosAdapter 内存分配失败");
-        return nullptr;
-    }
+    auto adapter = std::make_shared<RosAdapter>(nh, shm);
+    adapter->SetDispatcher(dispatcher);
+    adapter->Start();
 
-    /* ── 注入 Dispatcher (ROS Subscriber 回调中发控制命令) ── */
-    rosAdapter->SetDispatcher(dispatcher);
-
-    /* ── 启动 pull 线程 ── */
-    rosAdapter->Start();
-
-    EXO_INFO("[Factory] RosAdapter 创建并启动完成");
-    return rosAdapter;
+    printf("[Factory] RosAdapter created (pull from SHM)\n");
+    return adapter;
+#else
+    (void)nh;
+    (void)dispatcher;
+    fprintf(stderr, "[Factory] ENABLE_ROS not defined, RosAdapter disabled\n");
+    return nullptr;
+#endif
 }
 
 }  /* namespace stark_periph_manager_node */
