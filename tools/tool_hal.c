@@ -756,7 +756,7 @@ int tool_sensor_watch_start(int id, int out_fd)
 {
     if (g_sensor_watch_running) return -1;
     g_sensor_watch_id = id;
-    g_sensor_watch_fd = dup(out_fd);
+    g_sensor_watch_fd = out_fd;  /* 线程接管 fd 所有权, 退出时关闭 */
     g_sensor_watch_running = 1;
     if (pthread_create(&g_sensor_watch_thread, NULL, _sensor_watch_thread_fn, NULL) != 0) {
         g_sensor_watch_running = 0;
