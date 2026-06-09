@@ -139,11 +139,11 @@ public:
 
         m_sample_idx++;
 
-        /* 每1000周期打印并重置 */
+        /* 每1000周期: 推统计到 ring buffer (RT_LOG), 不直接 printf */
         m_stat_cycle++;
         if (m_stat_cycle >= 1000) {
             uint32_t n = (m_sample_idx < 1000) ? m_sample_idx : 1000;
-            dump_stats(n);
+            flush_stats_to_ring(n);
             reset_stats();
             m_stat_cycle = 0;
         }
@@ -192,7 +192,7 @@ private:
 #if EXO_LATENCY_TRACE
     static constexpr int LATENCY_RING_SIZE = 1024;
 
-    void dump_stats(uint32_t n);
+    void flush_stats_to_ring(uint32_t n);
     void reset_stats();
 
     latency_sample_t m_cur;

@@ -1,9 +1,10 @@
 /*
- * exo_latency_trace.cpp — 耗时追踪实现 (dump_stats / reset_stats)
+ * exo_latency_trace.cpp — 耗时追踪实现
+ *
+ * RT 线程内不做 printf, 统计摘要通过 RT_LOG ring buffer 输出.
  */
 #include "exo_latency_trace.h"
-#include <cstdio>
-#include <cmath>
+#include "exo_rt_log.h"
 
 namespace stark_periph_manager_node {
 
@@ -18,42 +19,26 @@ void ExoLatencyTracer::reset_stats()
     m_ctrl_total_min = UINT32_MAX; m_ctrl_total_max = 0; m_ctrl_total_acc = 0; m_ctrl_total_sq = 0;
 }
 
-void ExoLatencyTracer::dump_stats(uint32_t n)
+/*
+ * flush_stats_to_ring — RT线程调用, 通过RT_LOG ring buffer输出
+ * (不调printf, 不阻塞, <2μs)
+ */
+void ExoLatencyTracer::flush_stats_to_ring(uint32_t n)
 {
-    if (n == 0) return;
+    uint32_t fb_read_avg   = (uint32_t)(m_fb_read_acc / n);
+    uint32_t mock_avg      = (uint32_t)(m_mock_snsr_acc / n);
+    uint32_t shm_avg       = (uint32_t)(m_shm_write_acc / n);
+    uint32_t fb_total_avg  = (uint32_t)(m_fb_total_acc / n);
+    uint32_t ctrl_total_avg = (uint32_t)(m_ctrl_total_acc / n);
 
-    auto calc_std = [](uint64_t sq, uint64_t acc, uint32_t cnt) -> uint32_t {
-        double mean = (double)acc / cnt;
-        double var = (double)sq / cnt - mean * mean;
-        return (var > 0) ? (uint32_t)sqrt(var) : 0;
-    };
-
-    printf("\n┌─ [LatencyTrace] 1000-cycle stats ─────────────────────────┐\n");
-    printf("│ frames: %u                                                    │\n", n);
-
-    printf("├─ 反馈路径 (PublishFeedback)                                ─┤\n");
-    printf("│   fb_cache读  : min=%3uus  avg=%3uus  max=%3uus  σ=%3uus   │\n",
-           m_fb_read_min, (uint32_t)(m_fb_read_acc / n), m_fb_read_max,
-           calc_std(m_fb_read_sq, m_fb_read_acc, n));
-    printf("│   mock传感器  : min=%3uus  avg=%3uus  max=%3uus  σ=%3uus   │\n",
-           m_mock_snsr_min, (uint32_t)(m_mock_snsr_acc / n), m_mock_snsr_max,
-           calc_std(m_mock_snsr_sq, m_mock_snsr_acc, n));
-    printf("│   SHM写入     : min=%3uus  avg=%3uus  max=%3uus  σ=%3uus   │\n",
-           m_shm_write_min, (uint32_t)(m_shm_write_acc / n), m_shm_write_max,
-           calc_std(m_shm_write_sq, m_shm_write_acc, n));
-    printf("│   反馈总延迟  : min=%3uus  avg=%3uus  max=%3uus  σ=%3uus   │\n",
-           m_fb_total_min, (uint32_t)(m_fb_total_acc / n), m_fb_total_max,
-           calc_std(m_fb_total_sq, m_fb_total_acc, n));
-
-    printf("├─ 控制路径 (ProcessMailbox → PDO)                           ─┤\n");
-    printf("│   控制总延迟  : min=%3uus  avg=%3uus  max=%3uus  σ=%3uus   │\n",
-           m_ctrl_total_min, (uint32_t)(m_ctrl_total_acc / n), m_ctrl_total_max,
-           calc_std(m_ctrl_total_sq, m_ctrl_total_acc, n));
-
-    printf("├─ 单周期合计   : 反馈+控制 avg=%3uus  max=%3uus              │\n",
-           (uint32_t)((m_fb_total_acc + m_ctrl_total_acc) / n),
-           m_fb_total_max + m_ctrl_total_max);
-    printf("└─────────────────────────────────────────────────────────────┘\n");
+    RT_LOG("LatencyTrace[%u] | fb_read: min=%u avg=%u max=%u us | "
+           "mock: avg=%u us | SHM: avg=%u us | fb_total: min=%u avg=%u max=%u us | "
+           "ctrl: min=%u avg=%u max=%u us",
+           n,
+           m_fb_read_min, fb_read_avg, m_fb_read_max,
+           mock_avg, shm_avg,
+           m_fb_total_min, fb_total_avg, m_fb_total_max,
+           m_ctrl_total_min, ctrl_total_avg, m_ctrl_total_max);
 }
 
 #endif  /* EXO_LATENCY_TRACE */
