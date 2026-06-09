@@ -1,37 +1,29 @@
 {
   "can": {
-    "interface": "can0",
-    "arbitration_rate": 1000000,
-    "data_rate": 5000000
+    "interface": "can0"
   },
   "motors": [
     {
       "id": 1,
-      "name": "right_hip",
       "heartbeat_ms": 2000,
       "profile_accel": 5000,
+      "profile_decel": 5000,
       "profile_velocity": 20,
       "disable_watchdog": true,
       "auto_enable": true,
-      "bootup_timeout_ms": 5000,
       "tpdo_sync_count": 1
     },
     {
       "id": 2,
-      "name": "left_hip",
       "heartbeat_ms": 2000,
       "profile_accel": 5000,
+      "profile_decel": 5000,
       "profile_velocity": 20,
       "disable_watchdog": true,
       "auto_enable": true,
-      "bootup_timeout_ms": 5000,
       "tpdo_sync_count": 1
     }
   ],
-  "calib": {
-    "timeout_ms": 10000,
-    "threshold_deg": 1.0
-  },
   "safety": {
     "algo_timeout_ms": 200,
     "algo_shutdown_ms": 500,
@@ -40,23 +32,16 @@
     "encoder_stall_s": 3
   },
   "shm": {
-    "name": "/exo_shm",
-    "size_kb": 64
+    "name": "/exo_shm"
   },
   "rt": {
     "control_priority": 90,
     "control_period_us": 1000,
     "report_divider": 5,
-    "cpu_affinity": [2, 3]
+    "cpu_affinity": [3]
   },
-  "ros": {
-    "enabled": false,
-    "feedback_topic": "/stark/motor/feedback",
-    "state_topic": "/stark/motor/state",
-    "service_prefix": "/stark/motor"
-  },
-  "web": {
-    "enabled": false,
-    "port": 8080
+  "calib": {
+    "timeout_ms": 10000,
+    "threshold_deg": 1.0
   }
 }

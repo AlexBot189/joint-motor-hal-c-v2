@@ -30,6 +30,7 @@ extern "C" {
 }
 
 #include "core/exo_motor_ctrl.h"
+#include "core/exo_rt_worker.h"
 
 namespace stark_periph_manager_node {
 
@@ -51,6 +52,12 @@ public:
     exo_shm_t*     GetShm()  { return m_shm; }
     ExoMotorCtrl*  GetCtrl() { return m_ctrl.get(); }
 
+    /* ── 配置 (从 config.json 读取, 或默认值) ── */
+    const SafetyConfig& GetSafetyConfig()  { return m_safety_cfg; }
+    const RtConfig&     GetRtConfig()      { return m_rt_cfg; }
+    const std::string&  GetShmName()       { return m_shm_name; }
+    const std::string&  GetCanIface()      { return m_can_iface; }
+
     bool IsRunning() const { return m_running; }
     void SetConfigPath(const std::string& path) { m_config_path = path; }
 
@@ -68,6 +75,12 @@ private:
     std::mutex m_listener_mutex;
     std::unordered_map<ListenerType, std::shared_ptr<IListener>> m_listeners;
     std::string m_config_path;
+
+    /* ── 配置 (优先 config.json, 读失败则默认值) ── */
+    SafetyConfig m_safety_cfg;
+    RtConfig     m_rt_cfg;
+    std::string  m_shm_name  = EXO_SHM_NAME;
+    std::string  m_can_iface = "can0";
 };
 
 }  /* namespace stark_periph_manager_node */

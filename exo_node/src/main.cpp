@@ -168,11 +168,15 @@ int main(int argc, char** argv)
     g_rt_worker = new ExoRtWorker(hal, shm,
                                   g_dispatcher->GetCtrl(),
                                   &g_mock_sensor);
+
+    /* 注入 config.json 配置 (读失败则保持默认值) */
+    g_rt_worker->SetSafetyConfig(g_dispatcher->GetSafetyConfig());
+
+    RtConfig rt_cfg = g_dispatcher->GetRtConfig();
     if (!enable_rt) {
-        RtConfig cfg;
-        cfg.enable_rt = false;
-        g_rt_worker->SetRtConfig(cfg);
+        rt_cfg.enable_rt = false;  /* --no-rt 覆盖 */
     }
+    g_rt_worker->SetRtConfig(rt_cfg);
     g_rt_worker->Start();
 
     ECO_INFO_NEW("[main] RT worker started (1KHz, {})",

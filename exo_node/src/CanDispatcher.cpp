@@ -48,13 +48,13 @@ bool CanDispatcher::InitDispatcher()
     }
 
     /* 2. 打开 CANFD — 对齐 tool_init */
-    int ret = motor_hal_init(m_hal, "can0", 1000000, 5000000);
+    int ret = motor_hal_init(m_hal, m_can_iface.c_str(), 1000000, 5000000);
     if (ret < 0) {
-        ECO_ERROR_NEW("[CanDispatcher] motor_hal_init() failed: {}", ret);
+        ECO_ERROR_NEW("[CanDispatcher] motor_hal_init({}) failed: {}", m_can_iface, ret);
         motor_hal_destroy(m_hal); m_hal = nullptr;
         return false;
     }
-    ECO_INFO_NEW("[CanDispatcher] CANFD can0: arb=1M data=5M ✓");
+    ECO_INFO_NEW("[CanDispatcher] CANFD {}: arb=1M data=5M ✓", m_can_iface);
 
     /* 3. 注册电机 (走配置或硬编码默认) */
     if (!LoadMotorConfig()) {
@@ -78,7 +78,7 @@ bool CanDispatcher::InitDispatcher()
     m_ctrl = std::make_unique<ExoMotorCtrl>(m_hal);
 
     /* 7. 打开共享内存 */
-    m_shm_mgr = exo_shm_mgr_open(EXO_SHM_NAME, true, EXO_SHM_SIZE);
+    m_shm_mgr = exo_shm_mgr_open(m_shm_name.c_str(), true, EXO_SHM_SIZE);
     if (!m_shm_mgr) {
         ECO_ERROR_NEW("[CanDispatcher] exo_shm_mgr_open() failed");
         motor_hal_recv_stop(m_hal);
@@ -267,6 +267,12 @@ bool CanDispatcher::LoadMotorConfig()
         }
         ifs.close();
 
+        /* ── 解析 CAN 接口 ── */
+        if (cfg.contains("can")) {
+            m_can_iface = cfg["can"].value("interface", "can0");
+        }
+
+        /* ── 解析 motors ── */
         if (cfg.contains("motors") && cfg["motors"].is_array()) {
             for (const auto& m : cfg["motors"]) {
                 motor_config_t mc = {};
@@ -277,7 +283,7 @@ bool CanDispatcher::LoadMotorConfig()
                 mc.profile_velocity  = m.value("profile_velocity", 20u);
                 mc.disable_watchdog  = m.value("disable_watchdog", true);
                 mc.auto_enable       = m.value("auto_enable", true);
-                mc.bootup_timeout_ms = m.value("bootup_timeout_ms", 3000);
+                mc.bootup_timeout_ms = 5000;
                 mc.tpdo_sync_count   = m.value("tpdo_sync_count", (uint8_t)1);
 
                 if (mc.node_id == 0) continue;
@@ -289,11 +295,41 @@ bool CanDispatcher::LoadMotorConfig()
             }
             ECO_INFO_NEW("[CanDispatcher] loaded {} motors from {}",
                          cfg["motors"].size(), m_config_path);
-            return true;
         }
+
+        /* ── 解析 safety ── */
+        if (cfg.contains("safety")) {
+            auto& s = cfg["safety"];
+            m_safety_cfg.algo_timeout_ms   = s.value("algo_timeout_ms",   200u);
+            m_safety_cfg.algo_shutdown_ms  = s.value("algo_shutdown_ms",  500u);
+            m_safety_cfg.overtemp_celsius  = s.value("overtemp_celsius",  80);
+            m_safety_cfg.can_offline_ms    = s.value("can_offline_ms",    2000u);
+            m_safety_cfg.encoder_stall_s   = s.value("encoder_stall_s",   3u);
+        }
+
+        /* ── 解析 rt ── */
+        if (cfg.contains("rt")) {
+            auto& r = cfg["rt"];
+            m_rt_cfg.priority      = r.value("control_priority",  90);
+            m_rt_cfg.period_us     = r.value("control_period_us", 1000u);
+            m_rt_cfg.report_divider = r.value("report_divider",    5);
+            if (r.contains("cpu_affinity") && r["cpu_affinity"].is_array()
+                && r["cpu_affinity"].size() > 0) {
+                m_rt_cfg.cpu_affinity[0] = r["cpu_affinity"][0].get<int>();
+                m_rt_cfg.cpu_affinity[1] = (r["cpu_affinity"].size() > 1)
+                    ? r["cpu_affinity"][1].get<int>() : -1;
+            }
+        }
+
+        /* ── 解析 shm ── */
+        if (cfg.contains("shm")) {
+            m_shm_name = cfg["shm"].value("name", std::string(EXO_SHM_NAME));
+        }
+
+        return true;  /* 文件解析完成, 缺失字段用默认值 */
     }
 
-    /* 配置文件不存在 → 硬编码默认值 (对齐 daemon) */
+    /* 配置文件不存在 → 全部默认值 (对齐 daemon) */
     ECO_INFO_NEW("[CanDispatcher] config not found, using hardcoded defaults");
 
     motor_config_t def = {};
