@@ -124,6 +124,9 @@ private:
     /* ── RT→主线程 状态切换请求 (atomic, RT 写, 主线程读后清零) ── */
     uint32_t m_pending_state = STATE_INIT;
 
+    /* ── 去重标志 ── */
+    bool     m_fault_triggered = false;
+
     /* ── 延迟追踪 (EXO_LATENCY_TRACE=0 时零开销) ── */
     ExoLatencyTracer m_tracer;
 };

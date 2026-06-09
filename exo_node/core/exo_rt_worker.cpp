@@ -352,13 +352,16 @@ void ExoRtWorker::SafetyCheck()
             uint64_t stall_ms = (now_us - m_seq_stall_us) / 1000ULL;
 
             if (stall_ms > m_safety.algo_shutdown_ms) {
-                /* FAULT: 算法严重失联 → PDO 降险, 设标志让主循环切状态 */
-                m_shm->motor_severity = MOTOR_FAULT;
-                m_shm->fault_reason   = FAULT_ALGO_TIMEOUT;
-                m_pending_state = STATE_FAULT;  /* RT 线程只设标志 */
-                _safe_disable_all();
-                RT_LOG("SAFETY FAULT: algo timeout %llu ms, all disabled",
-                       (unsigned long long)stall_ms);
+                /* FAULT: 算法严重失联 → PDO 降险 (只触发一次) */
+                if (!m_fault_triggered) {
+                    m_fault_triggered   = true;
+                    m_shm->motor_severity = MOTOR_FAULT;
+                    m_shm->fault_reason   = FAULT_ALGO_TIMEOUT;
+                    m_pending_state = STATE_FAULT;
+                    _safe_disable_all();
+                    RT_LOG("SAFETY FAULT: algo timeout %llu ms, all disabled",
+                           (unsigned long long)stall_ms);
+                }
             }
             else if (stall_ms > m_safety.algo_timeout_ms) {
                 /* WARN: torque=0 via PDO (RT safe) */
@@ -374,6 +377,7 @@ void ExoRtWorker::SafetyCheck()
         else {
             /* seq 恢复 */
             m_seq_stall_us = 0;
+            m_fault_triggered = false;
             if (m_shm->motor_severity == MOTOR_WARN &&
                 m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
             {
