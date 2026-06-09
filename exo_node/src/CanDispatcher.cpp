@@ -48,13 +48,15 @@ bool CanDispatcher::InitDispatcher()
     }
 
     /* 2. 打开 CANFD — 对齐 tool_init */
-    int ret = motor_hal_init(m_hal, m_can_iface.c_str(), 1000000, 5000000);
+    int ret = motor_hal_init(m_hal, m_can_iface.c_str(),
+                              m_can_arb_rate, m_can_data_rate);
     if (ret < 0) {
         ECO_ERROR_NEW("[CanDispatcher] motor_hal_init({}) failed: {}", m_can_iface, ret);
         motor_hal_destroy(m_hal); m_hal = nullptr;
         return false;
     }
-    ECO_INFO_NEW("[CanDispatcher] CANFD {}: arb=1M data=5M ✓", m_can_iface);
+    ECO_INFO_NEW("[CanDispatcher] CANFD {}: arb={}bps data={}bps ✓",
+                 m_can_iface, m_can_arb_rate, m_can_data_rate);
 
     /* 3. 注册电机 (走配置或硬编码默认) */
     if (!LoadMotorConfig()) {
@@ -78,7 +80,7 @@ bool CanDispatcher::InitDispatcher()
     m_ctrl = std::make_unique<ExoMotorCtrl>(m_hal);
 
     /* 7. 打开共享内存 */
-    m_shm_mgr = exo_shm_mgr_open(m_shm_name.c_str(), true, EXO_SHM_SIZE);
+    m_shm_mgr = exo_shm_mgr_open(m_shm_name.c_str(), true, m_shm_size_bytes);
     if (!m_shm_mgr) {
         ECO_ERROR_NEW("[CanDispatcher] exo_shm_mgr_open() failed");
         motor_hal_recv_stop(m_hal);
@@ -267,9 +269,11 @@ bool CanDispatcher::LoadMotorConfig()
         }
         ifs.close();
 
-        /* ── 解析 CAN 接口 ── */
+        /* ── 解析 CAN ── */
         if (cfg.contains("can")) {
-            m_can_iface = cfg["can"].value("interface", "can0");
+            m_can_iface    = cfg["can"].value("interface",        "can0");
+            m_can_arb_rate = cfg["can"].value("arbitration_rate", 1000000);
+            m_can_data_rate= cfg["can"].value("data_rate",        5000000);
         }
 
         /* ── 解析 motors ── */
@@ -287,6 +291,11 @@ bool CanDispatcher::LoadMotorConfig()
                 mc.tpdo_sync_count   = m.value("tpdo_sync_count", (uint8_t)1);
 
                 if (mc.node_id == 0) continue;
+
+                std::string name = m.value("name", std::string{});
+                ECO_INFO_NEW("[CanDispatcher] motor id={} name='{}'",
+                             mc.node_id, name.empty() ? "(none)" : name);
+
                 int ret = motor_hal_add_motor(m_hal, &mc);
                 if (ret < 0) {
                     ECO_ERROR_NEW("[CanDispatcher] motor id={} add failed: {}", mc.node_id, ret);
@@ -324,6 +333,13 @@ bool CanDispatcher::LoadMotorConfig()
         /* ── 解析 shm ── */
         if (cfg.contains("shm")) {
             m_shm_name = cfg["shm"].value("name", std::string(EXO_SHM_NAME));
+            size_t kb  = cfg["shm"].value("size_kb", (size_t)(EXO_SHM_SIZE / 1024));
+            m_shm_size_bytes = kb * 1024;
+            if (m_shm_size_bytes < sizeof(exo_shm_t)) {
+                ECO_WARN_NEW("[CanDispatcher] shm.size_kb={} < struct size={}, clamping",
+                             kb, sizeof(exo_shm_t));
+                m_shm_size_bytes = sizeof(exo_shm_t);
+            }
         }
 
         return true;  /* 文件解析完成, 缺失字段用默认值 */

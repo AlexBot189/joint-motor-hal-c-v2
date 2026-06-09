@@ -80,7 +80,10 @@ private:
     SafetyConfig m_safety_cfg;
     RtConfig     m_rt_cfg;
     std::string  m_shm_name  = EXO_SHM_NAME;
+    size_t       m_shm_size_bytes = EXO_SHM_SIZE;
     std::string  m_can_iface = "can0";
+    int          m_can_arb_rate  = 1000000;
+    int          m_can_data_rate = 5000000;
 };
 
 }  /* namespace stark_periph_manager_node */

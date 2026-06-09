@@ -1,10 +1,13 @@
 {
   "can": {
-    "interface": "can0"
+    "interface": "can0",
+    "arbitration_rate": 1000000,
+    "data_rate": 5000000
   },
   "motors": [
     {
       "id": 1,
+      "name": "right_hip",
       "heartbeat_ms": 2000,
       "profile_accel": 5000,
       "profile_decel": 5000,
@@ -15,6 +18,7 @@
     },
     {
       "id": 2,
+      "name": "left_hip",
       "heartbeat_ms": 2000,
       "profile_accel": 5000,
       "profile_decel": 5000,
@@ -32,7 +36,8 @@
     "encoder_stall_s": 3
   },
   "shm": {
-    "name": "/exo_shm"
+    "name": "/exo_shm",
+    "size_kb": 64
   },
   "rt": {
     "control_priority": 90,
@@ -43,5 +48,15 @@
   "calib": {
     "timeout_ms": 10000,
     "threshold_deg": 1.0
+  },
+  "ros": {
+    "enabled": false,
+    "feedback_topic": "/stark/motor/feedback",
+    "state_topic": "/stark/motor/state",
+    "ctrl_sub_topic": "/stark/motor/ctrl"
+  },
+  "web": {
+    "enabled": false,
+    "port": 8080
   }
 }
