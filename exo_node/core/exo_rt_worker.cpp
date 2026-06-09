@@ -47,6 +47,11 @@ ExoRtWorker::ExoRtWorker(motor_hal_t* hal, exo_shm_t* shm,
     memset(m_sensor_notified, 0, sizeof(m_sensor_notified));
     memset(m_latency_history, 0, sizeof(m_latency_history));
     m_imu_notified = false;
+
+    /* Bug#1: 对齐 SHM 残留 seq_begin, 防止假 FAULT */
+    if (m_shm) {
+        m_last_seq = __atomic_load_n(&m_shm->mailbox.seq_begin, __ATOMIC_ACQUIRE);
+    }
 }
 
 ExoRtWorker::~ExoRtWorker()
@@ -271,7 +276,7 @@ void ExoRtWorker::PublishFeedback()
             fb->sensor[idx].key_landing = s.hw_sw_pc9;
             fb->sensor[idx].data_valid  = s.data_valid;
         } else if (!m_sensor_notified[id - 1]) {
-            RT_LOG("sensor not configured for motor {} (ret={})", id, ret);
+            RT_LOG("sensor not configured for motor %d (ret=%d)", id, ret);
             m_sensor_notified[id - 1] = true;
         }
     }
@@ -352,8 +357,8 @@ void ExoRtWorker::SafetyCheck()
                 m_shm->fault_reason   = FAULT_ALGO_TIMEOUT;
                 m_pending_state = STATE_FAULT;  /* RT 线程只设标志 */
                 _safe_disable_all();
-                RT_LOG("SAFETY FAULT: algo timeout {} ms, all disabled",
-                       stall_ms);
+                RT_LOG("SAFETY FAULT: algo timeout %llu ms, all disabled",
+                       (unsigned long long)stall_ms);
             }
             else if (stall_ms > m_safety.algo_timeout_ms) {
                 /* WARN: torque=0 via PDO (RT safe) */
@@ -361,8 +366,8 @@ void ExoRtWorker::SafetyCheck()
                     m_shm->motor_severity = MOTOR_WARN;
                     m_shm->fault_reason   = FAULT_ALGO_TIMEOUT;
                     _safe_torque_zero_all();
-                    RT_LOG("SAFETY WARN: algo timeout {} ms, torque=0",
-                           stall_ms);
+                    RT_LOG("SAFETY WARN: algo timeout %llu ms, torque=0",
+                           (unsigned long long)stall_ms);
                 }
             }
         }

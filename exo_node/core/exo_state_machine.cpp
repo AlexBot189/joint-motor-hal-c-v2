@@ -74,6 +74,14 @@ void enter_discovery(void) {
 
         usleep(interval_ms * 1000);
         elapsed_ms += interval_ms;
+
+        /* Bug#2: 检测安全标志, RT 线程可能已触发 FAULT */
+        if (shm->motor_severity == MOTOR_FAULT) {
+            ECO_WARN_NEW("[StateMachine] FAULT detected during DISCOVERY, exit");
+            shm->node_state = STATE_FAULT;
+            state_transition(STATE_FAULT);
+            return;
+        }
     }
 
     ECO_ERROR_NEW("[StateMachine] DISCOVERY timeout ({}s), entering READY anyway",
@@ -131,7 +139,7 @@ exit_fn exit_hooks[EXO_STATE_COUNT] = {
 
 bool state_transition_allowed(exo_state_t from, exo_state_t to)
 {
-    if (from == to) return false;
+    if (from == to) return true;  /* INIT→INIT etc allowed */
     if (to == STATE_FAULT) return true;
     if (from == STATE_FAULT && to == STATE_READY) return true;
     if ((int)to == (int)from + 1) return true;
