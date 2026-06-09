@@ -207,6 +207,8 @@ void ExoRtWorker::ProcessMailbox()
 
         /* ── T6: PDO 发出 ── */
         m_tracer.mark_pdo_sent();
+    }
+}
 
 /* ════════════════════════════════════════════════════════════════════
  * PublishFeedback() — 读 fb_cache + 组装 feedback_frame_t → SHM
