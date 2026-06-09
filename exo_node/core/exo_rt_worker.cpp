@@ -152,9 +152,9 @@ void ExoRtWorker::ProcessMailbox()
     clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t t7_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 
-    /* ── 首次收到算法命令 → 切 RUNNING ── */
+    /* ── 首次收到算法命令 → 设标志, 让主循环调 state_transition ── */
     if (m_last_seq == 0 && begin > 0) {
-        m_shm->node_state = STATE_RUNNING;
+        m_pending_state = STATE_RUNNING;  /* RT 线程只设标志, 不写 shm->node_state */
     }
 
     /* ── 读取双电机命令 (值拷贝, snapshot 协议保证安全) ── */
@@ -347,10 +347,10 @@ void ExoRtWorker::SafetyCheck()
             uint64_t stall_ms = (now_us - m_seq_stall_us) / 1000ULL;
 
             if (stall_ms > m_safety.algo_shutdown_ms) {
-                /* FAULT: 算法严重失联 → PDO Disable */
+                /* FAULT: 算法严重失联 → PDO 降险, 设标志让主循环切状态 */
                 m_shm->motor_severity = MOTOR_FAULT;
                 m_shm->fault_reason   = FAULT_ALGO_TIMEOUT;
-                m_shm->node_state     = STATE_FAULT;
+                m_pending_state = STATE_FAULT;  /* RT 线程只设标志 */
                 _safe_disable_all();
                 RT_LOG("SAFETY FAULT: algo timeout {} ms, all disabled",
                        stall_ms);
@@ -471,6 +471,19 @@ uint32_t ExoRtWorker::GetAvgLatencyUs() const
         sum += m_latency_history[i];
     }
     return (uint32_t)(sum / n);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * GetPendingState() — 主循环读取 RT 线程请求的状态切换
+ *
+ * atomic exchange: 读当前值并清零为 STATE_INIT
+ * STATE_INIT 表示无待处理请求.
+ * ════════════════════════════════════════════════════════════════════ */
+
+exo_state_t ExoRtWorker::GetPendingState()
+{
+    return (exo_state_t)__atomic_exchange_n(
+        &m_pending_state, (uint32_t)STATE_INIT, __ATOMIC_ACQUIRE);
 }
 
 }  /* namespace stark_periph_manager_node */

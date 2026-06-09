@@ -65,6 +65,9 @@ public:
     uint64_t GetOverrunCount() const { return m_overrun_count; }
     uint32_t GetAvgLatencyUs() const;
 
+    /** @brief 获取 RT 线程请求的状态切换 (主循环读取后清零, atomic exchange) */
+    exo_state_t GetPendingState();
+
 private:
     void Run();
     void ProcessMailbox();
@@ -107,6 +110,9 @@ private:
     /* ── 一次性日志 ── */
     bool     m_sensor_notified[EXO_MOTOR_COUNT];
     bool     m_imu_notified;
+
+    /* ── RT→主线程 状态切换请求 (atomic, RT 写, 主线程读后清零) ── */
+    uint32_t m_pending_state = STATE_INIT;
 };
 
 }  /* namespace stark_periph_manager_node */

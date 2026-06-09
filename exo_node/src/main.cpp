@@ -126,8 +126,8 @@ static bool wait_bootup_and_startup(motor_hal_t* hal, exo_shm_t* shm,
             shm->motor_online = online_mask;
         }
 
-        if (online_count > 0) {
-            ECO_INFO_NEW("[main] {} motors online (mask=0x{:02X})",
+        if (online_count == motor_count) {
+            ECO_INFO_NEW("[main] all {} motors online (mask=0x{:02X})",
                          online_count, online_mask);
 
             /* 状态转换: INIT → DISCOVERY → READY */
@@ -273,16 +273,18 @@ int main(int argc, char** argv)
             update_shm_online(hal, shm);
         }
 
-        /* 状态切换检查 */
-        if (g_exo_state == STATE_ENABLED && shm) {
-            uint64_t seq = __atomic_load_n(&shm->mailbox.seq_begin,
-                                          __ATOMIC_ACQUIRE);
-            if (seq > 0) {
+        /* ── 处理 RT 线程的状态切换请求 ── */
+        if (g_rt_worker && shm) {
+            exo_state_t pending = g_rt_worker->GetPendingState();
+            if (pending == STATE_RUNNING && g_exo_state == STATE_ENABLED) {
                 state_transition(STATE_RUNNING);
+            }
+            else if (pending == STATE_FAULT && g_exo_state != STATE_FAULT) {
+                state_transition(STATE_FAULT);
             }
         }
 
-        /* 同步 SHM 状态 */
+        /* 同步 SHM node_state (主线程权威, RT 线程不碰) */
         if (shm) {
             shm->node_state = g_exo_state;
         }
