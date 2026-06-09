@@ -17,6 +17,7 @@ void ExoLatencyTracer::reset_stats()
     m_shm_write_min = UINT32_MAX; m_shm_write_max = 0; m_shm_write_acc = 0; m_shm_write_sq = 0;
     m_fb_total_min  = UINT32_MAX; m_fb_total_max  = 0; m_fb_total_acc  = 0; m_fb_total_sq  = 0;
     m_ctrl_total_min = UINT32_MAX; m_ctrl_total_max = 0; m_ctrl_total_acc = 0; m_ctrl_total_sq = 0;
+    m_ctrl_sample_count = 0;
 }
 
 /*
@@ -29,7 +30,8 @@ void ExoLatencyTracer::flush_stats_to_ring(uint32_t n)
     uint32_t mock_avg      = (uint32_t)(m_mock_snsr_acc / n);
     uint32_t shm_avg       = (uint32_t)(m_shm_write_acc / n);
     uint32_t fb_total_avg  = (uint32_t)(m_fb_total_acc / n);
-    uint32_t ctrl_total_avg = (uint32_t)(m_ctrl_total_acc / n);
+    uint32_t ctrl_sample = (m_ctrl_sample_count > 0) ? m_ctrl_sample_count : 1;
+    uint32_t ctrl_total_avg = (uint32_t)(m_ctrl_total_acc / ctrl_sample);
 
     RT_LOG("LatencyTrace[%u] | fb_read: min=%u avg=%u max=%u us | "
            "mock: avg=%u us | SHM: avg=%u us | fb_total: min=%u avg=%u max=%u us | "

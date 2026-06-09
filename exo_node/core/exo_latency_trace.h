@@ -118,14 +118,23 @@ public:
         uint32_t mock_snsr  = (uint32_t)(m_cur.t3_mock_sensor_done - m_cur.t2_fb_read_done);
         uint32_t shm_write  = (uint32_t)(m_cur.t4_shm_write_done - m_cur.t3_mock_sensor_done);
         uint32_t fb_total   = (uint32_t)(m_cur.t4_shm_write_done - m_cur.t1_fb_read_start);
-        uint32_t ctrl_total = (uint32_t)(m_cur.t6_pdo_sent - m_cur.t5_mailbox_read);
+
+        /* 仅当本周期实际执行了控制命令时才统计算 */
+        uint32_t ctrl_total = 0;
+        bool     ctrl_valid = (m_cur.t5_mailbox_read > 0);
+        if (ctrl_valid) {
+            ctrl_total = (uint32_t)(m_cur.t6_pdo_sent - m_cur.t5_mailbox_read);
+        }
 
         /* 累计统计 */
         m_fb_read_acc    += fb_read;    m_fb_read_sq  += (uint64_t)fb_read  * fb_read;
         m_mock_snsr_acc  += mock_snsr;  m_mock_snsr_sq  += (uint64_t)mock_snsr * mock_snsr;
         m_shm_write_acc  += shm_write;  m_shm_write_sq  += (uint64_t)shm_write * shm_write;
         m_fb_total_acc   += fb_total;   m_fb_total_sq   += (uint64_t)fb_total * fb_total;
-        m_ctrl_total_acc += ctrl_total; m_ctrl_total_sq += (uint64_t)ctrl_total * ctrl_total;
+        if (ctrl_valid) {
+            m_ctrl_total_acc += ctrl_total; m_ctrl_total_sq += (uint64_t)ctrl_total * ctrl_total;
+            m_ctrl_sample_count++;
+        }
 
         if (fb_read    > m_fb_read_max)    m_fb_read_max    = fb_read;
         if (fb_read    < m_fb_read_min)    m_fb_read_min    = fb_read;
@@ -135,8 +144,10 @@ public:
         if (shm_write  < m_shm_write_min)  m_shm_write_min  = shm_write;
         if (fb_total   > m_fb_total_max)   m_fb_total_max   = fb_total;
         if (fb_total   < m_fb_total_min)   m_fb_total_min   = fb_total;
-        if (ctrl_total > m_ctrl_total_max) m_ctrl_total_max = ctrl_total;
-        if (ctrl_total < m_ctrl_total_min) m_ctrl_total_min = ctrl_total;
+        if (ctrl_valid) {
+            if (ctrl_total > m_ctrl_total_max) m_ctrl_total_max = ctrl_total;
+            if (ctrl_total < m_ctrl_total_min) m_ctrl_total_min = ctrl_total;
+        }
 
         m_sample_idx++;
 
@@ -170,7 +181,8 @@ public:
         out.fb_total_avg = (uint32_t)(m_fb_total_acc / n);
         out.fb_total_max = m_fb_total_max;
         out.ctrl_total_min = m_ctrl_total_min;
-        out.ctrl_total_avg = (uint32_t)(m_ctrl_total_acc / n);
+        out.ctrl_total_avg = (m_ctrl_sample_count > 0)
+            ? (uint32_t)(m_ctrl_total_acc / m_ctrl_sample_count) : 0;
         out.ctrl_total_max = m_ctrl_total_max;
         out.cycle_count = m_sample_idx;
     }
@@ -212,6 +224,7 @@ private:
     uint32_t m_fb_total_min = UINT32_MAX,  m_fb_total_max = 0;
     uint64_t m_ctrl_total_acc,m_ctrl_total_sq;
     uint32_t m_ctrl_total_min = UINT32_MAX, m_ctrl_total_max = 0;
+    uint32_t m_ctrl_sample_count = 0;
 #endif
 };
 

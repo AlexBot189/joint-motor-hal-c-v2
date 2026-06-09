@@ -157,9 +157,6 @@ void ExoRtWorker::ProcessMailbox()
     if (begin != end)  return;   /* 算法正在写 */
     if (begin == m_last_seq) return;   /* 无新命令 */
 
-    /* ── T5: 读 mailbox 开始 ── */
-    m_tracer.mark_mailbox_read();
-
     /* ── 首次收到算法命令 → 设标志, 让主循环调 state_transition ── */
     if (m_last_seq == 0 && begin > 0) {
         m_pending_state = STATE_RUNNING;  /* RT 线程只设标志, 不写 shm->node_state */
@@ -208,6 +205,9 @@ void ExoRtWorker::ProcessMailbox()
     }
 
     if (mcount > 0) {
+        /* ── T5: 读 mailbox → 即将发 PDO ── */
+        m_tracer.mark_mailbox_read();
+
         /* PDO 广播 — 一帧 64B CANFD 发完所有电机 */
         motor_hal_multi_ctrl(m_hal, mcmds, mcount);
 
