@@ -819,3 +819,49 @@ recv线程 (SCHED_FIFO 85) → SHF fb_buffer   (去中间层)
 
 **更新时间**: 2026-06-09
 **更新内容**: 记录 recv 直写 SHM 优化待办 + 前提条件
+
+---
+
+## CPU 核心分配方案 (2026-06-09)
+
+### 四核 A35 分配
+
+```
+                    isolcpus=2,3
+                    ┌───────────────┐    ┌───────────────┐
+Core 0:              │ Core 1:       │    │ Core 2:       │ Core 3:
+内核 + IRQ + 中断     │ 非RT任务池    │    │ 算法进程       │ RT worker
+                    │ CFS 调度      │    │ SCHED_FIFO 90  │ SCHED_FIFO 90
+                    │               │    │               │ CAN recv
+                    │ 主线程/log     │    │               │ SCHED_FIFO 85
+                    │ ROS/WEB       │    │               │
+                    │ IOT/配网/OTA  │    │               │
+                    │ 其他非RT      │    │               │
+                    └───────────────┘    └───────────────┘
+```
+
+| 核心 | 隔离 | 跑什么 | 调度 |
+|------|:---:|------|:---:|
+| Core 0 | ❌ | 内核 + IRQ | kernel |
+| Core 1 | ❌ | 全部非 RT 任务 | CFS |
+| Core 2 | ✅ | 算法进程 | SCHED_FIFO 90 |
+| Core 3 | ✅ | RT worker + CAN recv | SCHED_FIFO 90+85 |
+
+### 设计原则
+
+1. RT 线程各占一个核 — 同优先级 SCHED_FIFO 不抢占, 挤一起会饿死
+2. 中断走 Core 0 — CAN/SPI/I2C IRQ 不打断 RT 线程
+3. 非 RT 进程用 taskset 限制到 core 0,1 — 不污染隔离核
+4. motor_node 只绑 Core 3 — `cpu_affinity = {3, -1}`
+5. PREEMPT_RT + mlockall — 防缺页, 降低抢占延迟
+
+### 内核 cmdline
+
+```
+isolcpus=2,3 irqaffinity=0,1 rcu_nocbs=2,3 nohz_full=2,3
+```
+
+---
+
+**更新时间**: 2026-06-09
+**更新内容**: CPU 核心分配方案 + 原则 + 内核参数

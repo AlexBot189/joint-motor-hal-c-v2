@@ -301,3 +301,59 @@ RT:     默认编译运行
 ---
 
 **文档版本**: v1.0 | **创建**: 2026-06-09
+
+---
+
+## 8. CPU 核心分配
+
+### 四核 A35 分配方案
+
+```
+                    isolcpus=2,3
+                    ┌───────────────┐    ┌───────────────┐
+Core 0:              │ Core 1:       │    │ Core 2:       │ Core 3:
+内核 + 中断 + IRQ    │ 非 RT 任务池  │    │ 算法进程       │ RT worker
+                    │               │    │ SCHED_FIFO 90  │ SCHED_FIFO 90
+                    │ 主线程        │    │ (同事负责)     │ CAN recv
+                    │ log drain     │    │               │ SCHED_FIFO 85
+                    │ ROS/WEB       │    │               │
+                    │ IOT/配网/OTA  │    │               │
+                    │ 其他非RT进程  │    │               │
+                    └───────────────┘    └───────────────┘
+```
+
+| 核心 | 隔离 | 跑什么 | 调度策略 |
+|------|:---:|------|:---:|
+| Core 0 | ❌ | 内核 + 中断 | kernel |
+| Core 1 | ❌ | 全部非 RT 任务 | CFS |
+| Core 2 | ✅ | 算法进程 | SCHED_FIFO 90 |
+| Core 3 | ✅ | RT worker + CAN recv | SCHED_FIFO 90+85 |
+
+### 关键原则
+
+1. **RT 线程各占一个核** — 同优先级 `SCHED_FIFO` 不抢占，挤一起会饿死
+2. **中断走 Core 0** — `echo 1 > /proc/irq/<can_irq>/smp_affinity`
+3. **非 RT 进程绑 Core 0,1** — `taskset -c 0,1 <cmd>` 避免干扰隔离核
+4. **motor_node 只绑 Core 3** — `cpu_affinity = {3, -1}` (代码默认)
+5. **算法绑 Core 2** — 同事自己设置
+
+### 启动非 RT 进程的推荐做法
+
+```bash
+# 所有非 RT 服务都用 taskset 限制到 core 0,1
+taskset -c 0,1 nohup /usr/bin/iot_service &
+taskset -c 0,1 nohup /usr/bin/ota_daemon &
+taskset -c 0,1 ./webserver &
+```
+
+### 内核 cmdline 参考
+
+```
+isolcpus=2,3 irqaffinity=0,1 rcu_nocbs=2,3 nohz_full=2,3
+```
+
+- `isolcpus=2,3`: 隔离 core 2,3
+- `irqaffinity=0,1`: 默认中断只走 core 0,1
+- `rcu_nocbs=2,3`: RCU 回调不在 core 2,3 上执行
+- `nohz_full=2,3`: core 2,3 不需要时关闭 tick (降低抖动)
+

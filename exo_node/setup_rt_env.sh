@@ -20,8 +20,8 @@ echo -n "[2] CPU isolation: "
 if cat /proc/cmdline | grep -q "isolcpus=2,3"; then
     echo "✓ (core 2,3 isolated)"
 else
-    echo "✗ 建议添加 isolcpus=2,3 到 kernel cmdline"
-    echo "   edit /boot/extlinux/extlinux.conf or U-Boot bootargs"
+    echo "✗ 建议添加内核参数:"
+    echo "   isolcpus=2,3 irqaffinity=0,1 rcu_nocbs=2,3 nohz_full=2,3"
 fi
 
 # 3. CAN 中断绑定到 core 0
@@ -79,10 +79,10 @@ fi
 
 echo ""
 echo "=== 核心分配方案 ==="
-echo "  Core 0: 内核 + 中断 + 系统服务"
-echo "  Core 1: motor_node 主线程(SCHED_OTHER) + log drain"
-echo "  Core 2: 算法进程 (SCHED_FIFO 90, 同事负责)"
-echo "  Core 3: motor_node RT 工作线程(SCHED_FIFO 90) + CAN recv(SCHED_FIFO 85)"
+echo "  Core 0: 内核 + 中断 (IRQ affinity=1)"
+echo "  Core 1: 全部非 RT 任务 (主线程/log/ROS/WEB/IOT/OTA/配网) — CFS"
+echo "  Core 2: 算法进程 (同事负责) — SCHED_FIFO 90"
+echo "  Core 3: RT worker(SCHED_FIFO 90) + CAN recv(SCHED_FIFO 85)"
 echo ""
 
 # 快速配置 (仅当以 root 运行且 core 2,3 已隔离)
