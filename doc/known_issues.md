@@ -772,3 +772,50 @@ m_shm->node_state     = STATE_INIT;
 
 **更新时间**: 2026-06-09
 **更新内容**: 添加 SHM memset 竞态分析 + 修复记录
+
+---
+
+## recv 线程直写 SHM 优化 (2026-06-09 记, 待 HAL 加 RT 后实施)
+
+### 现状
+
+```
+recv线程 → HAL fb_cache → RT线程 memcpy → SHM fb_buffer
+```
+
+每 5ms RT 线程从 cache memcpy 约 17μs (PI lock+copy+unlock), 占 1ms 预算 1.7%。
+
+### 优化目标
+
+```
+recv线程 (SCHED_FIFO 85) → SHF fb_buffer   (去中间层)
+```
+
+### 为什么现在不做
+
+1. recv 线程还未上 RT 调度 (SCHED_OTHER)
+2. recv 写 SHM 与 RT 读 SHM 之间的同步问题:
+   - recv 的接收周期 (每 1ms) 和 RT 的切换周期 (每 5ms) 不匹配
+   - recv 可能在 motor[0] 写新数据, motor[1] 还是旧数据的时候 RT 切了 buffer
+   - 读者 (算法) 可能看到半帧: motor[0]=新, motor[1]=旧
+
+### 实施前提
+
+| 条件 | 状态 |
+|------|:--:|
+| HAL recv 线程上 SCHED_FIFO | ❌ 待实现 |
+| recv→SHM 原子写入协议 (全帧或全帧跳过) | ❌ 待设计 |
+| 两线程间双 Buffer 切换的同步 (recv 写时机 vs RT 切时机) | ❌ 待设计 |
+
+### 备选方案
+
+```
+方案A: recv 线程用三 Buffer: 正在写的/最新的/算法在读的
+方案B: recv 每次组装完整帧后 atomic 提交, RT 只切指针不拷贝
+方案C: 维持当前 cache+memcpy, HAL 上 RT 后评估 memcpy 是否仍是瓶颈
+```
+
+---
+
+**更新时间**: 2026-06-09
+**更新内容**: 记录 recv 直写 SHM 优化待办 + 前提条件
