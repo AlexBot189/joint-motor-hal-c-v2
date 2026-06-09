@@ -613,6 +613,7 @@ int tool_read_mode(int id)
                 case 0x03: name = "PV"; break;
                 case 0x08: name = "CSP"; break;
                 case 0x09: name = "CSV"; break;
+                case 0x06: name = "MIT";     break;
                 case 0x0A: name = "Current"; break;
             }
             printf("[%d] mode = 0x%02X (%s)\n", ids[i], (uint8_t)mode, name);
