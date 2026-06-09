@@ -281,6 +281,21 @@ int main(int argc, char** argv)
             }
             else if (pending == STATE_FAULT && g_exo_state != STATE_FAULT) {
                 state_transition(STATE_FAULT);
+
+                /* ★ 补发 SDO DS402 Shutdown (非 RT 路径, 可阻塞)
+                 * RT 线程已通过 PDO enable=false + torque=0 完成降险,
+                 * 这里走标准 DS402 状态机退出到 READY_TO_SWITCH_ON. */
+                auto* ctrl = g_dispatcher->GetCtrl();
+                if (ctrl) {
+                    for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; id++) {
+                        if (shm->motor_online & (1 << (id - 1))) {
+                            /* SDO 0x6040=0x06: Shutdown → READY_TO_SWITCH_ON */
+                            int ret = ctrl->SdoWrite(id, 0x6040, 0, 0x0006, 2);
+                            ECO_INFO_NEW("[main] SDO Shutdown motor {}: {}",
+                                         id, (ret == 0 ? "OK" : "FAIL"));
+                        }
+                    }
+                }
             }
         }
 

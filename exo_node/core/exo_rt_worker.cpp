@@ -403,7 +403,10 @@ void ExoRtWorker::_safe_disable_all()
 {
     if (!m_hal) return;
 
-    /* 用 PDO multi_ctrl 做安全停机: enable=false 触发 DS402 Shutdown */
+    /* ★ 第一步: PDO 降险
+     * enable=false + torque=0 → 立即切断功率输出
+     * 不触发 DS402 状态机, 但电机会停止出力.
+     * 第二步 SDO 0x6040=0x06 由主循环补发 (非 RT 路径). */
     multi_axis_cmd_t cmds[EXO_MOTOR_COUNT] = {};
     for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
         cmds[i].node_id       = (uint8_t)(i + 1);

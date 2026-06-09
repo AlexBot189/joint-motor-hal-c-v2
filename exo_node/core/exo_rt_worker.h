@@ -76,8 +76,12 @@ private:
     void MockSensorTick();
     void SetThreadRt();
 
-    /* ── 双电机 torque=0 (PDO 路径, RT 安全) ── */
+    /* ── 双电机 torque=0 (PDO, RT安全) ── */
     void _safe_torque_zero_all();
+
+    /* ── 双电机 紧急降险: PDO enable=false + torque=0
+     *     这是第一步(立即切断扭矩), 第二步 SDO Shutdown
+     *     由主循环在 state_transition(FAULT) 后补发. ── */
     void _safe_disable_all();
 
     motor_hal_t*    m_hal;
