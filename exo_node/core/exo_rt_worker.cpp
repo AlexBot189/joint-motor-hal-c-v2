@@ -296,14 +296,6 @@ void ExoRtWorker::PublishFeedback()
     /* ── T4: SHM 双 Buffer 切换完成 ── */
     m_tracer.mark_shm_write_done();
 
-    /* ── 更新延迟统计 ── */
-    if (fb->ts_can_rx > 0) {
-        uint32_t total = (uint32_t)(fb->ts_shm_write - fb->ts_can_rx);
-        m_shm->avg_total_latency_us = total;
-        if (total > m_shm->max_total_latency_us) {
-            m_shm->max_total_latency_us = total;
-        }
-    }
     /* ── 填充 SHM 耗时统计 (供 perf_test 读取) ── */
     {
         latency_stats_t st = {};
