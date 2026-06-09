@@ -19,6 +19,7 @@
 #include <sched.h>
 #include <pthread.h>
 #include <sys/prctl.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 namespace stark_periph_manager_node {
@@ -451,6 +452,11 @@ void ExoRtWorker::SetThreadRt()
     int ret = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
     if (ret != 0) {
         RT_LOG("SCHED_FIFO failed (need root/CAP_SYS_NICE)");
+    }
+
+    /* 锁定当前+未来全部内存页, 防止 RT 线程缺页中断 */
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+        RT_LOG("mlockall failed (page faults possible)");
     }
 
     cpu_set_t cpuset;

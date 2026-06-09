@@ -46,7 +46,7 @@ struct RtConfig {
     int      priority         = 90;
     uint32_t period_us        = 1000;
     int      report_divider   = 5;     /* 5周期 → 200Hz */
-    int      cpu_affinity[2]  = {2, 3};
+    int      cpu_affinity[2]  = {3, -1}; /* 只绑 core 3, core 2 留给算法进程 */
     bool     enable_rt        = true;  /* true=SCHED_FIFO, false=SCHED_OTHER */
 };
 
