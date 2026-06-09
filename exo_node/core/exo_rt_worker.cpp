@@ -438,6 +438,12 @@ void ExoRtWorker::MockSensorTick()
 
 void ExoRtWorker::SetThreadRt()
 {
+    if (!m_rt.enable_rt) {
+        prctl(PR_SET_NAME, "exo_nrt", 0, 0, 0);
+        printf("[ExoRtWorker] Thread: SCHED_OTHER (non-RT mode, no affinity)\n");
+        return;
+    }
+
     prctl(PR_SET_NAME, "exo_rt", 0, 0, 0);
 
     struct sched_param param;
@@ -457,6 +463,10 @@ void ExoRtWorker::SetThreadRt()
     if (ret != 0) {
         RT_LOG("CPU affinity failed");
     }
+
+    printf("[ExoRtWorker] Thread: SCHED_FIFO prio=%d period=%dus cpu=%d,%d\n",
+           m_rt.priority, m_rt.period_us,
+           m_rt.cpu_affinity[0], m_rt.cpu_affinity[1]);
 }
 
 /* ════════════════════════════════════════════════════════════════════

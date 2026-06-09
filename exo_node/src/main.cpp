@@ -124,9 +124,12 @@ int main(int argc, char** argv)
 
     /* ── 解析参数 ── */
     std::string config_path = "/data/config/stark/exo_config.json";
+    bool enable_rt = true;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-c") == 0 && i + 1 < argc) {
             config_path = argv[++i];
+        } else if (strcmp(argv[i], "--no-rt") == 0) {
+            enable_rt = false;
         }
     }
 
@@ -165,9 +168,15 @@ int main(int argc, char** argv)
     g_rt_worker = new ExoRtWorker(hal, shm,
                                   g_dispatcher->GetCtrl(),
                                   &g_mock_sensor);
+    if (!enable_rt) {
+        RtConfig cfg;
+        cfg.enable_rt = false;
+        g_rt_worker->SetRtConfig(cfg);
+    }
     g_rt_worker->Start();
 
-    ECO_INFO_NEW("[main] RT worker started (1KHz, SCHED_FIFO 90)");
+    ECO_INFO_NEW("[main] RT worker started (1KHz, {})",
+                 enable_rt ? "SCHED_FIFO 90" : "SCHED_OTHER");
 
     /* ── 启动日志 drain 线程 ── */
     pthread_t log_tid;

@@ -47,6 +47,7 @@ struct RtConfig {
     uint32_t period_us        = 1000;
     int      report_divider   = 5;     /* 5周期 → 200Hz */
     int      cpu_affinity[2]  = {2, 3};
+    bool     enable_rt        = true;  /* true=SCHED_FIFO, false=SCHED_OTHER */
 };
 
 class ExoRtWorker {
