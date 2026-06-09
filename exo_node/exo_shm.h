@@ -189,10 +189,20 @@ typedef struct {
     uint8_t   fault_reason;               /* fault_reason_t 枚举                         */
     uint8_t   node_state;                 /* exo_state_t                                 */
 
-    /* ── 延迟统计 (RT 线程填充, 诊断用) ── */
-    uint32_t  avg_total_latency_us;       /* 平均闭环延迟 (T8-T0), μs                     */
-    uint32_t  max_total_latency_us;       /* 最大闭环延迟, μs                             */
-    uint16_t  cycle_overrun_count;       /* 周期超限次数                                  */
+    /* ── 耗时追踪 (EXO_LATENCY_TRACE) ── */
+    /* 反馈路径 (μs) */
+    uint16_t  fb_read_avg_us;
+    uint16_t  fb_read_max_us;
+    uint16_t  fb_total_avg_us;       /* T1→T4 反馈总延迟 */
+    uint16_t  fb_total_max_us;
+    /* 控制路径 (μs) */
+    uint16_t  ctrl_total_avg_us;     /* T5→T6 控制总延迟 */
+    uint16_t  ctrl_total_max_us;
+    /* 全局 */
+    uint32_t  trace_cycle_count;     /* 已采样周期数 */
+    uint32_t  shm_write_avg_us;      /* SHM 写入耗时 */
+    uint16_t  cycle_overrun_count;   /* 周期超限次数 */
+    uint8_t   _pad_latency[2];
     uint16_t  _pad2[3];                   /* 对齐                                         */
 
     uint8_t   _pad[3904];                 /* 对齐 64KB                                    */

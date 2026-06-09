@@ -22,6 +22,8 @@
 #include <thread>
 #include <cstdint>
 
+#include "exo_latency_trace.h"
+
 extern "C" {
 #include "motor_hal.h"
 #include "exo_shm.h"
@@ -67,6 +69,9 @@ public:
 
     /** @brief 获取 RT 线程请求的状态切换 (主循环读取后清零, atomic exchange) */
     exo_state_t GetPendingState();
+
+    /** @brief 获取延迟追踪器 (外部填充 SHM stats) */
+    ExoLatencyTracer* GetTracer() { return &m_tracer; }
 
 private:
     void Run();
@@ -117,6 +122,9 @@ private:
 
     /* ── RT→主线程 状态切换请求 (atomic, RT 写, 主线程读后清零) ── */
     uint32_t m_pending_state = STATE_INIT;
+
+    /* ── 延迟追踪 (EXO_LATENCY_TRACE=0 时零开销) ── */
+    ExoLatencyTracer m_tracer;
 };
 
 }  /* namespace stark_periph_manager_node */

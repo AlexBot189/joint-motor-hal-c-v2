@@ -9,6 +9,7 @@
  */
 #include "exo_rt_worker.h"
 #include "exo_rt_log.h"
+#include "exo_latency_trace.h"
 #include "exo_motor_ctrl.h"
 #include "exo_mock_sensor.h"
 
@@ -106,6 +107,9 @@ void ExoRtWorker::Run()
         /* ③ 安全监控 */
         SafetyCheck();
 
+        /* ④ 提交延迟样本 */
+        m_tracer.commit_sample();
+
         m_cycle_count++;
 
         /* ── 精确周期休眠 ── */
@@ -147,10 +151,8 @@ void ExoRtWorker::ProcessMailbox()
     if (begin != end)  return;   /* 算法正在写 */
     if (begin == m_last_seq) return;   /* 无新命令 */
 
-    /* ── 时间戳 T7: 读 mailbox ── */
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    uint64_t t7_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+    /* ── T5: 读 mailbox 开始 ── */
+    m_tracer.mark_mailbox_read();
 
     /* ── 首次收到算法命令 → 设标志, 让主循环调 state_transition ── */
     if (m_last_seq == 0 && begin > 0) {
@@ -203,20 +205,8 @@ void ExoRtWorker::ProcessMailbox()
         /* PDO 广播 — 一帧 64B CANFD 发完所有电机 */
         motor_hal_multi_ctrl(m_hal, mcmds, mcount);
 
-        /* ── 时间戳 T8: PDO 发出 ── */
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        m_can_last_frame_us = (uint64_t)ts.tv_sec * 1000000ULL
-                            + (uint64_t)ts.tv_nsec / 1000ULL;
-
-        /* ── 记录闭环延迟 (T8 - T0) ── */
-        uint64_t t0 = m_shm->fb_buffer[m_shm->active_idx].ts_can_rx;
-        if (t0 > 0) {
-            uint64_t latency = m_can_last_frame_us - t0;
-            m_latency_history[m_latency_idx % 64] = latency;
-            m_latency_idx++;
-        }
-    }
-}
+        /* ── T6: PDO 发出 ── */
+        m_tracer.mark_pdo_sent();
 
 /* ════════════════════════════════════════════════════════════════════
  * PublishFeedback() — 读 fb_cache + 组装 feedback_frame_t → SHM
@@ -243,16 +233,8 @@ void ExoRtWorker::PublishFeedback()
 
     struct timespec ts;
 
-    /* ── T2: 读 fb_cache ── */
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    uint64_t t2_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-
-    /* ── 保留 T0/T1 (recv 线程填充的原始时间戳, 从上一帧拷贝) ── */
-    const feedback_frame_t* prev = &m_shm->fb_buffer[active];
-    fb->ts_can_rx      = prev->ts_can_rx;
-    fb->ts_cache_write = prev->ts_cache_write;
-
-    fb->ts_shm_read = t2_us;
+    /* ── T1: 开始读 fb_cache ── */
+    m_tracer.mark_fb_read_start();
 
     /* ── 填充电机反馈 (从 HAL 反馈缓存) ── */
     for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; ++id) {
@@ -268,6 +250,9 @@ void ExoRtWorker::PublishFeedback()
             fb->motor[idx].error_code  = (uint8_t)(mfb.error_code & 0xFF);
         }
     }
+
+    /* ── T2: fb_cache 读取完成 ── */
+    m_tracer.mark_fb_read_done();
 
     /* ── 填充传感器透传 ── */
     for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; ++id) {
@@ -294,7 +279,10 @@ void ExoRtWorker::PublishFeedback()
         fb->baro = m_mock_sensor->GetBaro();
     }
 
-    /* ── T3: SHM 切换前时间戳 + 组装完成 ── */
+    /* ── T3: mock传感器+IMU+气压计 组装完成 ── */
+    m_tracer.mark_mock_sensor_done();
+
+    /* ── T4: SHM 切换 ── */
     clock_gettime(CLOCK_MONOTONIC, &ts);
     fb->ts_shm_write      = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
     fb->ts_frame_assembly = fb->ts_shm_write;
@@ -302,6 +290,9 @@ void ExoRtWorker::PublishFeedback()
 
     /* ── 切换活跃 Buffer ── */
     __atomic_store_n(&m_shm->active_idx, write_idx, __ATOMIC_RELEASE);
+
+    /* ── T4: SHM 双 Buffer 切换完成 ── */
+    m_tracer.mark_shm_write_done();
 
     /* ── 更新延迟统计 ── */
     if (fb->ts_can_rx > 0) {
@@ -311,6 +302,20 @@ void ExoRtWorker::PublishFeedback()
             m_shm->max_total_latency_us = total;
         }
     }
+    /* ── 填充 SHM 耗时统计 (供 perf_test 读取) ── */
+    {
+        latency_stats_t st = {};
+        m_tracer.fill_shm_stats(st);
+        m_shm->fb_read_avg_us    = (uint16_t)st.fb_read_avg;
+        m_shm->fb_read_max_us    = (uint16_t)st.fb_read_max;
+        m_shm->fb_total_avg_us   = (uint16_t)st.fb_total_avg;
+        m_shm->fb_total_max_us   = (uint16_t)st.fb_total_max;
+        m_shm->ctrl_total_avg_us = (uint16_t)st.ctrl_total_avg;
+        m_shm->ctrl_total_max_us = (uint16_t)st.ctrl_total_max;
+        m_shm->trace_cycle_count = st.cycle_count;
+        m_shm->shm_write_avg_us  = (uint16_t)st.shm_write_avg;
+    }
+
     m_shm->cycle_overrun_count = (uint16_t)(m_overrun_count & 0xFFFF);
 }
 

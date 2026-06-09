@@ -172,12 +172,19 @@ int main()
                (unsigned long)shm->mailbox.seq_begin);
         printf("├─────────────────────────────────────────────┤\n");
         printf("│ 延迟追踪                                   │\n");
-        printf("│   avg total latency : %u us                  │\n",
-               shm->avg_total_latency_us);
-        printf("│   max total latency : %u us                  │\n",
-               shm->max_total_latency_us);
-        printf("│   cycle overruns    : %u                      │\n",
+        printf("├── 耗时追踪 (EXO_LATENCY_TRACE)                ──┤\n");
+        printf("│  反馈T1→T4 : avg=%uuus  max=%uuus                 │\n",
+               shm->fb_total_avg_us, shm->fb_total_max_us);
+        printf("│  控制T5→T6 : avg=%uuus  max=%uuus                 │\n",
+               shm->ctrl_total_avg_us, shm->ctrl_total_max_us);
+        printf("│  fb_cache读 : avg=%uuus  max=%uuus                  │\n",
+               shm->fb_read_avg_us, shm->fb_read_max_us);
+        printf("│  SHM写入    : avg=%uuus                             │\n",
+               shm->shm_write_avg_us);
+        printf("│  周期超限   : %u                                     │\n",
                shm->cycle_overrun_count);
+        printf("│  样本数     : %u                                     │\n",
+               shm->trace_cycle_count);
         printf("├─────────────────────────────────────────────┤\n");
 
         /* 电机反馈 */
@@ -199,15 +206,12 @@ int main()
                (double)fb->baro.temperature_c);
 
         printf("├─────────────────────────────────────────────┤\n");
-        printf("│ 延迟节点 (μs):                               │\n");
-        printf("│   T0 can_rx     : %lu\n", (unsigned long)fb->ts_can_rx);
-        printf("│   T1 cache_wr   : %lu\n", (unsigned long)fb->ts_cache_write);
-        printf("│   T2 shm_read   : %lu\n", (unsigned long)fb->ts_shm_read);
-        printf("│   T3 shm_write  : %lu\n", (unsigned long)fb->ts_shm_write);
-        printf("│   T4 algo_read  : %lu\n", (unsigned long)fb->ts_algo_read);
-        printf("│   T5 algo_done  : %lu\n", (unsigned long)fb->ts_algo_done);
-        printf("│   frame asm     : %lu\n", (unsigned long)fb->ts_frame_assembly);
-        printf("│   timestamp     : %lu\n", (unsigned long)fb->timestamp_us);
+        /* 延迟追踪 (简化 — 无 T0/T1, 从 T2开始) */
+        printf("│   RT线程内:                                   │\n");
+        printf("│     fb读开始   : %lu us\n", (unsigned long)fb->ts_shm_read);
+        printf("│     SHM写入    : %lu us\n", (unsigned long)fb->ts_shm_write);
+        printf("│     algo_read  : %lu us\n", (unsigned long)fb->ts_algo_read);
+        printf("│     algo_done  : %lu us\n", (unsigned long)fb->ts_algo_done);
         printf("└─────────────────────────────────────────────┘\n");
     }
 
