@@ -33,14 +33,25 @@ void ExoLatencyTracer::flush_stats_to_ring(uint32_t n)
     uint32_t ctrl_sample = (m_ctrl_sample_count > 0) ? m_ctrl_sample_count : 1;
     uint32_t ctrl_total_avg = (uint32_t)(m_ctrl_total_acc / ctrl_sample);
 
-    RT_LOG("LatencyTrace[%u] | fb_read: min=%u avg=%u max=%u us | "
-           "mock: avg=%u us | SHM: avg=%u us | fb_total: min=%u avg=%u max=%u us | "
-           "ctrl: min=%u avg=%u max=%u us",
-           n,
-           m_fb_read_min, fb_read_avg, m_fb_read_max,
-           mock_avg, shm_avg,
-           m_fb_total_min, fb_total_avg, m_fb_total_max,
-           m_ctrl_total_min, ctrl_total_avg, m_ctrl_total_max);
+    if (m_ctrl_sample_count > 0) {
+        RT_LOG("LatencyTrace[%u] | fb_read: min=%u avg=%u max=%u us | "
+               "mock: avg=%u us | SHM: avg=%u us | fb_total: min=%u avg=%u max=%u us | "
+               "ctrl: min=%u avg=%u max=%u us (samples=%u)",
+               n,
+               m_fb_read_min, fb_read_avg, m_fb_read_max,
+               mock_avg, shm_avg,
+               m_fb_total_min, fb_total_avg, m_fb_total_max,
+               m_ctrl_total_min, ctrl_total_avg, m_ctrl_total_max,
+               m_ctrl_sample_count);
+    } else {
+        RT_LOG("LatencyTrace[%u] | fb_read: min=%u avg=%u max=%u us | "
+               "mock: avg=%u us | SHM: avg=%u us | fb_total: min=%u avg=%u max=%u us | "
+               "ctrl: (no samples)",
+               n,
+               m_fb_read_min, fb_read_avg, m_fb_read_max,
+               mock_avg, shm_avg,
+               m_fb_total_min, fb_total_avg, m_fb_total_max);
+    }
 }
 
 #endif  /* EXO_LATENCY_TRACE */
