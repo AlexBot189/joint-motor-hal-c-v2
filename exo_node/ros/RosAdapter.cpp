@@ -1,46 +1,29 @@
 /*
- * @file RosAdapter.cpp
- * @brief ROS 适配器实现 — pull SHM 反馈 + Subscriber 控制
+ * RosAdapter.cpp — ROS 适配器实现
  *
- * 与 petrobot RosAdapter 的关键差异:
- *   - petrobot: push 模式 (UartDispatcher::NotifyObserver → Update → Pub)
- *   - stark:     pull 模式 (独立线程定期读 SHM fb_buffer → Pub)
- *
- * Pull 优势: 消费者独立, ROS crash 不影响实时控制路径。
- * Subscriber 路径: ROS → OnMotorCtrl → dispatcher->Send (JSON) → SDO → CAN
+ * 简化: 2 电机, snprintf JSON, ECO_INFO_NEW 日志.
  */
 #include "RosAdapter.h"
+#include "interface/IMsgInternalDispatcher.hpp"
+#include "core/exo_state_machine.h"
 
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
-#include <sstream>
-
-#include "interface/IMsgInternalDispatcher.hpp"
+#include <log_helper/LogHelper.h>
 
 namespace stark_periph_manager_node
 {
 
-/* ================================================================
- * 构造 / 析构
- * ================================================================ */
-
 RosAdapter::RosAdapter(std::shared_ptr<ros::NodeHandle> nh, exo_shm_t* shm)
-    : m_nh(nh)
-    , m_shm(shm)
-    , m_running(false)
+    : m_nh(nh), m_shm(shm), m_running(false)
 {
-    /* Publisher */
-    m_feedbackPub = nh->advertise<std_msgs::String>(
-        "/stark/motor/feedback", 10);
-    m_statePub = nh->advertise<std_msgs::String>(
-        "/stark/motor/state", 10);
-
-    /* Subscriber: 接收上层控制命令 */
+    m_feedbackPub = nh->advertise<std_msgs::String>("/stark/motor/feedback", 10);
+    m_statePub    = nh->advertise<std_msgs::String>("/stark/motor/state", 10);
     m_motorCtrlSub = nh->subscribe<std_msgs::String>(
         "/stark/motor/ctrl", 10, &RosAdapter::OnMotorCtrl, this);
 
-    ECO_INFO("[RosAdapter] publishers/subscribers created");
+    ECO_INFO_NEW("[RosAdapter] pubs/subs created");
 }
 
 RosAdapter::~RosAdapter()
@@ -48,37 +31,22 @@ RosAdapter::~RosAdapter()
     Stop();
 }
 
-/* ================================================================
- * Update — IListener 接口 (保留, 用于状态事件通知)
- * ================================================================ */
-
 void RosAdapter::Update(const boost::any& data)
 {
-    /* 主数据流通过 PullLoop 从 SHM 拉取,
-     * Update 仅用于状态变更事件 (state transition / fault) */
     (void)data;
 }
-
-/* ================================================================
- * SetDispatcher
- * ================================================================ */
 
 void RosAdapter::SetDispatcher(std::shared_ptr<IMsgInternalDispatcher> dispatcher)
 {
     m_dispatcher = dispatcher;
 }
 
-/* ================================================================
- * Start / Stop
- * ================================================================ */
-
 void RosAdapter::Start()
 {
     if (m_running) return;
-
     m_running = true;
     m_pullThread = std::thread(&RosAdapter::PullLoop, this);
-    ECO_INFO("[RosAdapter] pull thread started");
+    ECO_INFO_NEW("[RosAdapter] pull thread started");
 }
 
 void RosAdapter::Stop()
@@ -89,62 +57,37 @@ void RosAdapter::Stop()
     }
 }
 
-/* ================================================================
- * PullLoop — SHM → ROS Topic
- *
- * 周期: 5ms (200Hz)
- * 从 SHM fb_buffer[active_idx] 读取最新反馈帧,
- * 序列化为 JSON 发布到 /stark/motor/feedback 和 /stark/motor/state。
- * ================================================================ */
+/* ── PullLoop: 200Hz 从 SHM 读反馈 → publish ── */
 
 void RosAdapter::PullLoop()
 {
-    ECO_INFO("[RosAdapter] PullLoop running (200Hz)");
-
     while (m_running) {
         if (!m_shm) {
             usleep(5000);
             continue;
         }
 
-        /* 读双 Buffer 活跃帧 (acquire 语义, 保证完整性) */
-        uint32_t active = __atomic_load_n(&m_shm->active_idx,
-                                          __ATOMIC_ACQUIRE);
+        uint32_t active = __atomic_load_n(&m_shm->active_idx, __ATOMIC_ACQUIRE);
         const feedback_frame_t& fb = m_shm->fb_buffer[active];
 
-        /* 发布反馈帧 */
         PubFeedback(fb);
 
-        /* 发布状态 (100ms 一次, 降低频率) */
-        static int state_counter = 0;
-        if (++state_counter >= 20) {
-            state_counter = 0;
+        static int state_cnt = 0;
+        if (++state_cnt >= 20) {
+            state_cnt = 0;
             PubState((exo_state_t)m_shm->node_state);
         }
 
-        usleep(5000);  /* 5ms → 200Hz */
+        usleep(5000);
     }
 }
 
-/* ================================================================
- * PubFeedback — 反馈帧 → JSON → ROS Topic
- *
- * 格式:
- * {
- *   "type": "feedback",
- *   "ts": 1234567890,
- *   "motor": [
- *     {"id":1, "pos":0, "vel":0, "cur":0, "temp":0, "status":0}
- *   ],
- *   "imu": {"roll":0, "pitch":0, "yaw":0}
- * }
- * ================================================================ */
+/* ── PubFeedback: feedback_frame_t → JSON → /stark/motor/feedback ── */
 
 void RosAdapter::PubFeedback(const feedback_frame_t& fb)
 {
     if (!m_shm) return;
 
-    /* 用 snprintf 拼 JSON (轻量, 避免 nlohmann 在 ros 线程中分配内存) */
     char buf[2048];
     int off = 0;
 
@@ -152,7 +95,7 @@ void RosAdapter::PubFeedback(const feedback_frame_t& fb)
         "{\"type\":\"feedback\",\"ts\":%lu,\"motor\":[",
         (unsigned long)fb.timestamp_us);
 
-    for (int i = 0; i < 2; ++i) {  /* 只发送已配置的髋关节电机 */
+    for (int i = 0; i < EXO_MOTOR_COUNT; ++i) {
         if (i > 0) off += snprintf(buf + off, sizeof(buf) - off, ",");
         uint8_t online = m_shm->motor_online;
         if (!(online & (1 << i))) {
@@ -172,8 +115,12 @@ void RosAdapter::PubFeedback(const feedback_frame_t& fb)
 
     off += snprintf(buf + off, sizeof(buf) - off,
         "],\"imu\":{\"roll\":%.2f,\"pitch\":%.2f,\"yaw\":%.2f},"
+        "\"baro\":{\"press\":%.2f,\"temp\":%.2f},"
+        "\"latency\":{\"total_us\":%u,\"max_us\":%u},"
         "\"severity\":%d,\"fault\":%d}",
         (double)fb.imu.roll, (double)fb.imu.pitch, (double)fb.imu.yaw,
+        (double)fb.baro.pressure_hpa, (double)fb.baro.temperature_c,
+        m_shm->avg_total_latency_us, m_shm->max_total_latency_us,
         (int)m_shm->motor_severity, (int)m_shm->fault_reason);
 
     std_msgs::String msg;
@@ -181,9 +128,7 @@ void RosAdapter::PubFeedback(const feedback_frame_t& fb)
     m_feedbackPub.publish(msg);
 }
 
-/* ================================================================
- * PubState — 节点状态 → ROS Topic
- * ================================================================ */
+/* ── PubState ── */
 
 void RosAdapter::PubState(exo_state_t state)
 {
@@ -192,34 +137,26 @@ void RosAdapter::PubState(exo_state_t state)
     char buf[256];
     snprintf(buf, sizeof(buf),
         "{\"type\":\"state\",\"state\":\"%s\",\"severity\":%d,"
-        "\"reason\":%d,\"online\":%d}",
+        "\"reason\":%d,\"online\":%d,\"overruns\":%u}",
         state_name(state),
         (int)m_shm->motor_severity,
         (int)m_shm->fault_reason,
-        (int)m_shm->motor_online);
+        (int)m_shm->motor_online,
+        m_shm->cycle_overrun_count);
 
     std_msgs::String msg;
     msg.data = buf;
     m_statePub.publish(msg);
 }
 
-/* ================================================================
- * OnMotorCtrl — ROS Subscriber 回调 → dispatcher->Send
- *
- * 接收 JSON 控制命令:
- *   {"motor_id":1,"cmd":"torque","value":500}
- *   {"motor_id":2,"cmd":"position","value":9000}
- *
- * 透传到 CanDispatcher::Send → SDO → CANFD (非实时路径)。
- * ================================================================ */
+/* ── OnMotorCtrl: ROS → dispatcher->Send ── */
 
 void RosAdapter::OnMotorCtrl(const std_msgs::String::ConstPtr& msg)
 {
     if (!m_dispatcher) {
-        ECO_WARN("[RosAdapter] OnMotorCtrl: no dispatcher");
+        ECO_WARN_NEW("[RosAdapter] OnMotorCtrl: no dispatcher");
         return;
     }
-
     m_dispatcher->Send(msg->data);
 }
 

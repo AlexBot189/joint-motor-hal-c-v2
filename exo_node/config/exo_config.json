@@ -13,7 +13,7 @@
       "profile_velocity": 20,
       "disable_watchdog": true,
       "auto_enable": true,
-      "bootup_timeout_ms": 3000,
+      "bootup_timeout_ms": 5000,
       "tpdo_sync_count": 1
     },
     {
@@ -24,7 +24,7 @@
       "profile_velocity": 20,
       "disable_watchdog": true,
       "auto_enable": true,
-      "bootup_timeout_ms": 3000,
+      "bootup_timeout_ms": 5000,
       "tpdo_sync_count": 1
     }
   ],

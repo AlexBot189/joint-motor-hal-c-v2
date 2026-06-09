@@ -1,222 +1,225 @@
 /*
- * @file CanDispatcher.cpp
- * @brief 电机数据调度中心 — 实现
+ * CanDispatcher.cpp — 电机数据调度中心实现
  *
- * 负责:
- *   1. 初始化 motor_hal, 读取配置注册电机, 启动 CAN 接收
- *   2. 打开共享内存 (SHM), 初始化状态区
- *   3. 接收上层 JSON 控制命令 (Send), 转发到 HAL
- *   4. 管理 IListener 观察者 (Register/Remove/Notify)
- *
- * 非 RT 路径: Send() 走 SDO, 可阻塞
- * RT 路径:    ExoRtWorker 直接操作 m_hal/m_shm, 不经过 CanDispatcher
+ * 对齐 motor_tool daemon: fork→recv→SHM→主循环
+ * 所有 SDO/PDO/OD 通过 ExoMotorCtrl 封装.
  */
-
 #include "CanDispatcher.h"
 #include "nlohmann/json.hpp"
 
 #include <cstring>
 #include <fstream>
-#include <sstream>
-#include <algorithm>
+#include <unistd.h>
+#include <signal.h>
+#include <log_helper/LogHelper.h>
 
-namespace stark_periph_manager_node
-{
+namespace stark_periph_manager_node {
 
-/* ════════════════════════════════════════════════════════════════════
- * extern — exo_shm_mgr.cpp 提供的函数
- * ════════════════════════════════════════════════════════════════════ */
 #include "exo_shm_mgr.h"
-
 extern "C" {
 exo_shm_mgr_t* exo_shm_mgr_open(const char* name, bool create, size_t size);
 void            exo_shm_mgr_close(exo_shm_mgr_t* mgr);
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * CanDispatcher
- * ════════════════════════════════════════════════════════════════════ */
-
 CanDispatcher::CanDispatcher()
-    : m_hal(nullptr)
-    , m_shm(nullptr)
-    , m_running(false)
+    : m_hal(nullptr), m_shm(nullptr), m_running(false)
     , m_config_path("exo_node/config/exo_config.json")
 {
 }
 
 CanDispatcher::~CanDispatcher()
 {
-    if (m_running) {
-        DestroyDispatcher();
-    }
+    if (m_running) DestroyDispatcher();
 }
 
-/* ────────────────────────────────────────────────────────────────────
- * InitDispatcher()
- *
- * 步骤:
- *   1. 创建 HAL 实例
- *   2. 打开 CANFD 接口
- *   3. 从 config.json 加载电机列表并注册
- *   4. 启动 CAN 接收线程
- *   5. 打开共享内存, 初始化状态区
- *
- * 返回: true=成功发起, false=失败
- * ──────────────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════
+ * InitDispatcher() — 对齐 daemon_start() 流程
+ * ════════════════════════════════════════════════════════════════════ */
+
 bool CanDispatcher::InitDispatcher()
 {
-    if (m_running) {
-        return false;   /* 已初始化 */
-    }
+    if (m_running) return false;
 
     /* 1. 创建 HAL */
     m_hal = motor_hal_create();
     if (!m_hal) {
-        fprintf(stderr, "[CanDispatcher] motor_hal_create() failed\n");
+        ECO_ERROR_NEW("[CanDispatcher] motor_hal_create() failed");
         return false;
     }
 
-    /* 2. 打开 CANFD 接口 */
+    /* 2. 打开 CANFD — 对齐 tool_init */
     int ret = motor_hal_init(m_hal, "can0", 1000000, 5000000);
     if (ret < 0) {
-        fprintf(stderr, "[CanDispatcher] motor_hal_init() failed: %d\n", ret);
-        motor_hal_destroy(m_hal);
-        m_hal = nullptr;
+        ECO_ERROR_NEW("[CanDispatcher] motor_hal_init() failed: {}", ret);
+        motor_hal_destroy(m_hal); m_hal = nullptr;
         return false;
     }
+    ECO_INFO_NEW("[CanDispatcher] CANFD can0: arb=1M data=5M ✓");
 
-    /* 3. 从配置文件加载电机 */
+    /* 3. 注册电机 (走配置或硬编码默认) */
     if (!LoadMotorConfig()) {
-        fprintf(stderr, "[CanDispatcher] LoadMotorConfig() failed\n");
-        motor_hal_destroy(m_hal);
-        m_hal = nullptr;
+        ECO_ERROR_NEW("[CanDispatcher] LoadMotorConfig() failed");
+        motor_hal_destroy(m_hal); m_hal = nullptr;
         return false;
     }
 
-    /* 4. 启动 CAN 接收线程 (必须在 startup 之前) */
+    /* 4. 后台化 ★ 必须在 recv_start 之前 fork */
+    /* (exo_node 不 fork, 但流程顺序对齐 daemon) */
+
+    /* 5. 启动接收线程 */
     ret = motor_hal_recv_start(m_hal);
     if (ret < 0) {
-        fprintf(stderr, "[CanDispatcher] motor_hal_recv_start() failed: %d\n", ret);
-        motor_hal_destroy(m_hal);
-        m_hal = nullptr;
+        ECO_ERROR_NEW("[CanDispatcher] motor_hal_recv_start() failed: {}", ret);
+        motor_hal_destroy(m_hal); m_hal = nullptr;
         return false;
     }
 
-    /* 5. 打开共享内存 */
+    /* 6. 创建 ExoMotorCtrl 封装 */
+    m_ctrl = std::make_unique<ExoMotorCtrl>(m_hal);
+
+    /* 7. 打开共享内存 */
     m_shm_mgr = exo_shm_mgr_open(EXO_SHM_NAME, true, EXO_SHM_SIZE);
     if (!m_shm_mgr) {
-        fprintf(stderr, "[CanDispatcher] exo_shm_mgr_open() failed\n");
+        ECO_ERROR_NEW("[CanDispatcher] exo_shm_mgr_open() failed");
         motor_hal_recv_stop(m_hal);
-        motor_hal_destroy(m_hal);
-        m_hal = nullptr;
+        motor_hal_destroy(m_hal); m_hal = nullptr;
         return false;
     }
     m_shm = (exo_shm_t*)m_shm_mgr->ptr;
 
-    /* 初始化 SHM 状态区为 0 */
-    memset(&m_shm->fb_buffer,    0, sizeof(m_shm->fb_buffer));
-    m_shm->active_idx     = 0;
-    m_shm->motor_online   = 0;
-    m_shm->calib_state    = 0;
-    m_shm->motor_enabled  = 0;
-    m_shm->motor_severity = 0;
-    m_shm->fault_reason   = 0;
-    m_shm->node_state     = STATE_INIT;
-    memset(&m_shm->mailbox, 0, sizeof(m_shm->mailbox));
+    /* 初始化 SHM */
+    memset(m_shm, 0, EXO_SHM_SIZE);
 
     m_running = true;
+    ECO_INFO_NEW("[CanDispatcher] ready");
     return true;
 }
 
-/* ────────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════
  * DestroyDispatcher()
- *
- * 逆序清理:
- *   1. 停止 RT 工作线程 (ExoRtWorker 先 Stop)
- *   2. 停止 CAN 接收线程
- *   3. 销毁 HAL (自动脱使能)
- *   4. 关闭 SHM
- * ──────────────────────────────────────────────────────────────────── */
+ * ════════════════════════════════════════════════════════════════════ */
+
 bool CanDispatcher::DestroyDispatcher()
 {
-    if (!m_running) {
-        return true;
-    }
-
+    if (!m_running) return true;
     m_running = false;
 
-    /* 1. 停止 CAN 接收 (HAL 内部线程) */
+    /* 1. NMT 广播 Stop */
+    if (m_hal) {
+        motor_hal_nmt_broadcast(m_hal, NMT_CMD_STOP);
+    }
+
+    /* 2. 停止 recv + 销毁 HAL */
     if (m_hal) {
         motor_hal_recv_stop(m_hal);
         motor_hal_destroy(m_hal);
         m_hal = nullptr;
     }
+    m_ctrl.reset();
 
-    /* 2. 关闭 SHM */
+    /* 3. 关闭 SHM */
     if (m_shm) {
         exo_shm_mgr_close(m_shm_mgr);
         m_shm_mgr = nullptr;
         m_shm = nullptr;
     }
 
+    ECO_INFO_NEW("[CanDispatcher] stopped");
     return true;
 }
 
-/* ────────────────────────────────────────────────────────────────────
- * Send(const string& data)
+/* ════════════════════════════════════════════════════════════════════
+ * Send() — JSON 控制命令 → ExoMotorCtrl
  *
- * 解析 JSON 控制命令字符串, 转发到 HAL:
+ * 格式:
+ *   {"cmd":"torque","motor_id":1,"value":500}
+ *   {"cmd":"speed","motor_id":2,"value":3000}
+ *   {"cmd":"position","motor_id":1,"value":9000}
+ *   {"cmd":"enable","motor_id":1}
+ *   {"cmd":"disable","motor_id":1}
+ *   {"cmd":"stop","motor_id":0}
+ *   {"cmd":"setzero","motor_id":1}
+ *   {"cmd":"pid","motor_id":1,"cp":100,"ci":10,...}
+ *   {"cmd":"save","motor_id":1}
+ *   {"cmd":"fault_reset","motor_id":1}
  *
- *   { "cmd": "torque",  "motor_id": 1, "value": 500 }
- *   { "cmd": "speed",   "motor_id": 2, "value": 3000 }
- *   { "cmd": "position","motor_id": 1, "value": 9000 }
- *   { "cmd": "stop",    "motor_id": 0 }              → 所有电机
- *
- * 非实时路径, 可以阻塞 (内部走 SDO)。
- * RT 控制走 SHM mailbox → ExoRtWorker → motor_hal_multi_ctrl。
- * ──────────────────────────────────────────────────────────────────── */
+ * 非实时, SDO 路径.
+ * ════════════════════════════════════════════════════════════════════ */
+
 void CanDispatcher::Send(const std::string& data)
 {
-    if (!m_hal || !m_running) {
-        return;
-    }
+    if (!m_hal || !m_running || !m_ctrl) return;
 
     try {
         auto j = nlohmann::json::parse(data);
 
-        std::string cmd  = j.value("cmd", std::string{});
-        int  motor_id    = j.value("motor_id", 0);
-        int  value       = j.value("value", 0);
+        std::string cmd = j.value("cmd", std::string{});
+        int motor_id    = j.value("motor_id", 0);
+        int value       = j.value("value", 0);
 
         if (cmd.empty()) {
-            fprintf(stderr, "[CanDispatcher] Send: missing 'cmd' field\n");
+            ECO_WARN_NEW("[CanDispatcher] Send: missing 'cmd'");
             return;
         }
 
-        /* broadcast: motor_id=0 → 遍历所有在线电机 */
-        if (motor_id == 0) {
-            uint8_t online = (m_shm) ? m_shm->motor_online : 0;
-            for (uint8_t id = 1; id <= 4; ++id) {
-                if (online & (1 << (id - 1))) {
-                    _send_to_motor(cmd, id, value);
-                }
-            }
-            return;
-        }
-
-        _send_to_motor(cmd, (uint8_t)motor_id, value);
+        _dispatch_command(cmd, (uint8_t)motor_id, value);
 
     } catch (const nlohmann::json::parse_error& e) {
-        fprintf(stderr, "[CanDispatcher] JSON parse error: %s\n", e.what());
+        ECO_ERROR_NEW("[CanDispatcher] JSON parse: {}", e.what());
     } catch (const std::exception& e) {
-        fprintf(stderr, "[CanDispatcher] Send exception: %s\n", e.what());
+        ECO_ERROR_NEW("[CanDispatcher] Send exception: {}", e.what());
     }
 }
 
-/* ────────────────────────────────────────────────────────────────────
- * RegisterObserver
- * ──────────────────────────────────────────────────────────────────── */
+void CanDispatcher::_dispatch_command(const std::string& cmd, uint8_t id, int val)
+{
+    if (cmd == "torque") {
+        m_ctrl->Torque(id, val);
+    }
+    else if (cmd == "speed") {
+        m_ctrl->Speed(id, val);
+    }
+    else if (cmd == "position") {
+        m_ctrl->AbsPosition(id, val);
+    }
+    else if (cmd == "stop") {
+        if (id == 0) {
+            for (uint8_t i = 1; i <= EXO_MOTOR_COUNT; i++) m_ctrl->AbsStop(i);
+        } else {
+            m_ctrl->AbsStop(id);
+        }
+    }
+    else if (cmd == "enable") {
+        m_ctrl->Enable(id);
+    }
+    else if (cmd == "disable") {
+        m_ctrl->Disable(id);
+    }
+    else if (cmd == "fault_reset") {
+        m_ctrl->FaultReset(id);
+    }
+    else if (cmd == "setzero") {
+        m_ctrl->SetZero(id);
+    }
+    else if (cmd == "save") {
+        m_ctrl->SaveFlash(id);
+    }
+    else if (cmd == "reboot") {
+        m_ctrl->Reboot(id);
+    }
+    else if (cmd == "pid") {
+        /* 简易版: 需从 JSON 额外解析 PID 参数 */
+        ECO_WARN_NEW("[CanDispatcher] pid command needs full JSON fields, use exo_motor_ctrl API directly");
+    }
+    else {
+        ECO_WARN_NEW("[CanDispatcher] unknown cmd: {}", cmd);
+    }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * Observer
+ * ════════════════════════════════════════════════════════════════════ */
+
 void CanDispatcher::RegisterObserver(ListenerType type,
                                      std::shared_ptr<IListener> listener)
 {
@@ -224,154 +227,88 @@ void CanDispatcher::RegisterObserver(ListenerType type,
     m_listeners[type] = listener;
 }
 
-/* ────────────────────────────────────────────────────────────────────
- * RemoveObserver
- * ──────────────────────────────────────────────────────────────────── */
 void CanDispatcher::RemoveObserver(ListenerType type,
                                    std::shared_ptr<IListener> listener)
 {
-    (void)listener;  /* 用 type 索引, listener 参数保留接口兼容 */
+    (void)listener;
     std::lock_guard<std::mutex> lock(m_listener_mutex);
     m_listeners.erase(type);
 }
 
-/* ────────────────────────────────────────────────────────────────────
- * NotifyObserver
- *
- * 遍历所有注册的 Listener, 调用 Update(data)。
- * 数据源: SHM 反馈帧 或 状态变更事件。
- * 注意: petrobot 用 push 模式 (recv 线程直接推), 
- *       exo_node 改为 pull (RosAdapter/WebServer 独立线程读 SHM),
- *       此函数保留用于状态变更通知 (state transition / fault)。
- * ──────────────────────────────────────────────────────────────────── */
 void CanDispatcher::NotifyObserver(const boost::any& data)
 {
     std::lock_guard<std::mutex> lock(m_listener_mutex);
     for (auto& kv : m_listeners) {
-        if (kv.second) {
-            kv.second->Update(data);
-        }
+        if (kv.second) kv.second->Update(data);
     }
 }
 
 /* ════════════════════════════════════════════════════════════════════
- * 内部辅助
+ * LoadMotorConfig() — 对齐 daemon 硬编码默认值
  * ════════════════════════════════════════════════════════════════════ */
 
-/*
- * LoadMotorConfig()
- *
- * 优先从 config.json 读取电机列表, 文件不存在时用硬编码默认值。
- * 生产部署时通过 -c 参数指定配置文件路径。
- */
 bool CanDispatcher::LoadMotorConfig()
 {
-    /* 先尝试加载配置文件 */
     std::ifstream ifs(m_config_path);
     if (ifs.is_open()) {
         nlohmann::json cfg;
-        try {
-            ifs >> cfg;
-        } catch (const nlohmann::json::parse_error& e) {
-            fprintf(stderr, "[CanDispatcher] Config JSON parse error: %s\n",
-                    e.what());
+        try { ifs >> cfg; }
+        catch (const nlohmann::json::parse_error& e) {
+            ECO_ERROR_NEW("[CanDispatcher] config parse: {}", e.what());
             return false;
         }
         ifs.close();
 
         if (cfg.contains("motors") && cfg["motors"].is_array()) {
             for (const auto& m : cfg["motors"]) {
-                motor_config_t motor_cfg = {};
-                motor_cfg.node_id           = m.value("id",           0);
-                motor_cfg.heartbeat_ms      = m.value("heartbeat_ms", 2000);
-                motor_cfg.profile_accel     = m.value("profile_accel", 5000u);
-                motor_cfg.profile_decel     = m.value("profile_decel", 5000u);
-                motor_cfg.profile_velocity  = m.value("profile_velocity", 20u);
-                motor_cfg.disable_watchdog  = m.value("disable_watchdog",  true);
-                motor_cfg.auto_enable       = m.value("auto_enable",       true);
-                motor_cfg.bootup_timeout_ms = m.value("bootup_timeout_ms", 3000);
-                motor_cfg.tpdo_sync_count   = m.value("tpdo_sync_count",   (uint8_t)1);
+                motor_config_t mc = {};
+                mc.node_id           = m.value("id", 0);
+                mc.heartbeat_ms      = m.value("heartbeat_ms", 2000);
+                mc.profile_accel     = m.value("profile_accel", 5000u);
+                mc.profile_decel     = m.value("profile_decel", 5000u);
+                mc.profile_velocity  = m.value("profile_velocity", 20u);
+                mc.disable_watchdog  = m.value("disable_watchdog", true);
+                mc.auto_enable       = m.value("auto_enable", true);
+                mc.bootup_timeout_ms = m.value("bootup_timeout_ms", 3000);
+                mc.tpdo_sync_count   = m.value("tpdo_sync_count", (uint8_t)1);
 
-                if (motor_cfg.node_id == 0) continue;
-                int ret = motor_hal_add_motor(m_hal, &motor_cfg);
+                if (mc.node_id == 0) continue;
+                int ret = motor_hal_add_motor(m_hal, &mc);
                 if (ret < 0) {
-                    fprintf(stderr, "[CanDispatcher] config motor id=%d failed: %d\n",
-                            motor_cfg.node_id, ret);
+                    ECO_ERROR_NEW("[CanDispatcher] motor id={} add failed: {}", mc.node_id, ret);
                     return false;
                 }
             }
-            printf("[CanDispatcher] Loaded %zu motors from %s\n",
-                   cfg["motors"].size(), m_config_path.c_str());
+            ECO_INFO_NEW("[CanDispatcher] loaded {} motors from {}",
+                         cfg["motors"].size(), m_config_path);
             return true;
         }
     }
 
-    /* 配置文件不存在 → 使用硬编码默认值 (髋关节电机 ID 1,2) */
-    fprintf(stderr, "[CanDispatcher] Config '%s' not found, using hardcoded defaults\n",
-            m_config_path.c_str());
+    /* 配置文件不存在 → 硬编码默认值 (对齐 daemon) */
+    ECO_INFO_NEW("[CanDispatcher] config not found, using hardcoded defaults");
 
-    motor_config_t default_cfg = {};
-    default_cfg.heartbeat_ms      = 2000;
-    default_cfg.profile_accel     = 5000;
-    default_cfg.profile_decel     = 5000;
-    default_cfg.profile_velocity  = 20;
-    default_cfg.disable_watchdog  = true;
-    default_cfg.auto_enable       = true;
-    default_cfg.bootup_timeout_ms = 3000;
-    default_cfg.tpdo_sync_count   = 1;
+    motor_config_t def = {};
+    def.heartbeat_ms      = 2000;
+    def.profile_accel     = 5000;
+    def.profile_decel     = 5000;
+    def.profile_velocity  = 20;
+    def.disable_watchdog  = true;
+    def.auto_enable       = true;
+    def.bootup_timeout_ms = 5000;
+    def.tpdo_sync_count   = 1;
 
-    int motor_ids[] = {1, 2};
-    int motor_count = sizeof(motor_ids) / sizeof(motor_ids[0]);
-
-    for (int i = 0; i < motor_count; i++) {
-        default_cfg.node_id = (uint8_t)motor_ids[i];
-        int ret = motor_hal_add_motor(m_hal, &default_cfg);
-        if (ret < 0 && ret != -EEXIST) {
-            fprintf(stderr, "[CanDispatcher] default motor id=%d failed: %d\n",
-                    motor_ids[i], ret);
+    for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; id++) {
+        def.node_id = id;
+        int ret = motor_hal_add_motor(m_hal, &def);
+        if (ret != 0 && ret != -EEXIST) {
+            ECO_ERROR_NEW("[CanDispatcher] motor id={} add failed: {}", id, ret);
             return false;
         }
     }
 
-    printf("[CanDispatcher] Registered %d motors (hardcoded defaults)\n", motor_count);
+    ECO_INFO_NEW("[CanDispatcher] registered {} motors (defaults)", EXO_MOTOR_COUNT);
     return true;
-}
-
-/* ────────────────────────────────────────────────────────────────────
- * _send_to_motor — 单电机控制分发
- * ──────────────────────────────────────────────────────────────────── */
-void CanDispatcher::_send_to_motor(const std::string& cmd, uint8_t id, int val)
-{
-    if (cmd == "torque") {
-        motor_hal_set_mode(m_hal, id, MOTOR_MODE_CURRENT);
-        motor_hal_sdo_write(m_hal, id, 0x6071, 0x00, (uint32_t)(int32_t)val, 2);
-    }
-    else if (cmd == "speed") {
-        motor_hal_set_mode(m_hal, id, MOTOR_MODE_PROFILE_VEL);
-        motor_hal_sdo_write(m_hal, id, 0x60FF, 0x00, (uint32_t)val, 4);
-    }
-    else if (cmd == "position") {
-        float angle = val / 100.0f;
-        motor_hal_set_position(m_hal, id, angle);
-    }
-    else if (cmd == "stop") {
-        motor_hal_stop(m_hal, id);
-    }
-    else if (cmd == "enable") {
-        motor_hal_enable(m_hal, id);
-    }
-    else if (cmd == "disable") {
-        motor_hal_disable(m_hal, id);
-    }
-    else if (cmd == "mode") {
-        motor_hal_set_mode(m_hal, id, (motor_mode_t)val);
-    }
-    else if (cmd == "fault_reset") {
-        motor_hal_fault_reset(m_hal, id);
-    }
-    else {
-        fprintf(stderr, "[CanDispatcher] unknown cmd '%s'\n", cmd.c_str());
-    }
 }
 
 }  /* namespace stark_periph_manager_node */

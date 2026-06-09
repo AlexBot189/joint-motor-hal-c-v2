@@ -4,46 +4,49 @@ project(stark_periph_manager_node)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 选项
 option(ENABLE_ROS "Build ROS adapter" OFF)
 option(ENABLE_WEBSERVER "Build WebServer adapter" OFF)
 
-# 依赖路径
 set(MOTOR_HAL_DIR "${CMAKE_SOURCE_DIR}/..")
 
-# 包含路径
 include_directories(
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/interface
-    ${CMAKE_SOURCE_DIR}/log_helper          # log_helper 头文件
-    ${MOTOR_HAL_DIR}/inc                    # motor_hal 头文件
+    ${CMAKE_SOURCE_DIR}/core
+    ${CMAKE_SOURCE_DIR}/log_helper
+    ${MOTOR_HAL_DIR}/inc
 )
 
-# 链接路径
 link_directories(
-    ${MOTOR_HAL_DIR}/build                  # libmotor_hal.a
-    ${CMAKE_SOURCE_DIR}/log_helper/build    # liblog_helper.so
+    ${MOTOR_HAL_DIR}/build
+    ${CMAKE_SOURCE_DIR}/log_helper/build
 )
 
-# 源文件
 set(SOURCES
     src/main.cpp
     src/CanDispatcher.cpp
-    src/exo_state_machine.cpp
-    src/exo_rt_worker.cpp
-    src/exo_shm_mgr.cpp
     src/Factory.cpp
+    src/exo_shm_mgr.cpp
+
+    core/exo_state_machine.cpp
+    core/exo_rt_worker.cpp
+    core/exo_motor_ctrl.cpp
+    core/exo_mock_sensor.cpp
 )
 
-# 头文件 (用于 IDE 索引, 不影响编译)
 set(HEADERS
     exo_shm.h
     src/exo_shm_mgr.h
     src/CanDispatcher.h
-    src/exo_state_machine.h
-    src/exo_rt_worker.h
     src/Factory.h
+
+    core/exo_state_machine.h
+    core/exo_rt_worker.h
+    core/exo_rt_log.h
+    core/exo_motor_ctrl.h
+    core/exo_mock_sensor.h
+
     interface/Defines.hpp
     interface/IListener.hpp
     interface/IMsgInternalDispatcher.hpp
@@ -57,9 +60,9 @@ target_link_libraries(stark_periph_manager_node
     log_helper
     pthread
     rt
+    nlohmann_json
 )
 
-# ROS 模块 (编译可选)
 if(ENABLE_ROS)
     find_package(roscpp REQUIRED)
     find_package(std_msgs REQUIRED)
@@ -69,7 +72,6 @@ if(ENABLE_ROS)
     add_definitions(-DENABLE_ROS)
 endif()
 
-# WebServer 模块 (编译可选)
 if(ENABLE_WEBSERVER)
     target_sources(stark_periph_manager_node PRIVATE web/WebServer.cpp)
     add_definitions(-DENABLE_WEBSERVER)

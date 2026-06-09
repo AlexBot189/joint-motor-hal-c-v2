@@ -1,35 +1,28 @@
 /*
- * @file Factory.cpp
- * @brief 对象工厂实现
- *
- * 参考 petrobot Factory::CreateSingletonDispatcher / CreateWebListener 模式。
- * stark_periph_manager_node 简化:
- *   - 不需要 DeviceOption (配置走 config.json)
- *   - 不需要 CreateTouchAdapter (外骨骼没有触摸传感器)
+ * Factory.cpp — 对象工厂实现
  */
 #include "Factory.h"
 #include "CanDispatcher.h"
+#include "exo_shm.h"
 
 #ifdef ENABLE_ROS
 #include "ros/RosAdapter.h"
 #endif
 
 #include <cstdio>
+#include <log_helper/LogHelper.h>
 
-namespace stark_periph_manager_node
-{
+namespace stark_periph_manager_node {
 
 std::shared_ptr<IMsgInternalDispatcher>
 Factory::CreateSingletonDispatcher()
 {
     auto dispatcher = std::make_shared<CanDispatcher>();
-
     if (!dispatcher->InitDispatcher()) {
-        fprintf(stderr, "[Factory] CanDispatcher::InitDispatcher() failed\n");
+        ECO_ERROR_NEW("[Factory] CanDispatcher::InitDispatcher() failed");
         return nullptr;
     }
-
-    printf("[Factory] CanDispatcher created successfully\n");
+    ECO_INFO_NEW("[Factory] CanDispatcher created");
     return dispatcher;
 }
 
@@ -37,21 +30,21 @@ Factory::CreateSingletonDispatcher()
 std::shared_ptr<IListener>
 Factory::CreateRosListener(std::shared_ptr<ros::NodeHandle> nh,
                            std::shared_ptr<IMsgInternalDispatcher> dispatcher)
-{    if (!nh || !dispatcher) {
-        fprintf(stderr, "[Factory] CreateRosListener: invalid arguments\n");
+{
+    if (!nh || !dispatcher) {
+        ECO_ERROR_NEW("[Factory] CreateRosListener: invalid args");
         return nullptr;
     }
 
-    /* 从 CanDispatcher 获取 SHM 指针 */
     auto can_disp = std::dynamic_pointer_cast<CanDispatcher>(dispatcher);
     if (!can_disp) {
-        fprintf(stderr, "[Factory] dispatcher is not CanDispatcher\n");
+        ECO_ERROR_NEW("[Factory] dispatcher is not CanDispatcher");
         return nullptr;
     }
 
     exo_shm_t* shm = can_disp->GetShm();
     if (!shm) {
-        fprintf(stderr, "[Factory] SHM not available for RosAdapter\n");
+        ECO_ERROR_NEW("[Factory] SHM not available");
         return nullptr;
     }
 
@@ -59,9 +52,9 @@ Factory::CreateRosListener(std::shared_ptr<ros::NodeHandle> nh,
     adapter->SetDispatcher(dispatcher);
     adapter->Start();
 
-    printf("[Factory] RosAdapter created (pull from SHM)\n");
+    ECO_INFO_NEW("[Factory] RosAdapter created (pull from SHM)");
     return adapter;
 }
-#endif  /* ENABLE_ROS */
+#endif
 
 }  /* namespace stark_periph_manager_node */
