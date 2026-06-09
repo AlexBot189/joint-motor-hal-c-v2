@@ -15,6 +15,8 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/interface
     ${CMAKE_SOURCE_DIR}/core
     ${CMAKE_SOURCE_DIR}/log_helper
+    ${CMAKE_SOURCE_DIR}/3rd_party
+    ${CMAKE_SOURCE_DIR}/3rd_party/usr/include
     ${MOTOR_HAL_DIR}/inc
 )
 
@@ -56,7 +58,6 @@ add_executable(stark_periph_manager_node ${SOURCES} ${HEADERS})
 
 target_link_libraries(stark_periph_manager_node
     motor_hal
-    motor_calib
     log_helper
     pthread
     rt
