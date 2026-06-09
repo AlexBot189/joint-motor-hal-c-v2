@@ -33,6 +33,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <ctime>
 #include <algorithm>
 
 namespace stark_periph_manager_node {
