@@ -14,6 +14,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdarg>
 #include <cstdio>
 #include <cstring>
 

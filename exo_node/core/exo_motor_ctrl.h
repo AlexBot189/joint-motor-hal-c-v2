@@ -169,7 +169,7 @@ public:
     int GetSensor(uint8_t id, motor_sensor_t* out_sensor);
 
     /** @brief 配置传感器透传 */
-    int SensorConfig(uint8_t id, uint32_t interval_us);
+    int SensorConfig(uint8_t id, uint16_t period_div, uint8_t bus_format);
 
     /** @brief 停止传感器透传 */
     int SensorStop(uint8_t id);

@@ -471,9 +471,9 @@ int ExoMotorCtrl::GetSensor(uint8_t id, motor_sensor_t* out_sensor)
     return motor_hal_get_sensor(m_hal, id, out_sensor);
 }
 
-int ExoMotorCtrl::SensorConfig(uint8_t id, uint32_t interval_us)
+int ExoMotorCtrl::SensorConfig(uint8_t id, uint16_t period_div, uint8_t bus_format)
 {
-    return motor_hal_sensor_config(m_hal, id, interval_us);
+    return motor_hal_sensor_config(m_hal, id, period_div, bus_format);
 }
 
 int ExoMotorCtrl::SensorStop(uint8_t id)
