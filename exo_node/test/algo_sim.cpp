@@ -114,13 +114,14 @@ int main()
 
         if ((loop_count % 1000) == 0) {
             printf("[algo_sim] loop=%lu | online=0x%02X | state=%u | seq=%lu | "
-                   "latency: total=%uus max=%uus overruns=%u\n",
+                   "latency: fb_avg=%uus fb_max=%uus ctrl_avg=%uus overruns=%u\n",
                    (unsigned long)loop_count,
                    shm->motor_online,
                    shm->node_state,
                    (unsigned long)seq,
-                   shm->avg_total_latency_us,
-                   shm->max_total_latency_us,
+                   shm->fb_total_avg_us,
+                   shm->fb_total_max_us,
+                   shm->ctrl_total_avg_us,
                    shm->cycle_overrun_count);
         }
 
