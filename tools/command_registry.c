@@ -4,6 +4,7 @@
  */
 
 #include "command_registry.h"
+#include "tool_hal.h"
 #include <string.h>
 #include <stdio.h>
 

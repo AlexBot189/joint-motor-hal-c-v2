@@ -133,7 +133,7 @@ static void _process_command(int client_fd, char *cmdline)
     /* help 命令: 直接返回帮助文本 */
     if (strcmp(argv[0], "help") == 0 || strcmp(argv[0], "?") == 0) {
         /* help 直接打印, 不走 cmd_dispatch (避免 argv 偏移不一致) */
-        cmd_do_help(g_hal, CMD_HELP, 0, nullptr);
+        cmd_do_help(g_hal, CMD_HELP, 0, NULL);
         _send_response(client_fd, "ok", "help sent to daemon stdout", 0);
         return;
     }
@@ -391,6 +391,7 @@ static void _sigint_handler(int sig)
 
 int client_sensor_watch(int argc, char **argv)
 {
+    (void)argc;
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) { perror("socket"); return -1; }
 
