@@ -35,6 +35,7 @@ set(SOURCES
     core/exo_rt_worker.cpp
     core/exo_motor_ctrl.cpp
     core/exo_mock_sensor.cpp
+    core/exo_latency_trace.cpp
 )
 
 set(HEADERS
