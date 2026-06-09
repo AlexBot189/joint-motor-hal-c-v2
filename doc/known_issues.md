@@ -712,3 +712,63 @@ cat /proc/self/maps | grep vdso
 
 **更新时间**: 2026-06-09
 **更新内容**: 添加 vDSO 说明 + RT 线程安全规则
+
+---
+
+## SHM memset 竞态 (2026-06-09)
+
+### 现象
+
+`CanDispatcher::InitDispatcher()` 中原代码 `memset(m_shm, 0, EXO_SHM_SIZE)` 清空整个 64KB SHM. motor_node crash 重启时, 算法进程仍在读写 SHM, 数据瞬间全零.
+
+### 触发条件
+
+```
+正常:   motor_node 先启 → 后启算法      → 不触发
+异常:   motor_node crash → 重启          → 触发 (算法还在跑)
+测试:   先关 motor_node, 算法不关, 重启   → 触发
+```
+
+### 影响分析
+
+mailbox 结构:
+```c
+typedef struct {
+    uint64_t        seq_begin;
+    motor_command_t cmd[2];
+    uint64_t        seq_end;
+} exo_mailbox_t;
+```
+
+| 场景 | 首周期 PDO | 电机状态 | 实际影响 |
+|------|:--:|------|:--:|
+| 正常重启+算法在 | 历史有效cmd | 未使能 | ✅ 恢复控制 |
+| 正常重启+算法不在 | 历史脏cmd | 未使能 | ✅ 无影响 |
+| crash重启 | 看门狗已停机 | 安全停机 | ✅ 无影响 |
+| 测试启停 | 历史脏cmd | 未使能 | ✅ 无影响 |
+
+首周期脏 PDO 被"电机尚未使能"(INIT→DISCOVERY→READY 流程中)保护, 不会传到功率级.
+
+### 修复
+
+```cpp
+// 不碰 mailbox, 只清零 motor_node 负责写的区域:
+memset(&m_shm->fb_buffer, 0, sizeof(m_shm->fb_buffer));
+m_shm->active_idx     = 0;
+m_shm->motor_online   = 0;
+// ...
+m_shm->node_state     = STATE_INIT;
+// mailbox 不动 — 算法是唯一写入者, seq_begin 自适应恢复
+```
+
+### 修复后验证
+
+- motor_node 重启后 `m_last_seq=0`, 读旧 `seq_begin` → 一次性执行历史首个 cmd
+- 之后 `seq_begin==m_last_seq` → 不再执行, 等算法发新命令
+- 如果算法进程已死 (seq_begin 不变), 电机看门狗 (0x1017+0x2650) 自动安全停机
+- 如果算法进程在跑 (seq_begin 递增), 恢复正常控制
+
+---
+
+**更新时间**: 2026-06-09
+**更新内容**: 添加 SHM memset 竞态分析 + 修复记录
