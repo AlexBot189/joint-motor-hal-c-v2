@@ -652,3 +652,63 @@ motor_node(C++): log_helper(ECO_*) + RT ring buffer
 | 🟡 | 确认反馈帧 SHM struct 字节对齐(跨 ARMv7 进程) | 待实现 |
 | 🟡 | 内核 watchdog 配置 `/dev/watchdog` 测试 | 待测试 |
 | 🟢 | CPU isolation (isolcpus=2,3) + RT 线程 affinity | 优化项 |
+
+---
+
+## RT 线程安全调用 / vDSO (2026-06-09)
+
+### vDSO 是什么
+
+vDSO (Virtual Dynamic Shared Object) 是 Linux 内核把高频系统调用的代码映射到用户态内存的机制。调用方不触发真正的 `syscall` 指令，直接读用户态地址，不进入内核态。
+
+```
+普通系统调用 (write/open/read):              vDSO 调用 (clock_gettime/gettimeofday):
+
+  用户态 → syscall → 内核态                    用户态 → 读映射内存 → 返回
+  上下文切换 ~1-3μs                            ~20ns, 确定延迟, 不切内核
+```
+
+### 验证
+
+```bash
+cat /proc/self/maps | grep vdso
+# 输出: 7f000000-7f001000 r-xp [vdso]
+```
+
+### 哪些进 vDSO
+
+| 函数 | vDSO | 实时安全 |
+|------|:---:|:---:|
+| `clock_gettime(CLOCK_MONOTONIC)` | ✅ | ✅ |
+| `clock_gettime(CLOCK_REALTIME)` | ✅ | ✅ |
+| `gettimeofday()` | ✅ | ✅ |
+| `getcpu()` | ✅ | ✅ |
+| `write()` | ❌ | ❌ |
+| `read()` | ❌ | ❌ |
+| `malloc()` | ❌ | ❌ |
+| `printf()` / `fprintf()` | ❌ | ❌ (底层走 write) |
+
+### RT 线程安全规则
+
+| 允许 | 禁止 |
+|------|------|
+| `clock_gettime` (vDSO) | `write` / `read` / `open` / `close` |
+| PI mutex lock/unlock (~50ns w/o contention) | `sleep` / `usleep` / `nanosleep` |
+| atomic ops (STLR/LDAR, ~2ns) | `malloc` / `free` / `new` |
+| ring buffer push (<1μs) | `printf` / `fprintf` / `ECO_*` |
+| `snprintf` (用户态 buffer, ~1μs) | 任何 SDO/SocketCAN recv |
+| `motor_hal_multi_ctrl` (PDO, ~25μs) | `motor_hal_sdo_*` (阻塞等响应) |
+
+### 本项目中的实际应用
+
+**ExoLatencyTracer** 在 RT 线程(1KHz, SCHED_FIFO 90)中使用:
+- T1-T6 全部用 `clock_gettime(CLOCK_MONOTONIC)` — vDSO, ~20ns/次
+- 每周期 6 次耗时 ~120ns, 占 1ms 预算的 0.012%
+- 统计输出通过 `RT_LOG` → ring buffer → 非 RT drain 线程 → `ECO_INFO_NEW`
+
+关闭 `EXO_LATENCY_TRACE 0` 后: 编译期内联空函数, 零指令, 零开销.
+
+---
+
+**更新时间**: 2026-06-09
+**更新内容**: 添加 vDSO 说明 + RT 线程安全规则
