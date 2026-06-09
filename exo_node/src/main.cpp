@@ -36,6 +36,7 @@ extern "C" {
 #include "core/exo_rt_worker.h"
 #include "core/exo_rt_log.h"
 #include "core/exo_state_machine.h"
+#include "core/exo_node_context.h"
 #include "core/exo_mock_sensor.h"
 #include "src/Factory.h"
 #include "exo_shm.h"
@@ -53,6 +54,10 @@ static ExoRtWorker*      g_rt_worker  = nullptr;
 static ExoMockSensor     g_mock_sensor;
 static ExoRtLog          g_rt_log_instance;
 ExoRtLog*                g_rt_log = &g_rt_log_instance;
+
+/* 全局上下文 (状态机 enter/exit 钩子访问) */
+static ExoNodeContext    g_node_ctx;
+ExoNodeContext*          g_ctx = &g_node_ctx;
 
 static void sig_handler(int sig)
 {
@@ -85,67 +90,6 @@ static void* log_drain_thread(void*)
         g_rt_log->Drain(rt_log_output_fn);
     }
     return nullptr;
-}
-
-/* ════════════════════════════════════════════════════════════════════
- * wait_bootup_and_startup() — 对齐 daemon _accept_loop 中的
- *   motor_hal_process_pending_startups 轮询
- *
- * 主线程轮询直到所有已注册电机 auto-startup 完成
- * (state >= SWITCH_ON_DIS 且 state != UNKNOWN).
- * ════════════════════════════════════════════════════════════════════ */
-
-static bool wait_bootup_and_startup(motor_hal_t* hal, exo_shm_t* shm,
-                                    int motor_count, int timeout_sec)
-{
-    int elapsed_ms = 0;
-    const int interval_ms = 200;
-
-    ECO_INFO_NEW("[main] waiting for motors to boot up ({}s timeout)...",
-                 timeout_sec);
-
-    while (elapsed_ms < timeout_sec * 1000) {
-        int started = motor_hal_process_pending_startups(hal);
-        if (started > 0) {
-            ECO_INFO_NEW("[main] auto-startup: {} motor(s) initialized", started);
-        }
-
-        /* 用反馈缓存检测在线 (零延迟, 不触发 SDO) */
-        int online_count = 0;
-        uint8_t online_mask = 0;
-
-        for (uint8_t id = 1; id <= (uint8_t)motor_count; ++id) {
-            motor_feedback_t fb;
-            if (motor_hal_get_feedback(hal, id, &fb) == 0 && fb.status_byte != 0) {
-                online_mask |= (1 << (id - 1));
-                online_count++;
-            }
-        }
-
-        if (shm) {
-            shm->motor_online = online_mask;
-        }
-
-        if (online_count == motor_count) {
-            ECO_INFO_NEW("[main] all {} motors online (mask=0x{:02X})",
-                         online_count, online_mask);
-
-            /* 状态转换: INIT → DISCOVERY → READY */
-            state_transition(STATE_DISCOVERY);
-            state_transition(STATE_READY);
-
-            if (shm) {
-                shm->node_state = STATE_READY;
-            }
-            return true;
-        }
-
-        usleep(interval_ms * 1000);
-        elapsed_ms += interval_ms;
-    }
-
-    ECO_ERROR_NEW("[main] motor startup timeout ({}s)", timeout_sec);
-    return false;
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -231,14 +175,16 @@ int main(int argc, char** argv)
     ECO_INFO_NEW("[main] log drain thread started");
 
     /* ════════════════════════════════════════════════════════════
-     * 步骤 4: 等待电机上电 → auto-startup → READY
+     * 步骤 4: 状态机驱动 — enter_discovery 阻塞等待全部电机上线
+     *         成功后自动切 READY, 超时也会切 READY (允许部分在线)
      * ════════════════════════════════════════════════════════════ */
 
-    bool motors_ready = wait_bootup_and_startup(hal, shm, EXO_MOTOR_COUNT, 30);
+    g_node_ctx.hal          = hal;
+    g_node_ctx.shm          = shm;
+    g_node_ctx.motor_count  = EXO_MOTOR_COUNT;
+    g_node_ctx.startup_timeout_sec = 30;
 
-    if (!motors_ready) {
-        ECO_WARN_NEW("[main] not all motors online, continuing...");
-    }
+    state_transition(STATE_DISCOVERY);  /* 阻塞: enter_discovery 做实际探测 */
 
     /* ════════════════════════════════════════════════════════════
      * 步骤 5: 初始化 ROS (编译可选)

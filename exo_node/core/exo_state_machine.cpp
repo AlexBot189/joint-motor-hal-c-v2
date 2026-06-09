@@ -4,7 +4,9 @@
  * enter/exit 钩子为日志+状态记录, 业务逻辑在 main.cpp 中驱动.
  */
 #include "exo_state_machine.h"
+#include "exo_node_context.h"
 #include <log_helper/LogHelper.h>
+#include <unistd.h>
 
 exo_state_t g_exo_state = STATE_INIT;
 
@@ -29,7 +31,54 @@ void enter_init(void) {
 }
 
 void enter_discovery(void) {
-    ECO_INFO_NEW("[StateMachine] enter DISCOVERY — probing motors");
+    ECO_INFO_NEW("[StateMachine] enter DISCOVERY — waiting for motors...");
+
+    if (!g_ctx || !g_ctx->hal || !g_ctx->shm) {
+        ECO_ERROR_NEW("[StateMachine] DISCOVERY: no context, skip");
+        return;
+    }
+
+    motor_hal_t* hal = g_ctx->hal;
+    exo_shm_t*   shm = g_ctx->shm;
+    int motor_count  = g_ctx->motor_count;
+    int timeout_ms   = g_ctx->startup_timeout_sec * 1000;
+    int elapsed_ms   = 0;
+    const int interval_ms = 200;
+
+    /* 阻塞轮询直到全部电机完成 auto-startup (DS402使能) */
+    while (elapsed_ms < timeout_ms) {
+        int started = motor_hal_process_pending_startups(hal);
+        if (started > 0) {
+            ECO_INFO_NEW("[StateMachine] auto-startup: {} motor(s) done", started);
+        }
+
+        /* 反馈缓存检测在线 (零延迟) */
+        int online_count = 0;
+        uint8_t online_mask = 0;
+        for (uint8_t id = 1; id <= (uint8_t)motor_count; ++id) {
+            motor_feedback_t fb;
+            if (motor_hal_get_feedback(hal, id, &fb) == 0 && fb.status_byte != 0) {
+                online_mask |= (1 << (id - 1));
+                online_count++;
+            }
+        }
+        shm->motor_online = online_mask;
+
+        if (online_count == motor_count) {
+            ECO_INFO_NEW("[StateMachine] all {} motors online (0x{:02X}) → READY",
+                         online_count, online_mask);
+            shm->node_state = STATE_READY;
+            state_transition(STATE_READY);
+            return;
+        }
+
+        usleep(interval_ms * 1000);
+        elapsed_ms += interval_ms;
+    }
+
+    ECO_ERROR_NEW("[StateMachine] DISCOVERY timeout ({}s), entering READY anyway",
+                  g_ctx->startup_timeout_sec);
+    state_transition(STATE_READY);
 }
 
 void enter_ready(void) {

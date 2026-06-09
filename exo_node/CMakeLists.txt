@@ -44,6 +44,7 @@ set(HEADERS
     src/Factory.h
 
     core/exo_state_machine.h
+    core/exo_node_context.h
     core/exo_rt_worker.h
     core/exo_rt_log.h
     core/exo_motor_ctrl.h
