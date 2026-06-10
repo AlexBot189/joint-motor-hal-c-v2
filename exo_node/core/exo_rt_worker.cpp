@@ -191,6 +191,35 @@ void ExoRtWorker::ProcessMailbox()
     }
 
     /* ── 再处理控制命令 (通过已设好的 pdo_byte0 发控制帧) ── */
+
+    /* 多轴广播: 两个 cmd 都是 MULTI → 打包一帧 64B CANFD 发出 */
+    if (cmd0.cmd == EXO_CMD_MULTI && cmd1.cmd == EXO_CMD_MULTI) {
+        multi_axis_cmd_t mcmds[EXO_MOTOR_COUNT] = {};
+        int mcount = 0;
+        uint8_t b0;
+
+        if (motor_hal_pdo_get_byte0(m_hal, cmd0.motor_id, &b0) == 0) {
+            mcmds[mcount].node_id       = cmd0.motor_id;
+            mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
+            mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
+            mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
+            mcmds[mcount].target1       = (int16_t)cmd0.value;
+            mcmds[mcount].target2       = (uint16_t)cmd0.value2;
+            mcmds[mcount].feedforward   = (int16_t)cmd0.feedforward;
+            mcount++;
+        }
+        if (motor_hal_pdo_get_byte0(m_hal, cmd1.motor_id, &b0) == 0) {
+            mcmds[mcount].node_id       = cmd1.motor_id;
+            mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
+            mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
+            mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
+            mcmds[mcount].target1       = (int16_t)cmd1.value;
+            mcmds[mcount].target2       = (uint16_t)cmd1.value2;
+            mcmds[mcount].feedforward   = (int16_t)cmd1.feedforward;
+            mcount++;
+        }
+        if (mcount > 0) motor_hal_multi_ctrl(m_hal, mcmds, (uint8_t)mcount);
+    } else {
     for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
         motor_command_t c = (i == 0) ? cmd0 : cmd1;
         uint8_t mid = c.motor_id;
@@ -230,6 +259,7 @@ void ExoRtWorker::ProcessMailbox()
         default: break;  /* Byte0 commands are no-op here */
         }
     }
+    } /* end else (non-MULTI path) */
 
     /* ── T7: 读 mailbox 完成 ── */
     m_tracer.mark_mailbox_read();

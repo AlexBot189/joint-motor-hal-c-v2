@@ -115,6 +115,8 @@ typedef enum {
     EXO_CMD_MIT      = 4,       /* MIT 阻抗控制                                          */
     EXO_CMD_PP       = 5,       /* 轮廓位置模式 PP                                       */
     EXO_CMD_CSV      = 6,       /* 循环同步速度 CSV, value=RPM×100                          */
+    /* 多轴广播: 当 cmd[0]和cmd[1]都设为MULTI时，RT线程打包成一帧64B多轴广播(COB 0x200) */
+    EXO_CMD_MULTI    = 7,       /* 多轴广播, mode/value/value2/feedforward 字段有效            */
     /* PDO Byte0 控制 (不发 target, 只改 Byte0 状态) */
     EXO_CMD_ENABLE   = 10,      /* PDO使能 (Byte0 bit7=1)                                */
     EXO_CMD_DISABLE  = 11,      /* PDO失能 (Byte0 bit7=0)                                */

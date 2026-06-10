@@ -168,6 +168,11 @@ int main()
                     cmd_set(shm, 1, 2, EXO_CMD_TORQUE, 200, 0, 0, fb->timestamp_us);
                 }
 
+                /* 也可以走多轴广播 (取消注释体验一帧64B发出双电机):
+                if (online & 0x01) cmd_set(shm, 0, 1, EXO_CMD_MULTI, 200, 0, 0, fb->timestamp_us);
+                if (online & 0x02) cmd_set(shm, 1, 2, EXO_CMD_MULTI, 200, 0, 0, fb->timestamp_us);
+                */
+
             } else if (t_sec < 6.0f) {
                 /* ── 位置控制: 先切模式(一次), 再每帧发目标 ── */
                 static bool pos_mode_set = false;
