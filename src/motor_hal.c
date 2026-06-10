@@ -63,10 +63,15 @@ void heartbeat_feed(can_driver_t *drv);
 void pdo_ctrl_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
                    bool enable, bool release_brake, bool clear_err,
                    int16_t target1, uint16_t target2, int16_t feedforward);
+void pdo_ctrl_send_raw(can_driver_t *drv, uint8_t node, uint8_t byte0,
+                        int16_t target1, uint16_t target2, int16_t feedforward);
 void pdo_mit_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
                   bool enable, bool release_brake, bool clear_err,
                   uint16_t position, uint16_t velocity,
                   uint16_t kp, uint16_t kd, int16_t torque);
+void pdo_mit_send_raw(can_driver_t *drv, uint8_t node, uint8_t byte0,
+                       uint16_t position, uint16_t velocity,
+                       uint16_t kp, uint16_t kd, int16_t torque);
 void pdo_multi_send(can_driver_t *drv, const multi_axis_cmd_t *cmds, uint8_t count);
 void pdo_sync_send(can_driver_t *drv);
 void pdo_feedback_parse(const canfd_frame_t *f, motor_feedback_t *fb);
@@ -118,6 +123,10 @@ typedef struct {
     pthread_mutex_t  sensor_lock;
     motor_sensor_t   cached_sensor;
     uint64_t         last_sensor_us;
+
+    /* PDO Byte0 — 仅由 PDO API 管理, SDO 不碰 */
+    uint8_t  pdo_byte0;         /* Byte0 持久值, 默认 0x00 */
+    bool     clr_err_pending;   /* bit5 脉冲标志 */
 } motor_node_t;
 
 /* =====================================================
@@ -279,6 +288,8 @@ int motor_hal_add_motor(motor_hal_t *hal, const motor_config_t *cfg)
     m->enabled  = false;
     m->bootup_received = false;
     m->pending_startup = false;
+    m->pdo_byte0       = 0x00;  /* 默认全关, 算法显式调 pdo_enable 才开启 */
+    m->clr_err_pending = false;
     memcpy(&m->config, cfg, sizeof(motor_config_t));
 
     hal->motor_count++;
@@ -420,8 +431,15 @@ int motor_hal_set_position(motor_hal_t *hal, uint8_t node_id, float angle_deg)
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
 
-    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_POS,
-                  true, true, false, counts, accel, 0);
+    /* 脉冲清除: 上一轮置了 bit5, 本轮自动清除 */
+    uint8_t b0 = m->pdo_byte0;
+    if (m->clr_err_pending) {
+        b0 &= ~PDO_BYTE0_CLR_ERR;
+        m->pdo_byte0 = b0;
+        m->clr_err_pending = false;
+    }
+
+    pdo_ctrl_send_raw(hal->drv, node_id, b0, counts, accel, 0);
     return 0;
 }
 
@@ -438,8 +456,10 @@ int motor_hal_set_velocity(motor_hal_t *hal, uint8_t node_id, float rpm_motor)
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
 
-    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_VEL,
-                  true, true, false, (int16_t)rpm_motor, accel, 0);
+    uint8_t b0 = m->pdo_byte0;
+    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->pdo_byte0 = b0; m->clr_err_pending = false; }
+
+    pdo_ctrl_send_raw(hal->drv, node_id, b0, (int16_t)rpm_motor, accel, 0);
     return 0;
 }
 
@@ -455,8 +475,10 @@ int motor_hal_set_torque(motor_hal_t *hal, uint8_t node_id, int16_t current_ma)
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
 
-    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_CURRENT,
-                  true, true, false, current_ma, 0, 0);
+    uint8_t b0 = m->pdo_byte0;
+    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->pdo_byte0 = b0; m->clr_err_pending = false; }
+
+    pdo_ctrl_send_raw(hal->drv, node_id, b0, current_ma, 0, 0);
     return 0;
 }
 
@@ -474,15 +496,16 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
 
-    uint16_t pos  = (uint16_t)((position + 180.0f) / 360.0f * 65535.0f);  /* [0~65535]→(-180°~+180°) */
-    uint16_t vel  = (uint16_t)((int16_t)velocity);  /* 保留符号, 由电机按有符号12bit解析 */
+    uint16_t pos  = (uint16_t)((position + 180.0f) / 360.0f * 65535.0f);
+    uint16_t vel  = (uint16_t)((int16_t)velocity);
     uint16_t kp_v = (uint16_t)(kp * 100.0f);
     uint16_t kd_v = (uint16_t)(kd * 100.0f);
     int16_t  torq = (int16_t)(torque * 1000.0f);
 
-    pdo_mit_send(hal->drv, node_id, MOTOR_MODE_MIT,
-                 true, true, false,
-                 pos, vel, kp_v, kd_v, torq);
+    uint8_t b0 = m->pdo_byte0;
+    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->pdo_byte0 = b0; m->clr_err_pending = false; }
+
+    pdo_mit_send_raw(hal->drv, node_id, b0, pos, vel, kp_v, kd_v, torq);
     return 0;
 }
 
@@ -500,8 +523,13 @@ int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
 
-    pdo_ctrl_send(hal->drv, node_id, mode, true, true, false,
-                  target1, target2, feedforward);
+    /* 传入 mode 参数更新 Byte0 mode 字段, 保持其他 bit 不变 */
+    uint8_t b0 = m->pdo_byte0;
+    b0 = (b0 & ~PDO_BYTE0_MODE_MASK) | pdo_byte0_mode_part(mode);
+    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->clr_err_pending = false; }
+    m->pdo_byte0 = b0;
+
+    pdo_ctrl_send_raw(hal->drv, node_id, b0, target1, target2, feedforward);
     return 0;
 }
 
@@ -516,8 +544,10 @@ int motor_hal_stop(motor_hal_t *hal, uint8_t node_id)
 
     if (!m || !enabled) return 0;
 
-    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_POS,
-                  true, true, false, 0, 0, 0);
+    uint8_t b0 = m->pdo_byte0;
+    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->pdo_byte0 = b0; m->clr_err_pending = false; }
+
+    pdo_ctrl_send_raw(hal->drv, node_id, b0, 0, 0, 0);
     return 0;
 }
 
@@ -533,9 +563,14 @@ int motor_hal_set_brake(motor_hal_t *hal, uint8_t node_id, bool release)
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
 
-    /* 通过 PDO data[0] bit6 控制抱闸, 保持当前模式和使能状态 */
-    pdo_ctrl_send(hal->drv, node_id, MOTOR_MODE_PROFILE_POS,
-                  true, release, false, 0, 0, 0);
+    /* bit6 母线电压控制 (当前电机不实现机械抱闸, 此位预留) */
+    uint8_t b0 = m->pdo_byte0;
+    if (release) b0 |=  PDO_BYTE0_BUS_ON;
+    else         b0 &= ~PDO_BYTE0_BUS_ON;
+    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->clr_err_pending = false; }
+    m->pdo_byte0 = b0;
+
+    pdo_ctrl_send_raw(hal->drv, node_id, b0, 0, 0, 0);
     return 0;
 }
 
@@ -544,6 +579,141 @@ int motor_hal_quick_stop(motor_hal_t *hal, uint8_t node_id)
     if (!hal || !hal->drv) return -ENODEV;
     return sdo_write_simple(hal->drv, node_id,
                             OD_CONTROLWORD, 0x00, CW_QUICK_STOP, 2);
+}
+
+/* =====================================================
+ * 公共 API: PDO Byte0 — 实时控制字节
+ *
+ *   SDO 不管 PDO: startup/enable/disable 不设 pdo_byte0
+ *   PDO 不管 SDO: 以下函数只改 pdo_byte0, 不改 m->enabled/state
+ *
+ *   算法层使用:
+ *     startup → pdo_enable + pdo_set_mode → 控制循环(不碰Byte0)
+ *     急停    → pdo_estop
+ *     恢复    → pdo_recover
+ *     清错    → 先读 fb->error_code, 再根据错误类型决定是否 clearcf
+ *     切模式  → pdo_set_mode
+ *
+ *   bit5 清错流程 (由算法层决策):
+ *     1. 读 motor_hal_get_feedback → fb.error_code
+ *     2. 判断: 温度过高? 等降温后清除; 过流? 失能后清除; 其他? 直接清除
+ *     3. 调用 motor_hal_pdo_clear_fault → bit5 脉冲, 下一帧自动清0
+ * ===================================================== */
+
+int motor_hal_pdo_enable(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    m->pdo_byte0 |= PDO_BYTE0_ENABLE;
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
+int motor_hal_pdo_disable(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    m->pdo_byte0 &= ~PDO_BYTE0_ENABLE;
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
+int motor_hal_pdo_bus_on(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    m->pdo_byte0 |= PDO_BYTE0_BUS_ON;
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
+int motor_hal_pdo_bus_off(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    m->pdo_byte0 &= ~PDO_BYTE0_BUS_ON;
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
+int motor_hal_pdo_clear_fault(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    m->pdo_byte0 |= PDO_BYTE0_CLR_ERR;
+    m->clr_err_pending = true;  /* 下一帧控制函数自动清除 */
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
+int motor_hal_pdo_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)
+{
+    if (!hal) return -EINVAL;
+    if (mode > MOTOR_MODE_MIT) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    m->pdo_byte0 = (m->pdo_byte0 & ~PDO_BYTE0_MODE_MASK) | pdo_byte0_mode_part(mode);
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
+int motor_hal_pdo_estop(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    m->pdo_byte0 &= PDO_BYTE0_MODE_MASK;  /* enable=0, bus=0, 保留mode */
+    m->clr_err_pending = false;
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
+int motor_hal_pdo_recover(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    m->pdo_byte0 = (m->pdo_byte0 & PDO_BYTE0_MODE_MASK)
+                 | PDO_BYTE0_ENABLE | PDO_BYTE0_BUS_ON;
+    m->clr_err_pending = false;
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
+int motor_hal_pdo_set_byte0(motor_hal_t *hal, uint8_t node_id, uint8_t byte0)
+{
+    if (!hal) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    m->pdo_byte0 = byte0;
+    m->clr_err_pending = false;
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
+int motor_hal_pdo_get_byte0(motor_hal_t *hal, uint8_t node_id, uint8_t *byte0)
+{
+    if (!hal || !byte0) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    *byte0 = m->pdo_byte0;
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
 }
 
 /* =====================================================

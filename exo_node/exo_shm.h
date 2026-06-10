@@ -109,17 +109,35 @@ typedef struct {
  * 电机控制命令
  * ============================================================================ */
 typedef enum {
-    EXO_CMD_TORQUE = 1,         /* 力矩模式, value=mA                                 */
-    EXO_CMD_SPEED  = 2,         /* 速度模式, value=RPM×100                            */
-    EXO_CMD_POS    = 3,         /* 位置模式, value=°×100                              */
-    EXO_CMD_MIT    = 4,         /* MIT 阻抗控制                                        */
+    EXO_CMD_TORQUE   = 1,       /* 力矩模式, value=mA                                   */
+    EXO_CMD_SPEED    = 2,       /* 速度模式, value=RPM×100                              */
+    EXO_CMD_POS      = 3,       /* 位置模式, value=°×100                                */
+    EXO_CMD_MIT      = 4,       /* MIT 阻抗控制                                          */
+    EXO_CMD_PP       = 5,       /* 轮廓位置模式 PP                                       */
+    /* PDO Byte0 控制 (不发 target, 只改 Byte0 状态) */
+    EXO_CMD_ENABLE   = 10,      /* PDO使能 (Byte0 bit7=1)                                */
+    EXO_CMD_DISABLE  = 11,      /* PDO失能 (Byte0 bit7=0)                                */
+    EXO_CMD_ESTOP    = 12,      /* 急停: enable=0 + bus=OFF (Byte0=0x00, 保留mode)         */
+    EXO_CMD_RECOVER  = 13,      /* 恢复: enable=1 + bus=ON (Byte0=0xC0, 保留mode)          */
+    EXO_CMD_SET_MODE = 14,      /* 切换 PDO 控制模式, value=motor_mode_t                   */
+    /* bit5 清错: 算法先读 fb->motor[i].error_code, 判断后决定是否清除 */
+    EXO_CMD_CLEAR_FAULT = 15,   /* PDO Byte0 bit5 脉冲清除                               */
 } exo_cmd_type_t;
 
 typedef struct {
-    uint8_t  motor_id;          /* 1=右髋 2=左髋                                     */
-    uint8_t  cmd;               /* exo_cmd_type_t                                     */
-    int32_t  value;             /* 目标值, 单位取决于 cmd                               */
-    uint64_t timestamp_us;      /* 算法下发时刻                                        */
+    uint8_t  motor_id;          /* 1=右髋 2=左髋                                       */
+    uint8_t  cmd;               /* exo_cmd_type_t                                       */
+    int32_t  value;             /* target1: 主目标值 (位置/速度/电流)                     */
+    int32_t  value2;            /* target2: 加减速(PP/PV模式, RPM/s)                     */
+    int32_t  feedforward;       /* 前馈 (PP模式轮廓速度 RPM, 其他模式填0)                */
+    /* MIT 模式专用 (其他模式忽略) */
+    uint16_t mit_pos;           /* 目标位置 [0-65535]                                  */
+    uint16_t mit_vel;           /* 目标速度 [0-4095]                                   */
+    uint16_t mit_kp;            /* 位置刚度 [0-4095]                                   */
+    uint16_t mit_kd;            /* 速度阻尼 [0-4095]                                   */
+    uint16_t mit_torque;        /* 前馈力矩 [0-4095]                                   */
+    uint8_t  _pad[5];           /* 对齐到 8 字节边界                                     */
+    uint64_t timestamp_us;      /* 算法下发时刻                                          */
 } motor_command_t;
 
 /* ============================================================================

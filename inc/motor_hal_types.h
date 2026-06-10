@@ -152,6 +152,54 @@ typedef enum {
 } motor_mode_t;
 
 /* ============================================================================
+ * PDO Byte0 — 自定义PDO和MIT PDO共用控制字节
+ *
+ * Byte0: [7]Enable [6]BUS_ON [5]ClearErr [4:1]Mode [0]Reserved
+ *
+ * 与 SDO Controlword (0x6040) 不同:
+ *   - SDO 走 CANopen 协议, 改 DS402 状态机
+ *   - PDO Byte0 走 CANFD 实时帧, 直接控制电机使能/母线/模式
+ *   两者独立, 互不耦合
+ *
+ * bit5 清错: 上层先读 fb->error_code 判断错误类型 (温度/过流/编码器等),
+ *   根据具体错误决定是否清除。调用 motor_hal_pdo_clear_fault 置位,
+ *   下一帧自动清0 (脉冲语义)。
+ *
+ * bit6 母线: 控制逆变器供电。当前电机无机械抱闸, 此位预留。
+ * ============================================================================ */
+
+#define PDO_BYTE0_ENABLE     (0x80)   /* bit7: PDO使能 (1=响应PDO控制, 0=不响应) */
+#define PDO_BYTE0_BUS_ON     (0x40)   /* bit6: 母线电压 (1=接通 0=断开, 预留, 当前电机不实现抱闸) */
+#define PDO_BYTE0_CLR_ERR    (0x20)   /* bit5: 清除错误标志 (脉冲, 单帧后自动清0) */
+#define PDO_BYTE0_MODE_SHIFT (1)      /* bit4:1 控制模式字段 */
+#define PDO_BYTE0_MODE_MASK  (0x1E)   /* 0b00011110 */
+#define PDO_BYTE0_RSVD       (0x01)   /* bit0: 预留 */
+
+/* 预设值 */
+#define PDO_BYTE0_ESTOP      (0x00)   /* 急停: enable=0 + bus=OFF */
+
+/* 从模式构建 PDO Byte0 mode 字段 */
+static inline uint8_t pdo_byte0_mode_part(motor_mode_t m) {
+    return ((uint8_t)(m) & 0x0F) << PDO_BYTE0_MODE_SHIFT;
+}
+
+/* 构建完整 Byte0 */
+static inline uint8_t pdo_byte0_build(bool enable, bool bus_on,
+                                       bool clear_err, motor_mode_t mode)
+{
+    return (enable   ? PDO_BYTE0_ENABLE  : 0)
+         | (bus_on   ? PDO_BYTE0_BUS_ON  : 0)
+         | (clear_err ? PDO_BYTE0_CLR_ERR : 0)
+         | pdo_byte0_mode_part(mode);
+}
+
+/* 解析 Byte0 各字段 */
+static inline bool pdo_byte0_get_enable(uint8_t b)   { return (b & PDO_BYTE0_ENABLE) != 0; }
+static inline bool pdo_byte0_get_bus_on(uint8_t b)   { return (b & PDO_BYTE0_BUS_ON) != 0; }
+static inline bool pdo_byte0_get_clr_err(uint8_t b)  { return (b & PDO_BYTE0_CLR_ERR) != 0; }
+static inline uint8_t pdo_byte0_get_mode(uint8_t b)  { return (b & PDO_BYTE0_MODE_MASK) >> PDO_BYTE0_MODE_SHIFT; }
+
+/* ============================================================================
  * DS402 状态字 / 控制字
  * ============================================================================ */
 

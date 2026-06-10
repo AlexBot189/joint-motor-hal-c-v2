@@ -134,8 +134,50 @@ void canopen_sync_build(canfd_frame_t *f)
 }
 
 /* =====================================================
- * 自定义单轴 PDO
+ * 自定义单轴 PDO (u8 Byte0 版本 — 控制循环推荐)
  * ===================================================== */
+
+void canopen_custom_pdo_build_u8(uint8_t node, uint8_t byte0,
+                                  int16_t target1, uint16_t target2,
+                                  int16_t feedforward,
+                                  canfd_frame_t *f)
+{
+    memset(f, 0, sizeof(*f));
+    f->id     = COB_PDO_CTRL_BASE + node;
+    f->dlc    = 7;
+    f->is_fd   = true;
+    f->use_brs = true;
+
+    f->data[0] = byte0;
+    f->data[1] = (uint8_t)((target1 >> 8) & 0xFF);  /* 大端 */
+    f->data[2] = (uint8_t)(target1 & 0xFF);
+    f->data[3] = (uint8_t)((target2 >> 8) & 0xFF);
+    f->data[4] = (uint8_t)(target2 & 0xFF);
+    f->data[5] = (uint8_t)((feedforward >> 8) & 0xFF);
+    f->data[6] = (uint8_t)(feedforward & 0xFF);
+}
+
+void canopen_mit_pdo_build_u8(uint8_t node, uint8_t byte0,
+                               uint16_t position, uint16_t velocity,
+                               uint16_t kp, uint16_t kd, int16_t torque,
+                               canfd_frame_t *f)
+{
+    memset(f, 0, sizeof(*f));
+    f->id     = COB_PDO_MIT_BASE + node;
+    f->dlc    = 9;
+    f->is_fd   = true;
+    f->use_brs = true;
+
+    f->data[0] = byte0;
+    f->data[1] = (uint8_t)((position >> 8) & 0xFF);
+    f->data[2] = (uint8_t)(position & 0xFF);
+    f->data[3] = (uint8_t)((velocity >> 4) & 0xFF);
+    f->data[4] = (uint8_t)(((velocity & 0x0F) << 4) | ((kp >> 8) & 0x0F));
+    f->data[5] = (uint8_t)(kp & 0xFF);
+    f->data[6] = (uint8_t)((kd >> 4) & 0xFF);
+    f->data[7] = (uint8_t)(((kd & 0x0F) << 4) | ((torque >> 8) & 0x0F));
+    f->data[8] = (uint8_t)(torque & 0xFF);
+}
 
 void canopen_custom_pdo_build(uint8_t node, motor_mode_t mode,
                                bool enable, bool release_brake, bool clear_err,

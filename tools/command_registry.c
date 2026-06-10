@@ -59,6 +59,17 @@ const command_entry_t g_cmd_table[] = {
     { CMD_MULTI,"multi","multi <pos|vel|cur|csp> <id:val> ...", "PDO多轴广播", 3, -1 },
     { CMD_MIT,  "mit",  "mit <id> <pos> <vel> <kp> <kd> <torque>", "MIT阻抗控制", 7, 7 },
 
+    /* PDO Byte0 控制 */
+    { CMD_PDO_ENABLE,  "pdo_enable",  "pdo_enable <id>",     "PDO使能 (Byte0 bit7=1)", 2, 2 },
+    { CMD_PDO_DISABLE, "pdo_disable", "pdo_disable <id>",     "PDO失能 (Byte0 bit7=0)", 2, 2 },
+    { CMD_BUS_ON,      "bus_on",       "bus_on <id>",         "母线接通 (Byte0 bit6=1, 预留)", 2, 2 },
+    { CMD_BUS_OFF,     "bus_off",      "bus_off <id>",        "母线断开 (Byte0 bit6=0, 预留)", 2, 2 },
+    { CMD_ESTOP,       "estop",        "estop <id>",          "急停: enable=0+bus=OFF", 2, 2 },
+    { CMD_RECOVER,     "recover",      "recover <id>",        "恢复: bus=ON+enable=1", 2, 2 },
+    { CMD_CLEARCF,     "clearcf",      "clearcf <id>",        "清故障脉冲 (Byte0 bit5)", 2, 2 },
+    { CMD_SETMODE,     "setmode",      "setmode <id> <1~6>",  "PDO切换模式", 3, 3 },
+    { CMD_BYTE0,       "byte0",        "byte0 <id> [0xHH]",   "读/写原始 Byte0", 2, 3 },
+
     /* 其他 */
     { CMD_FAULT_RESET,"fault_reset","fault_reset <id>",          "清零故障",                     2, 2 },
     { CMD_REBOOT,   "reboot",   "reboot <id>",                   "电机重启",                     2, 2 },
@@ -148,6 +159,16 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
         case CMD_PDO:      return cmd_do_pdo(hal, cmd->id, argc, argv);
         case CMD_MULTI:    return cmd_do_multi(hal, cmd->id, argc, argv);
         case CMD_MIT:      return cmd_do_mit(hal, cmd->id, argc, argv);
+        /* PDO Byte0 */
+        case CMD_PDO_ENABLE:  return cmd_do_pdo_enable(hal, cmd->id, argc, argv);
+        case CMD_PDO_DISABLE: return cmd_do_pdo_disable(hal, cmd->id, argc, argv);
+        case CMD_BUS_ON:      return cmd_do_bus_on(hal, cmd->id, argc, argv);
+        case CMD_BUS_OFF:     return cmd_do_bus_off(hal, cmd->id, argc, argv);
+        case CMD_ESTOP:       return cmd_do_estop(hal, cmd->id, argc, argv);
+        case CMD_RECOVER:     return cmd_do_recover(hal, cmd->id, argc, argv);
+        case CMD_CLEARCF:     return cmd_do_clearcf(hal, cmd->id, argc, argv);
+        case CMD_SETMODE:     return cmd_do_setmode(hal, cmd->id, argc, argv);
+        case CMD_BYTE0:       return cmd_do_byte0(hal, cmd->id, argc, argv);
         case CMD_FAULT_RESET: return cmd_do_fault_reset(hal, cmd->id, argc, argv);
         case CMD_REBOOT:   return cmd_do_reboot(hal, cmd->id, argc, argv);
         case CMD_HELP:     return cmd_do_help(hal, cmd->id, argc, argv);

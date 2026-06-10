@@ -388,6 +388,34 @@ int motor_hal_set_brake(motor_hal_t *hal, uint8_t node_id, bool release);
 int motor_hal_quick_stop(motor_hal_t *hal, uint8_t node_id);
 
 /* ============================================================================
+ * 5a. PDO Byte0 — 实时控制字节
+ *
+ *   Byte0: [7]Enable [6]BUS_ON [5]ClearErr [4:1]Mode [0]Rsvd
+ *   SDO 不碰 PDO, PDO 不碰 SDO。
+ *
+ *   bit5 清错建议流程 (由上层决策):
+ *     1. motor_hal_get_feedback → fb.error_code
+ *     2. 判断错误: 过温→等降温; 过流→先失能; 其他→直接清除
+ *     3. motor_hal_pdo_clear_fault → bit5 脉冲, 下一帧自动清0
+ *
+ *   推荐用法:
+ *     startup → pdo_enable + pdo_set_mode → 控制循环(不碰Byte0)
+ *     急停    → pdo_estop
+ *     恢复    → pdo_recover
+ * ============================================================================ */
+
+int motor_hal_pdo_enable(motor_hal_t *hal, uint8_t node_id);
+int motor_hal_pdo_disable(motor_hal_t *hal, uint8_t node_id);
+int motor_hal_pdo_bus_on(motor_hal_t *hal, uint8_t node_id);
+int motor_hal_pdo_bus_off(motor_hal_t *hal, uint8_t node_id);
+int motor_hal_pdo_clear_fault(motor_hal_t *hal, uint8_t node_id);
+int motor_hal_pdo_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode);
+int motor_hal_pdo_estop(motor_hal_t *hal, uint8_t node_id);
+int motor_hal_pdo_recover(motor_hal_t *hal, uint8_t node_id);
+int motor_hal_pdo_set_byte0(motor_hal_t *hal, uint8_t node_id, uint8_t byte0);
+int motor_hal_pdo_get_byte0(motor_hal_t *hal, uint8_t node_id, uint8_t *byte0);
+
+/* ============================================================================
  * 5. 模式与参数配置 — 通过 SDO 读写电机参数 (同步阻塞, 50~200ms)
  *
  *   这类函数通过 SDO 协议与驱动板通信。

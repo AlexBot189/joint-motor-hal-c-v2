@@ -45,6 +45,13 @@ enum {
     /* PDO 实时控制 */
     CMD_PDO, CMD_MULTI, CMD_MIT,
 
+    /* PDO Byte0 控制 */
+    CMD_PDO_ENABLE, CMD_PDO_DISABLE,
+    CMD_BUS_ON, CMD_BUS_OFF,
+    CMD_ESTOP, CMD_RECOVER,
+    CMD_CLEARCF, CMD_SETMODE,
+    CMD_BYTE0,
+
     /* 其他系统 */
     CMD_FAULT_RESET, CMD_REBOOT,
     CMD_STOP, CMD_HELP, CMD_PROBE,
@@ -112,6 +119,17 @@ int cmd_do_rpdo_quick(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_pdo(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_multi(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_mit(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+
+/* PDO Byte0 控制 */
+int cmd_do_pdo_enable(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_pdo_disable(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_bus_on(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_bus_off(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_estop(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_recover(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_clearcf(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_setmode(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_byte0(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 
 /* 其他 */
 int cmd_do_help(motor_hal_t *hal, int cmd_id, int argc, char **argv);

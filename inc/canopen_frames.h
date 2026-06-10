@@ -83,6 +83,17 @@ void canopen_custom_pdo_build(uint8_t node, motor_mode_t mode,
                               int16_t feedforward,
                               canfd_frame_t *f);
 
+/**
+ * @brief 构造自定义单轴 PDO (u8 Byte0 版本)
+ *
+ * 直接传预构建的 Byte0 值, 帧构造层不解析 bit 含义。
+ * 推荐控制循环使用此版本, Byte0 由 motor 内部维护。
+ */
+void canopen_custom_pdo_build_u8(uint8_t node, uint8_t byte0,
+                                  int16_t target1, uint16_t target2,
+                                  int16_t feedforward,
+                                  canfd_frame_t *f);
+
 /* =====================================================
  * MIT 模式 PDO (9字节, COB=0x110+ID)
  * ===================================================== */
@@ -92,6 +103,12 @@ void canopen_mit_pdo_build(uint8_t node, motor_mode_t mode,
                            uint16_t position, uint16_t velocity,
                            uint16_t kp, uint16_t kd, int16_t torque,
                            canfd_frame_t *f);
+
+/** @brief MIT PDO 帧构造 (u8 Byte0 版本) */
+void canopen_mit_pdo_build_u8(uint8_t node, uint8_t byte0,
+                               uint16_t position, uint16_t velocity,
+                               uint16_t kp, uint16_t kd, int16_t torque,
+                               canfd_frame_t *f);
 
 /* =====================================================
  * 多轴广播 (64字节, COB=0x200)

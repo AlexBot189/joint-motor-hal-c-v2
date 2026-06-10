@@ -38,6 +38,15 @@ void pdo_ctrl_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
     can_driver_send(drv, &f);
 }
 
+void pdo_ctrl_send_raw(can_driver_t *drv, uint8_t node, uint8_t byte0,
+                        int16_t target1, uint16_t target2, int16_t feedforward)
+{
+    canfd_frame_t f;
+    canopen_custom_pdo_build_u8(node, byte0, target1, target2, feedforward, &f);
+    DUMP("TX", &f);
+    can_driver_send(drv, &f);
+}
+
 void pdo_mit_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
                   bool enable, bool release_brake, bool clear_err,
                   uint16_t position, uint16_t velocity,
@@ -46,6 +55,16 @@ void pdo_mit_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
     canfd_frame_t f;
     canopen_mit_pdo_build(node, mode, enable, release_brake, clear_err,
                           position, velocity, kp, kd, torque, &f);
+    DUMP("TX", &f);
+    can_driver_send(drv, &f);
+}
+
+void pdo_mit_send_raw(can_driver_t *drv, uint8_t node, uint8_t byte0,
+                       uint16_t position, uint16_t velocity,
+                       uint16_t kp, uint16_t kd, int16_t torque)
+{
+    canfd_frame_t f;
+    canopen_mit_pdo_build_u8(node, byte0, position, velocity, kp, kd, torque, &f);
     DUMP("TX", &f);
     can_driver_send(drv, &f);
 }

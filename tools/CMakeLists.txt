@@ -37,6 +37,7 @@ add_executable(motor_tool
     cmd_pdo.c
     cmd_rpdo.c
     cmd_pdo_ctrl.c
+    cmd_byte0.c
     cmd_probe.c
 )
 
