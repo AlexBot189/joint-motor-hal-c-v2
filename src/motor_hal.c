@@ -461,7 +461,6 @@ int motor_hal_set_velocity(motor_hal_t *hal, uint8_t node_id, float rpm_motor)
     bool enabled = m ? m->enabled : false;
     uint16_t accel = m ? m->config.profile_accel : 0;
     uint8_t b0 = m ? _consume_pdo_byte0(m) : 0;
-    if (m) { b0 = (b0 & ~PDO_BYTE0_MODE_MASK) | pdo_byte0_mode_part(MOTOR_MODE_PROFILE_VEL); m->pdo_byte0 = b0; }
     pthread_mutex_unlock(&hal->lock);
 
     if (!m) return -ENOENT;
