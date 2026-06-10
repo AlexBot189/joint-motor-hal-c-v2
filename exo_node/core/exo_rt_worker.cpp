@@ -198,7 +198,7 @@ void ExoRtWorker::ProcessMailbox()
         int mcount = 0;
         uint8_t b0;
 
-        if (motor_hal_pdo_get_byte0(m_hal, cmd0.motor_id, &b0) == 0) {
+        if (motor_hal_pdo_consume_byte0(m_hal, cmd0.motor_id, &b0) == 0) {
             mcmds[mcount].node_id       = cmd0.motor_id;
             mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
             mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
@@ -208,7 +208,7 @@ void ExoRtWorker::ProcessMailbox()
             mcmds[mcount].feedforward   = (int16_t)cmd0.feedforward;
             mcount++;
         }
-        if (motor_hal_pdo_get_byte0(m_hal, cmd1.motor_id, &b0) == 0) {
+        if (motor_hal_pdo_consume_byte0(m_hal, cmd1.motor_id, &b0) == 0) {
             mcmds[mcount].node_id       = cmd1.motor_id;
             mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
             mcmds[mcount].enable        = pdo_byte0_get_enable(b0);

@@ -415,6 +415,17 @@ int motor_hal_pdo_recover(motor_hal_t *hal, uint8_t node_id);
 int motor_hal_pdo_set_byte0(motor_hal_t *hal, uint8_t node_id, uint8_t byte0);
 int motor_hal_pdo_get_byte0(motor_hal_t *hal, uint8_t node_id, uint8_t *byte0);
 
+/**
+ * @brief 消费 pdo_byte0 — 读当前值并自动处理 clr_err 脉冲
+ *
+ * 与 motor_hal_pdo_get_byte0 的区别:
+ *   本函数在读的同时自动清除 bit5 (如果 clr_err_pending=true),
+ *   保证 clr_err 脉冲的单帧语义。
+ *
+ *   推荐控制路径使用此函数代替 get_byte0。
+ */
+int motor_hal_pdo_consume_byte0(motor_hal_t *hal, uint8_t node_id, uint8_t *byte0);
+
 /* ============================================================================
  * 5. 模式与参数配置 — 通过 SDO 读写电机参数 (同步阻塞, 50~200ms)
  *

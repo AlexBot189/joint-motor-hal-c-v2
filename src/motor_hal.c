@@ -716,6 +716,17 @@ int motor_hal_pdo_get_byte0(motor_hal_t *hal, uint8_t node_id, uint8_t *byte0)
     return 0;
 }
 
+int motor_hal_pdo_consume_byte0(motor_hal_t *hal, uint8_t node_id, uint8_t *byte0)
+{
+    if (!hal || !byte0) return -EINVAL;
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
+    *byte0 = _consume_pdo_byte0(m);  /* 自动清除 clr_err 脉冲 */
+    pthread_mutex_unlock(&hal->lock);
+    return 0;
+}
+
 /* =====================================================
  * 公共 API: 模式 / 参数 / PID
  * ===================================================== */
