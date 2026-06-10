@@ -127,6 +127,9 @@ typedef struct {
     /* PDO Byte0 — 仅由 PDO API 管理, SDO 不碰 */
     uint8_t  pdo_byte0;         /* Byte0 持久值, 默认 0x00 */
     bool     clr_err_pending;   /* bit5 脉冲标志 */
+
+    /* heartbeat 状态缓存 — 只在变化时打印 */
+    uint8_t  last_nmt_state;    /* 上次心跳 NMT 状态 */
 } motor_node_t;
 
 /* =====================================================
@@ -1118,9 +1121,16 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
                 fprintf(stderr, "  → WARN: Bootup node=%d not registered\n", node);
             }
         } else {
-            const char *st = motor_utils_nmt_state_str(f->data[0]);
-            fprintf(stderr, "  → Heartbeat state=%s (0x%02X)\n",
-                    st ? st : "?", f->data[0]);
+            /* 心跳帧: 只在 NMT 状态变化时打印 */
+            uint8_t node = canopen_extract_node(f->id, COB_BOOTUP_BASE);
+            motor_node_t *m = _find_motor(hal, node);
+            uint8_t cur_st = f->data[0];
+            if (m && cur_st != m->last_nmt_state) {
+                m->last_nmt_state = cur_st;
+                const char *st = motor_utils_nmt_state_str(cur_st);
+                fprintf(stderr, "  → Heartbeat node=%d state=%s (0x%02X)\n",
+                        node, st ? st : "?", cur_st);
+            }
         }
         break;
     }
