@@ -162,58 +162,72 @@ void ExoRtWorker::ProcessMailbox()
         m_pending_state = STATE_RUNNING;  /* RT 线程只设标志, 不写 shm->node_state */
     }
 
-    /* ── 读取双电机命令 (值拷贝, snapshot 协议保证安全) ── */
+    /* ── 处理双电机命令 ── */
     motor_command_t cmd0 = m_shm->mailbox.cmd[0];
     motor_command_t cmd1 = m_shm->mailbox.cmd[1];
     m_last_seq = begin;
 
-    /* ── 构造 multi_axis_cmd_t (一次广播发完双电机) ── */
-    multi_axis_cmd_t mcmds[EXO_MOTOR_COUNT] = {};
-    uint8_t mcount = 0;
-
+    /* ── 先处理 Byte0 控制命令 (改 pdo_byte0, 不发 target) ── */
     for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
         motor_command_t c = (i == 0) ? cmd0 : cmd1;
         uint8_t mid = c.motor_id;
-        if (mid < 1 || mid > 2) continue;   /* 无效 motor_id */
+        if (mid < 1) continue;
 
-        auto& mc = mcmds[mcount];
-        mc.node_id       = mid;
-        mc.enable        = true;
-        mc.release_brake = true;
-        mc.clear_error   = false;
+        switch (c.cmd) {
+        case EXO_CMD_ENABLE:
+            motor_hal_pdo_enable(m_hal, mid); break;
+        case EXO_CMD_DISABLE:
+            motor_hal_pdo_disable(m_hal, mid); break;
+        case EXO_CMD_ESTOP:
+            motor_hal_pdo_estop(m_hal, mid); break;
+        case EXO_CMD_RECOVER:
+            motor_hal_pdo_recover(m_hal, mid); break;
+        case EXO_CMD_SET_MODE:
+            motor_hal_pdo_set_mode(m_hal, mid, (motor_mode_t)c.value); break;
+        case EXO_CMD_CLEAR_FAULT:
+            motor_hal_pdo_clear_fault(m_hal, mid); break;
+        default: break;
+        }
+    }
+
+    /* ── 再处理控制命令 (通过已设好的 pdo_byte0 发控制帧) ── */
+    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
+        motor_command_t c = (i == 0) ? cmd0 : cmd1;
+        uint8_t mid = c.motor_id;
+        if (mid < 1 || mid > 2) continue;
 
         switch (c.cmd) {
         case EXO_CMD_TORQUE:
-            mc.mode    = MOTOR_MODE_CURRENT;
-            mc.target1 = (int16_t)c.value;   /* mA */
+            motor_hal_set_torque(m_hal, mid, (int16_t)c.value);
             break;
         case EXO_CMD_SPEED:
-            mc.mode    = MOTOR_MODE_PROFILE_VEL;
-            mc.target1 = (int16_t)(c.value / 100);  /* rpm×100 → rpm */
+            motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f);
             break;
         case EXO_CMD_POS:
-            mc.mode    = MOTOR_MODE_CSP;
-            mc.target1 = motor_deg_to_counts((float)c.value / 100.0f);
+            motor_hal_set_position(m_hal, mid, (float)c.value / 100.0f);
             break;
-        default:
-            mc.mode    = MOTOR_MODE_CURRENT;
-            mc.target1 = 0;
+        case EXO_CMD_PP:
+            motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_PROFILE_POS,
+                               (int16_t)c.value, (uint16_t)c.value2,
+                               (int16_t)c.feedforward);
             break;
+        case EXO_CMD_MIT:
+            motor_hal_mit_control(m_hal, mid,
+                (float)(c.mit_pos - 32768) / 32768.0f * 180.0f,  /* pos */
+                (float)((int16_t)(c.mit_vel << 4)) / 16.0f,       /* vel */
+                (float)c.mit_kp / 100.0f,
+                (float)c.mit_kd / 100.0f,
+                (float)((int16_t)(c.mit_torque << 4)) / 16.0f);   /* torque */
+            break;
+        default: break;  /* Byte0 commands are no-op here */
         }
-
-        mcount++;
     }
 
-    if (mcount > 0) {
-        /* ── T5: 读 mailbox → 即将发 PDO ── */
-        m_tracer.mark_mailbox_read();
+    /* ── T7: 读 mailbox 完成 ── */
+    m_tracer.mark_mailbox_read();
 
-        /* PDO 广播 — 一帧 64B CANFD 发完所有电机 */
-        motor_hal_multi_ctrl(m_hal, mcmds, mcount);
-
-        /* ── T6: PDO 发出 ── */
-        m_tracer.mark_pdo_sent();
-    }
+    /* T8: PDO 已在上面每条命令中发出 */
+    m_tracer.mark_pdo_sent();
 }
 
 /* ════════════════════════════════════════════════════════════════════
