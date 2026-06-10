@@ -165,6 +165,21 @@ static motor_node_t* _find_motor(motor_hal_t *hal, uint8_t node_id)
 }
 
 /* =====================================================
+ * 内部: 读 pdo_byte0 + clr_err 脉冲自动清除 (锁内调用)
+ * ===================================================== */
+
+static uint8_t _read_pdo_byte0(motor_node_t *m)
+{
+    uint8_t b0 = m->pdo_byte0;
+    if (m->clr_err_pending) {
+        b0 &= ~PDO_BYTE0_CLR_ERR;
+        m->pdo_byte0 = b0;
+        m->clr_err_pending = false;
+    }
+    return b0;
+}
+
+/* =====================================================
  * 内部: 状态迁移
  * ===================================================== */
 
@@ -426,18 +441,11 @@ int motor_hal_set_position(motor_hal_t *hal, uint8_t node_id, float angle_deg)
     motor_node_t *m = _find_motor(hal, node_id);
     bool enabled = m ? m->enabled : false;
     uint16_t accel = m ? m->config.profile_accel : 0;
+    uint8_t b0 = m ? _read_pdo_byte0(m) : 0;  /* 锁内读, clr_err脉冲自动清除 */
     pthread_mutex_unlock(&hal->lock);
 
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
-
-    /* 脉冲清除: 上一轮置了 bit5, 本轮自动清除 */
-    uint8_t b0 = m->pdo_byte0;
-    if (m->clr_err_pending) {
-        b0 &= ~PDO_BYTE0_CLR_ERR;
-        m->pdo_byte0 = b0;
-        m->clr_err_pending = false;
-    }
 
     pdo_ctrl_send_raw(hal->drv, node_id, b0, counts, accel, 0);
     return 0;
@@ -451,13 +459,11 @@ int motor_hal_set_velocity(motor_hal_t *hal, uint8_t node_id, float rpm_motor)
     motor_node_t *m = _find_motor(hal, node_id);
     bool enabled = m ? m->enabled : false;
     uint16_t accel = m ? m->config.profile_accel : 0;
+    uint8_t b0 = m ? _read_pdo_byte0(m) : 0;
     pthread_mutex_unlock(&hal->lock);
 
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
-
-    uint8_t b0 = m->pdo_byte0;
-    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->pdo_byte0 = b0; m->clr_err_pending = false; }
 
     pdo_ctrl_send_raw(hal->drv, node_id, b0, (int16_t)rpm_motor, accel, 0);
     return 0;
@@ -470,13 +476,11 @@ int motor_hal_set_torque(motor_hal_t *hal, uint8_t node_id, int16_t current_ma)
     pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
     bool enabled = m ? m->enabled : false;
+    uint8_t b0 = m ? _read_pdo_byte0(m) : 0;
     pthread_mutex_unlock(&hal->lock);
 
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
-
-    uint8_t b0 = m->pdo_byte0;
-    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->pdo_byte0 = b0; m->clr_err_pending = false; }
 
     pdo_ctrl_send_raw(hal->drv, node_id, b0, current_ma, 0, 0);
     return 0;
@@ -491,6 +495,7 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
     bool enabled = m ? m->enabled : false;
+    uint8_t b0 = m ? _read_pdo_byte0(m) : 0;
     pthread_mutex_unlock(&hal->lock);
 
     if (!m) return -ENOENT;
@@ -501,9 +506,6 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     uint16_t kp_v = (uint16_t)(kp * 100.0f);
     uint16_t kd_v = (uint16_t)(kd * 100.0f);
     int16_t  torq = (int16_t)(torque * 1000.0f);
-
-    uint8_t b0 = m->pdo_byte0;
-    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->pdo_byte0 = b0; m->clr_err_pending = false; }
 
     pdo_mit_send_raw(hal->drv, node_id, b0, pos, vel, kp_v, kd_v, torq);
     return 0;
@@ -518,16 +520,13 @@ int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,
     pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
     bool enabled = m ? m->enabled : false;
+    /* 传入 mode 更新 Byte0 mode 字段, 保持其他 bit 不变 */
+    uint8_t b0 = m ? _read_pdo_byte0(m) : 0;
+    if (m) { b0 = (b0 & ~PDO_BYTE0_MODE_MASK) | pdo_byte0_mode_part(mode); m->pdo_byte0 = b0; }
     pthread_mutex_unlock(&hal->lock);
 
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
-
-    /* 传入 mode 参数更新 Byte0 mode 字段, 保持其他 bit 不变 */
-    uint8_t b0 = m->pdo_byte0;
-    b0 = (b0 & ~PDO_BYTE0_MODE_MASK) | pdo_byte0_mode_part(mode);
-    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->clr_err_pending = false; }
-    m->pdo_byte0 = b0;
 
     pdo_ctrl_send_raw(hal->drv, node_id, b0, target1, target2, feedforward);
     return 0;
@@ -540,12 +539,10 @@ int motor_hal_stop(motor_hal_t *hal, uint8_t node_id)
     pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
     bool enabled = m ? m->enabled : false;
+    uint8_t b0 = m ? _read_pdo_byte0(m) : 0;
     pthread_mutex_unlock(&hal->lock);
 
     if (!m || !enabled) return 0;
-
-    uint8_t b0 = m->pdo_byte0;
-    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->pdo_byte0 = b0; m->clr_err_pending = false; }
 
     pdo_ctrl_send_raw(hal->drv, node_id, b0, 0, 0, 0);
     return 0;
@@ -558,18 +555,18 @@ int motor_hal_set_brake(motor_hal_t *hal, uint8_t node_id, bool release)
     pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
     bool enabled = m ? m->enabled : false;
+    uint8_t b0 = m ? _read_pdo_byte0(m) : 0;
+    if (m) {
+        if (release) b0 |=  PDO_BYTE0_BUS_ON;
+        else         b0 &= ~PDO_BYTE0_BUS_ON;
+        m->pdo_byte0 = b0;
+    }
     pthread_mutex_unlock(&hal->lock);
 
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
 
-    /* bit6 母线电压控制 (当前电机不实现机械抱闸, 此位预留) */
-    uint8_t b0 = m->pdo_byte0;
-    if (release) b0 |=  PDO_BYTE0_BUS_ON;
-    else         b0 &= ~PDO_BYTE0_BUS_ON;
-    if (m->clr_err_pending) { b0 &= ~PDO_BYTE0_CLR_ERR; m->clr_err_pending = false; }
-    m->pdo_byte0 = b0;
-
+    /* bit6 母线电压 (当前电机不实现机械抱闸, 预留) */
     pdo_ctrl_send_raw(hal->drv, node_id, b0, 0, 0, 0);
     return 0;
 }

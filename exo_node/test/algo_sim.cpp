@@ -68,6 +68,11 @@ static void cmd_set(exo_shm_t *shm, int idx, uint8_t motor_id,
     shm->mailbox.cmd[idx].value        = value;
     shm->mailbox.cmd[idx].value2       = value2;
     shm->mailbox.cmd[idx].feedforward  = feedforward;
+    shm->mailbox.cmd[idx].mit_pos      = 0;
+    shm->mailbox.cmd[idx].mit_vel      = 0;
+    shm->mailbox.cmd[idx].mit_kp       = 0;
+    shm->mailbox.cmd[idx].mit_kd       = 0;
+    shm->mailbox.cmd[idx].mit_torque   = 0;
     shm->mailbox.cmd[idx].timestamp_us = ts;
 }
 

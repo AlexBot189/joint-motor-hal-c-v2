@@ -212,12 +212,17 @@ void ExoRtWorker::ProcessMailbox()
                                (int16_t)c.feedforward);
             break;
         case EXO_CMD_MIT:
+            /* MIT 值转 float (uint16→float→uint16, 经 motor_hal_mit_control 编码)
+             * mit_pos [0,65535] → deg: pos / 65535 * 360 - 180
+             * mit_vel [0,4095] → 12bit signed: (int16)(vel<<4)/16 = RPM
+             * mit_kp/kd [0,4095] → ×0.01
+             * mit_torque [0,4095] → 12bit signed: (int16)(tq<<4)/16 */
             motor_hal_mit_control(m_hal, mid,
-                (float)(c.mit_pos - 32768) / 32768.0f * 180.0f,  /* pos */
-                (float)((int16_t)(c.mit_vel << 4)) / 16.0f,       /* vel */
+                (float)c.mit_pos * (360.0f / 65535.0f) - 180.0f,
+                (float)((int16_t)(c.mit_vel << 4)) / 16.0f,
                 (float)c.mit_kp / 100.0f,
                 (float)c.mit_kd / 100.0f,
-                (float)((int16_t)(c.mit_torque << 4)) / 16.0f);   /* torque */
+                (float)((int16_t)(c.mit_torque << 4)) / 16.0f);
             break;
         default: break;  /* Byte0 commands are no-op here */
         }
@@ -411,13 +416,18 @@ void ExoRtWorker::_safe_torque_zero_all()
 {
     if (!m_hal) return;
 
+    /* 同步 pdo_byte0 mode 字段, 防止后续控制循环模式不一致 */
+    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
+        motor_hal_pdo_set_mode(m_hal, (uint8_t)(i + 1), MOTOR_MODE_CURRENT);
+    }
+
     multi_axis_cmd_t cmds[EXO_MOTOR_COUNT] = {};
     for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
         cmds[i].node_id       = (uint8_t)(i + 1);
         cmds[i].mode          = MOTOR_MODE_CURRENT;
         cmds[i].enable        = true;
         cmds[i].release_brake = true;
-        cmds[i].target1       = 0;  /* torque=0 */
+        cmds[i].target1       = 0;
     }
     motor_hal_multi_ctrl(m_hal, cmds, EXO_MOTOR_COUNT);
 }
@@ -426,15 +436,17 @@ void ExoRtWorker::_safe_disable_all()
 {
     if (!m_hal) return;
 
-    /* ★ 第一步: PDO 降险
-     * enable=false + torque=0 → 立即切断功率输出
-     * 不触发 DS402 状态机, 但电机会停止出力.
-     * 第二步 SDO 0x6040=0x06 由主循环补发 (非 RT 路径). */
+    /* pdo_byte0 同步: 防止下一帧控制循环逆转安全动作 */
+    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
+        motor_hal_pdo_estop(m_hal, (uint8_t)(i + 1));
+    }
+
+    /* 立即发一帧 PDO enable=false + torque=0 */
     multi_axis_cmd_t cmds[EXO_MOTOR_COUNT] = {};
     for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
         cmds[i].node_id       = (uint8_t)(i + 1);
         cmds[i].mode          = MOTOR_MODE_CURRENT;
-        cmds[i].enable        = false;  /* 停机 */
+        cmds[i].enable        = false;
         cmds[i].release_brake = false;
         cmds[i].target1       = 0;
     }
