@@ -416,18 +416,13 @@ void ExoRtWorker::_safe_torque_zero_all()
 {
     if (!m_hal) return;
 
-    /* 同步 pdo_byte0 mode 字段, 防止后续控制循环模式不一致 */
-    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
-        motor_hal_pdo_set_mode(m_hal, (uint8_t)(i + 1), MOTOR_MODE_CURRENT);
-    }
-
     multi_axis_cmd_t cmds[EXO_MOTOR_COUNT] = {};
     for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
         cmds[i].node_id       = (uint8_t)(i + 1);
         cmds[i].mode          = MOTOR_MODE_CURRENT;
         cmds[i].enable        = true;
         cmds[i].release_brake = true;
-        cmds[i].target1       = 0;
+        cmds[i].target1       = 0;  /* torque=0 */
     }
     motor_hal_multi_ctrl(m_hal, cmds, EXO_MOTOR_COUNT);
 }
@@ -436,12 +431,10 @@ void ExoRtWorker::_safe_disable_all()
 {
     if (!m_hal) return;
 
-    /* pdo_byte0 同步: 防止下一帧控制循环逆转安全动作 */
-    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
-        motor_hal_pdo_estop(m_hal, (uint8_t)(i + 1));
-    }
-
-    /* 立即发一帧 PDO enable=false + torque=0 */
+    /* PDO 降险: 一帧 enable=false + torque=0
+     * 电机记住此状态直到收到新 PDO, 后续控制循环不覆盖。
+     * 算法失联时 ProcessMailbox 因 seq 不变直接 return,
+     * 不会发新 PDO。算法恢复后通过 EXO_CMD_RECOVER/ENABLE 恢复。 */
     multi_axis_cmd_t cmds[EXO_MOTOR_COUNT] = {};
     for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
         cmds[i].node_id       = (uint8_t)(i + 1);
