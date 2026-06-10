@@ -77,14 +77,26 @@ int motor_startup_full(can_driver_t *drv, const motor_config_t *cfg,
     /* 1. 快速试探 Bootup (500ms, 不论结果都继续) */
     motor_startup_wait_bootup(drv, cfg->node_id, 500, bootup_flag);
 
-    /* 1.5 NMT Start — 从 Stopped/Pre-Operational 切到 Operational
-     *     必须在所有 SDO 操作之前, 否则驱动板在 Stopped 状态下不响应 SDO */
+    /* 1.5 唤醒电机: NMT Reset → 等Bootup → NMT Start
+     *     驱动板在 Stopped 状态可能不响应单个 NMT Start,
+     *     先 Reset 让驱动板重新初始化再 Start 更可靠 */
     {
         canfd_frame_t nmt_f;
+        int ret;
+
+        /* NMT Reset Node — 让驱动板复位, 从 Initialisation 开始 */
+        canopen_nmt_build(NMT_CMD_RESET_NODE, cfg->node_id, &nmt_f);
+        ret = can_driver_send(drv, &nmt_f);
+        fprintf(stderr, "[startup] motor %d NMT Reset (ret=%d)\n", cfg->node_id, ret);
+
+        /* 等 Bootup */
+        motor_startup_wait_bootup(drv, cfg->node_id, 3000, bootup_flag);
+
+        /* NMT Start → Operational */
         canopen_nmt_build(NMT_CMD_START, cfg->node_id, &nmt_f);
-        can_driver_send(drv, &nmt_f);
-        fprintf(stderr, "[startup] motor %d NMT Start → Operational\n", cfg->node_id);
-        usleep(10000);  /* 等驱动板切状态 */
+        ret = can_driver_send(drv, &nmt_f);
+        fprintf(stderr, "[startup] motor %d NMT Start → Operational (ret=%d)\n", cfg->node_id, ret);
+        usleep(10000);
     }
 
     /* 2. SDO 同步配置心跳 ★ 用同步 SDO 等响应:
