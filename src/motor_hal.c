@@ -228,21 +228,19 @@ void motor_hal_destroy(motor_hal_t *hal)
 {
     if (!hal) return;
 
-    /* 1. 先脱使能所有电机 (需要 recv 线程运行才能收到 SDO 响应) */
-    for (int i = 0; i < hal->motor_count; i++) {
-        if (hal->motors[i].enabled) {
-            sdo_write_simple(hal->drv, hal->motors[i].node_id,
-                             OD_CONTROLWORD, 0x00, CW_DISABLE_VOLTAGE, 2);
-        }
-    }
+    /* ★ 不发 SDO CW_DISABLE_VOLTAGE:
+     *   该命令会让驱动板进入 Stopped 状态,
+     *   之后 NMT Start/Reset 都不响应, 只能断电重启。
+     *   直接关 CAN 接口, 驱动板保持当前状态,
+     *   下次 daemon 重启后 startup 正常工作。 */
 
-    /* 2. 停止接收线程 */
+    /* 1. 停止接收线程 */
     if (hal->recv_running) {
         hal->recv_running = false;
         pthread_join(hal->recv_thread, NULL);
     }
 
-    /* 2.5 停止 SYNC 定时器 */
+    /* 2. 停止 SYNC 定时器 */
     if (hal->sync_running) {
         hal->sync_running = false;
         pthread_join(hal->sync_thread, NULL);
