@@ -280,7 +280,7 @@ int daemon_start(const char *iface)
     /* 8. 清理 */
     close(g_listen_fd);
     unlink(MOTOR_TOOL_SOCK_PATH);
-    motor_hal_nmt_broadcast(g_hal, NMT_CMD_STOP);
+    /* ★ 不发 NMT_STOP: 会让驱动板进入不可恢复的 Stopped 状态 */
     tool_cleanup();
 
     printf("motor_tool daemon stopped.\n");
