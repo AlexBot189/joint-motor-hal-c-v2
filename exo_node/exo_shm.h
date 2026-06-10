@@ -114,6 +114,7 @@ typedef enum {
     EXO_CMD_POS      = 3,       /* 位置模式, value=°×100                                */
     EXO_CMD_MIT      = 4,       /* MIT 阻抗控制                                          */
     EXO_CMD_PP       = 5,       /* 轮廓位置模式 PP                                       */
+    EXO_CMD_CSV      = 6,       /* 循环同步速度 CSV, value=RPM×100                          */
     /* PDO Byte0 控制 (不发 target, 只改 Byte0 状态) */
     EXO_CMD_ENABLE   = 10,      /* PDO使能 (Byte0 bit7=1)                                */
     EXO_CMD_DISABLE  = 11,      /* PDO失能 (Byte0 bit7=0)                                */

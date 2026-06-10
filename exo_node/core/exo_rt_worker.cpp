@@ -203,6 +203,9 @@ void ExoRtWorker::ProcessMailbox()
         case EXO_CMD_SPEED:
             motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f);
             break;
+        case EXO_CMD_CSV:
+            motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f);
+            break;
         case EXO_CMD_POS:
             motor_hal_set_position(m_hal, mid, (float)c.value / 100.0f);
             break;
