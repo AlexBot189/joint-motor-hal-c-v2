@@ -114,9 +114,13 @@ bool CanDispatcher::DestroyDispatcher()
     if (!m_running) return true;
     m_running = false;
 
-    /* 1. NMT 广播 Stop */
+    /* 1. PDO 安全停机: 先设 pdo_byte0=estop, 再发 PDO 帧让电机停止
+     *    (替代 NMT_STOP — 避免驱动板进入不可恢复的 Stopped 状态) */
     if (m_hal) {
-        motor_hal_nmt_broadcast(m_hal, NMT_CMD_STOP);
+        for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; id++) {
+            motor_hal_pdo_estop(m_hal, id);        // pdo_byte0 enable=0, bus=0
+            motor_hal_set_torque(m_hal, id, 0);     // 发 PDO 帧: enable=0, torque=0
+        }
     }
 
     /* 2. 停止 recv + 销毁 HAL */
