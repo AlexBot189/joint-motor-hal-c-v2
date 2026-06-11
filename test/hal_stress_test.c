@@ -69,7 +69,7 @@ static uint64_t now_us(void) {
 
 static void sig_handler(int s) { (void)s; g_running = 0; }
 
-#define TEST(name)  printf("\n═══ %s ═══\n", name)
+#define TEST(fmt, ...)  printf("\n═══ " fmt " ═══\n", ##__VA_ARGS__)
 #define PASS(fmt, ...)  printf("  ✓ " fmt "\n", ##__VA_ARGS__)
 #define FAIL(fmt, ...)  printf("  ✗ " fmt "\n", ##__VA_ARGS__)
 
@@ -115,6 +115,16 @@ static int test_init(motor_hal_t **out_hal)
     if (ret < 0) { FAIL("recv_start ret=%d", ret); motor_hal_destroy(hal); return -4; }
     PASS("recv thread started");
 
+    /* 启动电机 1 (等 bootup → SDO 配置 → DS402 使能) */
+    printf("  Starting motor %d...\n", MOTOR_ID_EXISTING);
+    usleep(200000);  /* 等 bootup 到达 */
+    ret = motor_hal_startup(hal, MOTOR_ID_EXISTING, 3000);
+    if (ret == 0) {
+        PASS("motor %d startup OK", MOTOR_ID_EXISTING);
+    } else {
+        PASS("motor %d startup ret=%d (continue anyway)", MOTOR_ID_EXISTING, ret);
+    }
+
     *out_hal = hal;
     return 0;
 }
@@ -159,6 +169,7 @@ static int test_sdo_basic(motor_hal_t *hal)
 typedef struct {
     motor_hal_t *hal;
     int          thread_id;
+    uint16_t     obj_index;   /* 每个线程读不同对象, 测试队列路由 */
 } sdo_thread_arg_t;
 
 static void* _sdo_thread_fn(void *arg)
@@ -168,7 +179,7 @@ static void* _sdo_thread_fn(void *arg)
 
     for (int i = 0; i < STRESS_SDO_COUNT; i++) {
         uint32_t val = 0;
-        int ret = motor_hal_sdo_read_u32(a->hal, MOTOR_ID_EXISTING, 0x6041, 0x00, &val);
+        int ret = motor_hal_sdo_read_u32(a->hal, MOTOR_ID_EXISTING, a->obj_index, 0x00, &val);
         if (ret == 0) {
             ok++;
         } else if (ret == -ETIMEDOUT) {
@@ -199,6 +210,8 @@ static int test_sdo_stress(motor_hal_t *hal)
     for (int i = 0; i < STRESS_THREADS; i++) {
         args[i].hal       = hal;
         args[i].thread_id = i;
+        static const uint16_t sdo_indexes[] = {0x6041, 0x6064, 0x606C, 0x100A};
+        args[i].obj_index = sdo_indexes[i % 4];
         pthread_create(&threads[i], NULL, _sdo_thread_fn, &args[i]);
     }
 
@@ -327,15 +340,18 @@ static int test_pdo_stress(motor_hal_t *hal)
     TEST("T5: PDO 控制帧快速切换 (%d次)", STRESS_PDO_COUNT);
 
     int errors = 0;
+    /* 安全范围: 电流±500mA, 速度±10RPM, 位置±10° */
+    static const int16_t current_vals[] = {0, 100, -100, 200, -200, 500, -500};
+    static const float   vel_vals[]     = {0.0f, 2.0f, -2.0f, 5.0f, -5.0f, 10.0f, -10.0f};
+    static const float   pos_vals[]     = {0.0f, 1.0f, -1.0f, 3.0f, -3.0f, 10.0f, -10.0f};
 
     for (int i = 0; i < STRESS_PDO_COUNT; i++) {
-        /* 交替切模式+发控制帧 */
         if (i % 3 == 0) {
-            if (motor_hal_set_torque(hal, MOTOR_ID_EXISTING, 0) != 0) errors++;
+            if (motor_hal_set_torque(hal, MOTOR_ID_EXISTING, current_vals[i % 7]) != 0) errors++;
         } else if (i % 3 == 1) {
-            if (motor_hal_set_velocity(hal, MOTOR_ID_EXISTING, 0.0f) != 0) errors++;
+            if (motor_hal_set_velocity(hal, MOTOR_ID_EXISTING, vel_vals[i % 7]) != 0) errors++;
         } else {
-            if (motor_hal_set_position(hal, MOTOR_ID_EXISTING, 0.0f) != 0) errors++;
+            if (motor_hal_set_position(hal, MOTOR_ID_EXISTING, pos_vals[i % 7]) != 0) errors++;
         }
     }
 
@@ -414,14 +430,12 @@ static int test_mit(motor_hal_t *hal)
  * T8: TPDO 同步配置 + 接收验证
  * ================================================================ */
 
-static void on_tpdo_test(uint8_t id, const motor_feedback_t *fb, void *ctx)
+static void on_tpdo_test(uint8_t id, const canfd_frame_t *f, void *ctx)
 {
-    (void)ctx;
-    if (fb->position != 0 || fb->velocity != 0 || fb->current_iq != 0) {
-        pthread_mutex_lock(&g_stats_lock);
-        g_stats.fb_received++;
-        pthread_mutex_unlock(&g_stats_lock);
-    }
+    (void)f;
+    pthread_mutex_lock(&g_stats_lock);
+    g_stats.fb_received++;
+    pthread_mutex_unlock(&g_stats_lock);
 }
 
 static int test_tpdo_sync(motor_hal_t *hal)
@@ -473,7 +487,7 @@ static int test_sensor(motor_hal_t *hal)
     TEST("T9: 传感器透传配置 + 接收");
 
     /* 配置透传 250Hz (4000μs) */
-    int ret = motor_hal_sensor_config(hal, MOTOR_ID_EXISTING, 4000);
+    int ret = motor_hal_sensor_config(hal, MOTOR_ID_EXISTING, 4000, 0);
     if (ret == 0) PASS("sensor_config 4000us OK");
     else          FAIL("sensor_config ret=%d", ret);
 

@@ -121,8 +121,8 @@ int tool_reboot(int id)
 
 int tool_torque_sdo(int id, int ma)
 {
-    if (ma < 0 || ma > 20000) {
-        fprintf(stderr, "ERROR: current %d mA out of range (0~20000)\n", ma);
+    if (ma < -20000 || ma > 20000) {
+        fprintf(stderr, "ERROR: current %d mA out of range (-20000~20000)\n", ma);
         return -1;
     }
 
@@ -496,7 +496,7 @@ int tool_read_angle(int id)
     for (int i = 0; i < n; i++) {
         int32_t pos = motor_hal_get_position(g_hal, (uint8_t)ids[i]);
         float deg = motor_counts_to_deg((int16_t)pos);
-        printf("[%d] angle = %d counts = %.2f°\n", ids[i], pos, deg);
+        printf("[%d] angle = %.2f° (raw: %d counts)\n", ids[i], deg, pos);
     }
     return 0;
 }

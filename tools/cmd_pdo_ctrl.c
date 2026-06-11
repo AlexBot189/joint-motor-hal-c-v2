@@ -58,13 +58,13 @@ int cmd_do_pdo(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (argc < 4) {
         fprintf(stderr, "Usage: motor_tool pdo <id> <mode> <target> [acc_or_feedfwd]\n");
         fprintf(stderr, "  mode: pos / vel / cur / csp\n");
-        fprintf(stderr, "  pos: <deg>   vel: <rpm>   cur: <mA>   csp: <cnt>\n");
+        fprintf(stderr, "  pos: <deg>   vel: <rpm>   cur: <mA>   csp: <deg>\n");
         fprintf(stderr, "  [acc]: profile accel RPM/s (pos/vel mode only)\n");
         fprintf(stderr, "Examples:\n");
         fprintf(stderr, "  motor_tool pdo 1 pos 45           # 电机1: 45°\n");
         fprintf(stderr, "  motor_tool pdo 1 vel 50 1000      # 电机1: 50RPM acc=1000RPM/s\n");
         fprintf(stderr, "  motor_tool pdo 1 cur 1000         # 电机1: 1000mA\n");
-        fprintf(stderr, "  motor_tool pdo 1 csp 16384        # 电机1: CSP 16384cnt\n");
+        fprintf(stderr, "  motor_tool pdo 1 csp 90            # 电机1: CSP 90°\n");
         return -1;
     }
 
@@ -93,9 +93,10 @@ int cmd_do_pdo(motor_hal_t *hal, int cmd_id, int argc, char **argv)
         return ret;
 
     } else if (strcmp(mode_str, "csp") == 0) {
-        int16_t cnt = (int16_t)atoi(argv[4]);
+        float deg = (float)atof(argv[4]);
+        int16_t cnt = motor_deg_to_counts(deg);
         int ret = motor_hal_ctrl_raw(g_hal, (uint8_t)id, MOTOR_MODE_CSP, cnt, 0, 0);
-        if (ret == 0) printf("✓ Motor %d: PDO CSP=%d cnt\n", id, cnt);
+        if (ret == 0) printf("✓ Motor %d: PDO CSP=%.2f° (cnt=%d)\n", id, deg, cnt);
         else fprintf(stderr, "✗ Motor %d: PDO CSP failed (ret=%d)\n", id, ret);
         return ret;
     }
@@ -118,7 +119,7 @@ int cmd_do_multi(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (argc < 4) {
         fprintf(stderr, "Usage: motor_tool multi <mode> <id1:val1> [id2:val2] ...\n");
         fprintf(stderr, "  mode: pos / vel / cur / csp\n");
-        fprintf(stderr, "  pos: <deg>   vel: <rpm>   cur: <mA>   csp: <cnt>\n");
+        fprintf(stderr, "  pos: <deg>   vel: <rpm>   cur: <mA>   csp: <deg>\n");
         fprintf(stderr, "  Max 8 motors per command.\n");
         fprintf(stderr, "Examples:\n");
         fprintf(stderr, "  motor_tool multi pos 1:45 2:-45            # 双关节位置\n");
@@ -164,7 +165,7 @@ int cmd_do_multi(motor_hal_t *hal, int cmd_id, int argc, char **argv)
         } else if (strcmp(mode_str, "cur") == 0) {
             cmds[i].target1 = (int16_t)val;
         } else {
-            cmds[i].target1 = (int16_t)val;  /* csp: 直接用 cnt */
+            cmds[i].target1 = motor_deg_to_counts((float)val);  /* csp: 度→counts */
         }
     }
 
