@@ -168,6 +168,26 @@ static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
             g_sdo_queue.head = (g_sdo_queue.head + SDO_QUEUE_SIZE - 1) % SDO_QUEUE_SIZE;
             g_sdo_queue.count--;
 
+            /* 清掉同索引的残留重传帧
+             * 驱动板可能对同一查询先回正常值再补 Abort，
+             * 不清理则残留到下次查询产生迷惑日志 */
+            for (int i = 0; i < g_sdo_queue.count; i++) {
+                int qi = (g_sdo_queue.tail + i) % SDO_QUEUE_SIZE;
+                if (g_sdo_queue.frames[qi].id != expect_rx_id) continue;
+                uint16_t qidx = (uint16_t)g_sdo_queue.frames[qi].data[1]
+                              | ((uint16_t)g_sdo_queue.frames[qi].data[2] << 8);
+                if (qidx == expected_index) {
+                    for (int j = i; j < g_sdo_queue.count - 1; j++) {
+                        int s = (g_sdo_queue.tail + j + 1) % SDO_QUEUE_SIZE;
+                        int d = (g_sdo_queue.tail + j) % SDO_QUEUE_SIZE;
+                        memcpy(&g_sdo_queue.frames[d], &g_sdo_queue.frames[s], sizeof(canfd_frame_t));
+                    }
+                    g_sdo_queue.head = (g_sdo_queue.head + SDO_QUEUE_SIZE - 1) % SDO_QUEUE_SIZE;
+                    g_sdo_queue.count--;
+                    i--;
+                }
+            }
+
             pthread_mutex_unlock(&g_sdo_queue.mutex);
 
             /* 诊断: 打印 SDO 响应 */
