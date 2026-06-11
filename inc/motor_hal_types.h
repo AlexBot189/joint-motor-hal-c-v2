@@ -215,7 +215,7 @@ static inline uint8_t pdo_byte0_get_mode(uint8_t b)  { return (b & PDO_BYTE0_MOD
 
 /* Statusword 组合值 */
 #define SW_NOT_READY          (0x0000)
-#define SW_ON_DISABLED        (0x0040)
+#define SW_ON_DISABLED        (0x0060)
 #define SW_READY_TO_SW_ON     (0x0021)
 #define SW_SWITCHED_ON        (0x0023)
 #define SW_OP_ENABLED         (0x0027)

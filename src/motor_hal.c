@@ -608,6 +608,8 @@ int motor_hal_pdo_enable(motor_hal_t *hal, uint8_t node_id)
     motor_node_t *m = _find_motor(hal, node_id);
     if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
     m->pdo_byte0 |= PDO_BYTE0_ENABLE | PDO_BYTE0_BUS_ON;
+    m->enabled = true;
+    _set_state(hal, m, MOTOR_STATE_OP_ENABLED);
     pthread_mutex_unlock(&hal->lock);
     return 0;
 }
@@ -619,6 +621,7 @@ int motor_hal_pdo_disable(motor_hal_t *hal, uint8_t node_id)
     motor_node_t *m = _find_motor(hal, node_id);
     if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
     m->pdo_byte0 &= ~PDO_BYTE0_ENABLE;
+    m->enabled = false;
     pthread_mutex_unlock(&hal->lock);
     return 0;
 }
@@ -676,6 +679,7 @@ int motor_hal_pdo_estop(motor_hal_t *hal, uint8_t node_id)
     motor_node_t *m = _find_motor(hal, node_id);
     if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
     m->pdo_byte0 &= PDO_BYTE0_MODE_MASK;  /* enable=0, bus=0, 保留mode */
+    m->enabled = false;
     m->clr_err_pending = false;
     pthread_mutex_unlock(&hal->lock);
     return 0;
@@ -689,6 +693,7 @@ int motor_hal_pdo_recover(motor_hal_t *hal, uint8_t node_id)
     if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
     m->pdo_byte0 = (m->pdo_byte0 & PDO_BYTE0_MODE_MASK)
                  | PDO_BYTE0_ENABLE | PDO_BYTE0_BUS_ON;
+    m->enabled = true;
     m->clr_err_pending = false;
     pthread_mutex_unlock(&hal->lock);
     return 0;

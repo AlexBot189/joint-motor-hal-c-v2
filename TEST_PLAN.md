@@ -92,30 +92,32 @@ sleep 2
 | A1.4.8 | `motor_tool read mode 1` | 运行模式 |
 | A1.4.9 | `motor_tool read voltage 1` | 母线电压 (若已实现) |
 
-#### A1.5 SDO 控制命令 (安全值) (8项)
+#### A1.5 SDO 控制命令 (安全值) (6项)
 
 | # | 命令 | 验证 |
 |---|------|------|
-| A1.5.1 | `motor_tool mode 1 cur` | 切电流模式 |
-| A1.5.2 | `motor_tool torque 1 0` | 0mA — 安全 |
-| A1.5.3 | `motor_tool torque 1 100` | 100mA — 无负载不转 |
-| A1.5.4 | `motor_tool mode 1 pv` | 切速度模式 |
-| A1.5.5 | `motor_tool speed 1 0` | 0 RPM |
-| A1.5.6 | `motor_tool accel 1 5000` | 设加速度 5000 RPM/s |
-| A1.5.7 | `motor_tool mode 1 pp` | 切位置模式 |
-| A1.5.8 | `motor_tool abs 1 0` | 目标 0° |
+| A1.5.1 | `motor_tool torque 1 0` | 自动切电流模式, 0mA |
+| A1.5.2 | `motor_tool torque 1 100` | 100mA — 无负载不转 |
+| A1.5.3 | `motor_tool speed 1 0` | 自动切 PV 模式, 0 RPM |
+| A1.5.4 | `motor_tool speed 1 50` | 50 RPM (默认 accel=1000) |
+| A1.5.5 | `motor_tool abs 1 0` | 自动切 PP 模式, 目标 0° |
+| A1.5.6 | `motor_tool abs 1 45` | 目标 45° |
+
+> 注: `mode`/`accel` 不是独立命令。模式由 torque/speed/abs 隐式切换, 加减速默认 1000 RPM/s 可通过 `abs_accel` 全局设置。
 
 #### A1.6 PDO Byte0 控制 (7项)
 
 | # | 命令 | 验证 |
 |---|------|------|
-| A1.6.1 | `motor_tool pdo enable 1` | bit7=1 |
-| A1.6.2 | `motor_tool pdo disable 1` | bit7=0 |
-| A1.6.3 | `motor_tool byte0 read 1` | 显示 byte0 值 |
-| A1.6.4 | `motor_tool estop 1` | Byte0=0x00 |
-| A1.6.5 | `motor_tool recover 1` | Byte0=0xC0 |
-| A1.6.6 | `motor_tool setmode 1 cur` | PDO mode=电流 |
-| A1.6.7 | `motor_tool setmode 1 csp` | PDO mode=CSP |
+| A1.6.1 | `motor_tool pdo_enable 1` | bit7=1 |
+| A1.6.2 | `motor_tool pdo_disable 1` | bit7=0 |
+| A1.6.3 | `motor_tool byte0 1` | 显示 byte0 值 |
+| A1.6.4 | `motor_tool estop 1` | Byte0→0x00 |
+| A1.6.5 | `motor_tool recover 1` | Byte0→0xC0 |
+| A1.6.6 | `motor_tool setmode 1 5` | PDO mode=电流 (5) |
+| A1.6.7 | `motor_tool setmode 1 3` | PDO mode=CSP (3) |
+
+> 注: setmode 接受数字 1~6 (1=PP, 2=PV, 3=CSP, 4=CSV, 5=CURRENT, 6=MIT)。Byte0 命令只改内存不触发 CAN 帧，帧在下一次控制命令时发出。
 
 #### A1.7 PDO 实时控制帧 (6项)
 
