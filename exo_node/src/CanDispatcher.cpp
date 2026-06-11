@@ -89,16 +89,11 @@ bool CanDispatcher::InitDispatcher()
     }
     m_shm = (exo_shm_t*)m_shm_mgr->ptr;
 
-    /* 只初始化 motor_node 负责写的区域, 不碰 mailbox (算法可能正在读写) */
-    memset(&m_shm->fb_buffer,    0, sizeof(m_shm->fb_buffer));
-    m_shm->active_idx     = 0;
-    m_shm->motor_online   = 0;
-    m_shm->calib_state    = 0;
-    m_shm->motor_enabled  = 0;
-    m_shm->motor_severity = 0;
-    m_shm->fault_reason   = 0;
+    /* 全量清零 SHM — 防止跨进程残留触发假 FAULT
+     * 启动顺序: exo_node 先启 → algo_sim 后启, 不存在 algo 正在写的情况
+     * 即使 algo 在跑, 清零后 algo 检测到 seq 回零会重新握手, 安全 */
+    memset(m_shm, 0, EXO_SHM_SIZE);
     m_shm->node_state     = STATE_INIT;
-    /* mailbox 不动 — 算法进程可能正在写控制命令 */
 
     m_running = true;
     ECO_INFO_NEW("[CanDispatcher] ready");
