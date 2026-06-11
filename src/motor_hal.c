@@ -740,8 +740,8 @@ int motor_hal_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)
     static const uint8_t sdo_mode_map[] = {
         [MOTOR_MODE_PROFILE_POS] = 0x01,  /* PP:      CiA 402 标准值  1 */
         [MOTOR_MODE_PROFILE_VEL] = 0x03,  /* PV:      PDF 确认值  3 */
-        [MOTOR_MODE_CSP]         = 0x03,  /* CSP:     CiA 402 标准值  3 */
-        [MOTOR_MODE_CSV]         = 0x04,  /* CSV:     CiA 402 标准值  4 */
+        [MOTOR_MODE_CSP]         = 0x08,  /* CSP:     CiA 402 标准值  8 */
+        [MOTOR_MODE_CSV]         = 0x09,  /* CSV:     CiA 402 标准值  9 */
         [MOTOR_MODE_CURRENT]     = 0x0A,  /* 电流环:  CiA 402 标准值 10 */
         [MOTOR_MODE_MIT]         = 0x06,  /* MIT:     厂商自定义        */
     };
