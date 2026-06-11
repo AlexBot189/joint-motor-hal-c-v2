@@ -49,6 +49,8 @@ enum {
     CMD_PDO_ENABLE, CMD_PDO_DISABLE,
     CMD_BUS_ON, CMD_BUS_OFF,
     CMD_ESTOP, CMD_RECOVER,
+    CMD_ESTOP_NOW, CMD_RECOVER_NOW,
+    CMD_PDO_ENABLE_NOW, CMD_PDO_DISABLE_NOW,
     CMD_CLEARCF, CMD_SETMODE,
     CMD_BYTE0,
 
@@ -126,7 +128,11 @@ int cmd_do_pdo_disable(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_bus_on(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_bus_off(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_estop(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_estop_now(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_recover(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_recover_now(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_pdo_enable_now(motor_hal_t *hal, int cmd_id, int argc, char **argv);
+int cmd_do_pdo_disable_now(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_clearcf(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_setmode(motor_hal_t *hal, int cmd_id, int argc, char **argv);
 int cmd_do_byte0(motor_hal_t *hal, int cmd_id, int argc, char **argv);

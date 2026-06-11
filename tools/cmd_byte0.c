@@ -144,3 +144,82 @@ int cmd_do_byte0(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     }
     return ret;
 }
+
+/* ================================================================
+ * "Now" 命令: 改 Byte0 后立即发 PDO 帧, 不走 SDO
+ *
+ * disable_now / estop_now 需要先发包再断 enabled:
+ *   motor_hal_pdo_set_byte0 → 发包(此时 enabled 还是 true)
+ *   → motor_hal_pdo_disable/estop → 设 enabled=false
+ * ================================================================ */
+
+static int _now_op(int id,
+                   void (*set_byte0_fn)(motor_hal_t*, uint8_t, uint8_t), uint8_t byte0_val,
+                   void (*final_fn)(motor_hal_t*, uint8_t),
+                   const char *label)
+{
+    if (id == 0) {
+        int count = tool_motor_count();
+        if (count == 0) { fprintf(stderr, "No motors registered\n"); return -1; }
+        for (int i = 0; i < count; i++) {
+            int mid = tool_motor_id(i);
+            set_byte0_fn(g_hal, (uint8_t)mid, byte0_val);
+            motor_hal_set_torque(g_hal, (uint8_t)mid, 0);
+            final_fn(g_hal, (uint8_t)mid);
+            printf("✓ Motor %d: %s + PDO sent\n", mid, label);
+        }
+        return 0;
+    }
+    set_byte0_fn(g_hal, (uint8_t)id, byte0_val);
+    motor_hal_set_torque(g_hal, (uint8_t)id, 0);
+    final_fn(g_hal, (uint8_t)id);
+    printf("✓ Motor %d: %s + PDO sent\n", id, label);
+    return 0;
+}
+
+int cmd_do_pdo_enable_now(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int id = atoi(argv[2]);
+    motor_hal_pdo_enable(g_hal, (uint8_t)id);
+    motor_hal_set_torque(g_hal, (uint8_t)id, 0);
+    printf("✓ Motor %d: pdo_enable_now + PDO sent\n", id);
+    return 0;
+}
+
+int cmd_do_pdo_disable_now(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int id = atoi(argv[2]);
+    /* 先清 bit7 但保持 enabled=true, 发包后再正式 disable */
+    uint8_t b0;
+    if (motor_hal_pdo_get_byte0(g_hal, (uint8_t)id, &b0) == 0) {
+        motor_hal_pdo_set_byte0(g_hal, (uint8_t)id, b0 & ~PDO_BYTE0_ENABLE);
+    }
+    motor_hal_set_torque(g_hal, (uint8_t)id, 0);
+    motor_hal_pdo_disable(g_hal, (uint8_t)id);
+    printf("✓ Motor %d: pdo_disable_now + PDO sent\n", id);
+    return 0;
+}
+
+int cmd_do_estop_now(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    return _now_op(atoi(argv[2]),
+                   motor_hal_pdo_set_byte0, 0x00,                          /* Byte0=0x00 */
+                   motor_hal_pdo_estop, "estop_now");
+}
+
+int cmd_do_recover_now(motor_hal_t *hal, int cmd_id, int argc, char **argv)
+{
+    (void)hal; (void)cmd_id; (void)argc;
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int id = atoi(argv[2]);
+    motor_hal_pdo_recover(g_hal, (uint8_t)id);
+    motor_hal_set_torque(g_hal, (uint8_t)id, 0);
+    printf("✓ Motor %d: recover_now + PDO sent\n", id);
+    return 0;
+}

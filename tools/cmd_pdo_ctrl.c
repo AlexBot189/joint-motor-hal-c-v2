@@ -206,18 +206,18 @@ int cmd_do_mit(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
 
     if (argc < 8) {
-        fprintf(stderr, "Usage: motor_tool mit <id> <pos*100> <vel> <kp*100> <kd*100> <torque*100>\n");
+        fprintf(stderr, "Usage: motor_tool mit <id> <deg> <vel> <kp*100> <kd*100> <torque*100>\n");
         fprintf(stderr, "  pos:  position ×100 (°)       vel:  velocity (RPM)\n");
         fprintf(stderr, "  kp:   stiffness ×100           kd:  damping ×100\n");
         fprintf(stderr, "  torque: feedforward torque ×100\n");
         fprintf(stderr, "Examples:\n");
-        fprintf(stderr, "  motor_tool mit 1 0 0 30 5 0        # 柔顺模式 (低刚度)\n");
-        fprintf(stderr, "  motor_tool mit 1 3000 0 200 30 0   # 刚性位置 30°\n");
+        fprintf(stderr, "  motor_tool mit 1 0 0 30 5 0          # 柔顺模式 (低刚度)\n");
+        fprintf(stderr, "  motor_tool mit 1 90 0 200 30 0       # 刚性位置 90°\n");
         return -1;
     }
 
     int   id      = atoi(argv[2]);
-    float pos     = (float)atoi(argv[3]) / 100.0f;
+    float pos     = (float)atof(argv[3]);
     float vel     = (float)atoi(argv[4]);
     float kp      = (float)atoi(argv[5]) / 100.0f;
     float kd      = (float)atoi(argv[6]) / 100.0f;

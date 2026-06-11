@@ -251,6 +251,7 @@ int daemon_start(const char *iface)
     for (int i = 0; i < motor_count; i++) {
         cfg.node_id = (uint8_t)motor_ids[i];
         motor_hal_add_motor(g_hal, &cfg);
+        tool_register_motor(motor_ids[i]);  /* 工具层也注册, watch/report 依赖此列表 */
     }
 
     /* 3. 后台化 ★ 必须在创建线程之前 fork, 否则子线程在子进程中丢失 */

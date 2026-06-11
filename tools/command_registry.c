@@ -65,7 +65,11 @@ const command_entry_t g_cmd_table[] = {
     { CMD_BUS_ON,      "bus_on",       "bus_on <id>",         "母线接通 (Byte0 bit6=1, 预留)", 2, 2 },
     { CMD_BUS_OFF,     "bus_off",      "bus_off <id>",        "母线断开 (Byte0 bit6=0, 预留)", 2, 2 },
     { CMD_ESTOP,       "estop",        "estop <id>",          "急停: enable=0+bus=OFF", 2, 2 },
+    { CMD_ESTOP_NOW,   "estop_now",     "estop_now <id>",    "急停+立即发帧", 2, 2 },
     { CMD_RECOVER,     "recover",      "recover <id>",        "恢复: bus=ON+enable=1", 2, 2 },
+    { CMD_RECOVER_NOW, "recover_now",   "recover_now <id>",  "恢复+立即发帧", 2, 2 },
+    { CMD_PDO_ENABLE_NOW, "pdo_enable_now", "pdo_enable_now <id>", "PDO使能+立即发帧", 2, 2 },
+    { CMD_PDO_DISABLE_NOW,"pdo_disable_now","pdo_disable_now <id>","PDO失能+立即发帧", 2, 2 },
     { CMD_CLEARCF,     "clearcf",      "clearcf <id>",        "清故障脉冲 (Byte0 bit5)", 2, 2 },
     { CMD_SETMODE,     "setmode",      "setmode <id> <1~6>",  "PDO切换模式", 3, 3 },
     { CMD_BYTE0,       "byte0",        "byte0 <id> [0xHH]",   "读/写原始 Byte0", 2, 3 },
@@ -165,7 +169,11 @@ int cmd_dispatch(motor_hal_t *hal, int argc, char **argv)
         case CMD_BUS_ON:      return cmd_do_bus_on(hal, cmd->id, argc, argv);
         case CMD_BUS_OFF:     return cmd_do_bus_off(hal, cmd->id, argc, argv);
         case CMD_ESTOP:       return cmd_do_estop(hal, cmd->id, argc, argv);
+        case CMD_ESTOP_NOW:   return cmd_do_estop_now(hal, cmd->id, argc, argv);
         case CMD_RECOVER:     return cmd_do_recover(hal, cmd->id, argc, argv);
+        case CMD_RECOVER_NOW: return cmd_do_recover_now(hal, cmd->id, argc, argv);
+        case CMD_PDO_ENABLE_NOW:  return cmd_do_pdo_enable_now(hal, cmd->id, argc, argv);
+        case CMD_PDO_DISABLE_NOW: return cmd_do_pdo_disable_now(hal, cmd->id, argc, argv);
         case CMD_CLEARCF:     return cmd_do_clearcf(hal, cmd->id, argc, argv);
         case CMD_SETMODE:     return cmd_do_setmode(hal, cmd->id, argc, argv);
         case CMD_BYTE0:       return cmd_do_byte0(hal, cmd->id, argc, argv);
