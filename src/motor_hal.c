@@ -607,7 +607,7 @@ int motor_hal_pdo_enable(motor_hal_t *hal, uint8_t node_id)
     pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
     if (!m) { pthread_mutex_unlock(&hal->lock); return -ENOENT; }
-    m->pdo_byte0 |= PDO_BYTE0_ENABLE;
+    m->pdo_byte0 |= PDO_BYTE0_ENABLE | PDO_BYTE0_BUS_ON;
     pthread_mutex_unlock(&hal->lock);
     return 0;
 }
