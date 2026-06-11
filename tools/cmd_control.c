@@ -37,10 +37,10 @@ int cmd_do_speed(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     (void)hal; (void)cmd_id; (void)argc;
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int id       = atoi(argv[2]);
-    int rpm_x100 = atoi(argv[3]);
-    int acc_x100 = (argc >= 5) ? atoi(argv[4]) : 100000;  /* 默认 1000 RPM/s */
-    int dec_x100 = (argc >= 6) ? atoi(argv[5]) : acc_x100;
-    return tool_speed_sdo(id, rpm_x100, acc_x100, dec_x100);
+    int rpm = atoi(argv[3]);
+    int acc = (argc >= 5) ? atoi(argv[4]) : 1000;  /* 默认 1000 RPM/s */
+    int dec = (argc >= 6) ? atoi(argv[5]) : acc;
+    return tool_speed_sdo(id, rpm, acc, dec);
 }
 
 /* ================================================================
@@ -53,8 +53,8 @@ int cmd_do_abs(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     (void)hal; (void)cmd_id; (void)argc;
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int id      = atoi(argv[2]);
-    int deg_x100 = atoi(argv[3]);
-    return tool_abs_sdo(id, deg_x100);
+    float deg = (float)atof(argv[3]);
+    return tool_abs_sdo(id, deg);
 }
 
 /* ================================================================
@@ -76,8 +76,8 @@ int cmd_do_abs_stop(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 int cmd_do_abs_accel(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
     (void)hal; (void)cmd_id; (void)argc;
-    int acc_x100 = atoi(argv[2]);
-    return tool_abs_set_accel(0, acc_x100);
+    int acc = atoi(argv[2]);
+    return tool_abs_set_accel(0, acc);
 }
 
 /* ================================================================
@@ -87,8 +87,8 @@ int cmd_do_abs_accel(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 int cmd_do_abs_speed(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
     (void)hal; (void)cmd_id; (void)argc;
-    int rpm_x100 = atoi(argv[2]);
-    return tool_abs_set_speed(0, rpm_x100);
+    int rpm = atoi(argv[2]);
+    return tool_abs_set_speed(0, rpm);
 }
 
 /* ================================================================
@@ -100,8 +100,8 @@ int cmd_do_limit_pos(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     (void)hal; (void)cmd_id; (void)argc;
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int id      = atoi(argv[2]);
-    int deg_x100 = atoi(argv[3]);
-    return tool_limit_pos_set(id, deg_x100);
+    float deg = (float)atof(argv[3]);
+    return tool_limit_pos_set(id, deg);
 }
 
 /* ================================================================
@@ -113,8 +113,8 @@ int cmd_do_limit_neg(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     (void)hal; (void)cmd_id; (void)argc;
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int id      = atoi(argv[2]);
-    int deg_x100 = atoi(argv[3]);
-    return tool_limit_neg_set(id, deg_x100);
+    float deg = (float)atof(argv[3]);
+    return tool_limit_neg_set(id, deg);
 }
 
 /* ================================================================

@@ -149,18 +149,17 @@ int tool_torque_sdo(int id, int ma)
 
 /* ================================================================
  * SDO 速度控制 — 完整时序: 使能→切PV模式→设加减速→写目标速度
- *   speed <id> <rpm*100> [acc*100] [dec*100]
+ *   speed <id> <rpm> [acc] [dec]
  *   加减速范围 0~10000 RPM/s, 无上限速度
  * ================================================================ */
 
-int tool_speed_sdo(int id, int rpm_x100, int acc_x100, int dec_x100)
+int tool_speed_sdo(int id, int rpm, int acc, int dec)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
 
-    uint16_t accel = (uint16_t)(acc_x100 / 100);
-    uint16_t decel = (uint16_t)(dec_x100 / 100);
-    int32_t  rpm   = rpm_x100 / 100;
+    uint16_t accel = (uint16_t)acc;
+    uint16_t decel = (uint16_t)dec;
 
     if (accel > 10000 || decel > 10000) {
         fprintf(stderr, "ERROR: accel/decel %d/%d out of range (0~10000 RPM/s)\n", accel, decel);
@@ -191,39 +190,38 @@ int tool_speed_sdo(int id, int rpm_x100, int acc_x100, int dec_x100)
 
 /* ================================================================
  * SDO 位置控制 — 完整时序: 使能→切PP模式→设加减速→轨迹速度→目标→启动
- *   abs <id> <deg*100>
+ *   abs <id> <deg>
  *   加减速默认2000 RPM/s, 轨迹速度默认10 RPM, 目标范围 -180°~180°
  * ================================================================ */
 
 static uint16_t g_abs_accel = 2000;   /* RPM/s, 默认2000, 范围0~10000 */
 static uint16_t g_abs_speed = 10;     /* RPM 输出端, 默认10, 范围0~30 */
 
-int tool_abs_set_accel(int id, int acc_x100)
+int tool_abs_set_accel(int id, int acc)
 {
     (void)id;
-    uint16_t a = (uint16_t)(acc_x100 / 100);
+    uint16_t a = (uint16_t)acc;
     if (a > 10000) { fprintf(stderr, "ERROR: accel %d out of range (0~10000 RPM/s)\n", a); return -1; }
     g_abs_accel = a;
     printf("✓ Position mode accel set to %d RPM/s\n", a);
     return 0;
 }
 
-int tool_abs_set_speed(int id, int rpm_x100)
+int tool_abs_set_speed(int id, int rpm)
 {
     (void)id;
-    uint16_t s = (uint16_t)(rpm_x100 / 100);
+    uint16_t s = (uint16_t)rpm;
     if (s > 30) { fprintf(stderr, "ERROR: speed %d out of range (0~30 RPM, output side)\n", s); return -1; }
     g_abs_speed = s;
     printf("✓ Position mode profile velocity set to %d RPM\n", s);
     return 0;
 }
 
-int tool_abs_sdo(int id, int deg_x100)
+int tool_abs_sdo(int id, float deg)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
 
-    float deg = (float)deg_x100 / 100.0f;
     int32_t counts = motor_deg_to_counts(deg);
 
     if (counts < -32767 || counts > 32768) {
@@ -306,12 +304,11 @@ int tool_set_zero_auto(int id)
  * 单控 SDO: 限位 — 自动失能→写限位→save_flash (用户手动enable)
  * ================================================================ */
 
-int tool_limit_pos_set(int id, int deg_x100)
+int tool_limit_pos_set(int id, float deg)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
 
-    float deg = (float)deg_x100 / 100.0f;
     int32_t counts = (int32_t)(deg * 65536.0f / 360.0f);
 
     int errors = 0;
@@ -338,12 +335,11 @@ int tool_limit_pos_set(int id, int deg_x100)
     return errors > 0 ? -1 : 0;
 }
 
-int tool_limit_neg_set(int id, int deg_x100)
+int tool_limit_neg_set(int id, float deg)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
 
-    float deg = (float)deg_x100 / 100.0f;
     int32_t counts = (int32_t)(deg * 65536.0f / 360.0f);
 
     int errors = 0;

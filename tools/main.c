@@ -51,25 +51,25 @@ static void print_help(void)
 
     printf("── 控制命令 (SDO, 使能在 daemon 启动时完成) ────\n");
     printf("  torque <id> <mA>           电流控制 (0~20000mA)\n");
-    printf("  speed <id> <rpm*100> [acc*100] [dec*100]  速度控制\n");
-    printf("  abs <id> <deg*100>         位置控制\n");
+    printf("  speed <id> <rpm> [acc] [dec]  速度控制\n");
+    printf("  abs <id> <deg>             位置控制\n");
     printf("  abs_stop <id>              停止位置运动\n");
-    printf("  abs_accel <acc*100>        位置加减速 RPM/s×100 (默认2000)\n");
-    printf("  abs_speed <rpm*100>        位置轨迹速度 RPM×100 输出端(默认10)\n\n");
+    printf("  abs_accel <acc>            位置加减速 RPM/s (默认2000)\n");
+    printf("  abs_speed <rpm>            位置轨迹速度 RPM 输出端(默认10)\n\n");
 
     printf("── PDO 实时控制 (直接发帧, <100μs) ────────────\n");
-    printf("  pdo <id> pos <deg*100>     单轴位置控制 PDO\n");
-    printf("  pdo <id> vel <rpm*100>     单轴速度控制 PDO\n");
+    printf("  pdo <id> pos <deg>         单轴位置控制 PDO\n");
+    printf("  pdo <id> vel <rpm>         单轴速度控制 PDO\n");
     printf("  pdo <id> cur <mA>           单轴电流控制 PDO\n");
     printf("  pdo <id> csp <cnt>          单轴 CSP 控制 PDO\n");
-    printf("  multi pos 1:4500 2:-4500   多轴广播位置\n");
-    printf("  multi vel 1:5000 2:-3000   多轴广播速度\n");
+    printf("  multi pos 1:45 2:-45       多轴广播位置\n");
+    printf("  multi vel 1:50 2:-30       多轴广播速度\n");
     printf("  multi cur 1:1000 2:500     多轴广播电流\n");
     printf("  mit <id> <pos> <vel> <kp> <kd> <torque>  MIT 阻抗\n\n");
 
     printf("── 配置命令 ──────────────────────────────────────\n");
-    printf("  limit_pos <id> <deg*100>   正限位 (失能→写→Flash)\n");
-    printf("  limit_neg <id> <deg*100>   负限位 (失能→写→Flash)\n");
+    printf("  limit_pos <id> <deg>       正限位 (失能→写→Flash)\n");
+    printf("  limit_neg <id> <deg>       负限位 (失能→写→Flash)\n");
     printf("  save <id>                  保存参数到 Flash\n");
     printf("  pid <id> <cp> <ci> <vp> <vi> <pp> <pi>  设置PID\n\n");
 

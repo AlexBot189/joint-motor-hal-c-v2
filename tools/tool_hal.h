@@ -44,25 +44,25 @@ int tool_torque_sdo(int id, int ma);
 
 /* ================================================================
  * SDO 速度控制 — 完整时序 (使能→切模式→设加减速→写目标速度)
- *   speed <id> <rpm*100> [acc*100] [dec*100]
+ *   speed <id> <rpm> [acc] [dec]
  *   加减速范围 0~10000 RPM/s, 速度无上限
  * ================================================================ */
 
-int tool_speed_sdo(int id, int rpm_x100, int acc_x100, int dec_x100);
+int tool_speed_sdo(int id, int rpm, int acc, int dec);
 
 /* ================================================================
  * SDO 位置控制 — 完整时序 (使能→切模式→设加减速/轨迹速度→目标→启动)
- *   abs <id> <deg*100>
+ *   abs <id> <deg>
  *   加减速范围 0~10000 RPM/s (默认2000)
  *   轨迹速度范围 0~30 RPM (默认10)
- *   目标位置范围 -32767~32768 counts (-180°~180°)
+ *   目标位置范围 -180°~180°
  * ================================================================ */
 
-int tool_abs_sdo(int id, int deg_x100);
+int tool_abs_sdo(int id, float deg);
 
 /* 位置控制参数配置 */
-int tool_abs_set_accel(int id, int acc_x100);  /* 加减速 RPM/s×100 */
-int tool_abs_set_speed(int id, int rpm_x100);  /* 轨迹速度 RPM×100 */
+int tool_abs_set_accel(int id, int acc);  /* 加减速 RPM/s */
+int tool_abs_set_speed(int id, int rpm);  /* 轨迹速度 RPM */
 
 /* 停止位置运动 (CW=0x0F) */
 int tool_abs_stop(int id);
@@ -72,8 +72,8 @@ int tool_abs_stop(int id);
  * ================================================================ */
 
 int tool_set_zero_auto(int id);                 /* setzero: 自动失能→写0x2531 */
-int tool_limit_pos_set(int id, int deg_x100);   /* limit_pos: 自动失能→写0x607D/02→save_flash */
-int tool_limit_neg_set(int id, int deg_x100);   /* limit_neg: 自动失能→写0x607D/01→save_flash */
+int tool_limit_pos_set(int id, float deg);   /* limit_pos: 自动失能→写0x607D/02→save_flash */
+int tool_limit_neg_set(int id, float deg);   /* limit_neg: 自动失能→写0x607D/01→save_flash */
 int tool_limit_pos_read(int id);                /* 读 0x607D/02 */
 int tool_limit_neg_read(int id);                /* 读 0x607D/01 */
 int tool_save_flash(int id);

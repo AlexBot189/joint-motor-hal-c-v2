@@ -6,13 +6,13 @@
  * 不需要映射, 直接发帧。
  *
  * 用法:
- *   motor_tool pdo <id> pos <deg*100> [acc*100]       # 单轴位置
- *   motor_tool pdo <id> vel <rpm*100> [acc*100]       # 单轴速度
+ *   motor_tool pdo <id> pos <deg> [acc]            # 单轴位置
+ *   motor_tool pdo <id> vel <rpm> [acc]            # 单轴速度
  *   motor_tool pdo <id> cur <mA>                       # 单轴电流
  *   motor_tool pdo <id> csp <cnt>                      # 单轴 CSP
  *
- *   motor_tool multi pos 1:4500 2:-4500                # 多轴位置 (deg*100)
- *   motor_tool multi vel 1:5000 2:-3000                # 多轴速度 (rpm*100)
+ *   motor_tool multi pos 1:45 2:-45                 # 多轴位置
+ *   motor_tool multi vel 1:50 2:-30                 # 多轴速度
  *   motor_tool multi cur 1:1000 2:500                  # 多轴电流 (mA)
  *   motor_tool multi csp 1:16384 2:-16384             # 多轴 CSP
  *
@@ -27,7 +27,7 @@
 #include <math.h>
 
 /* ================================================================
- * 解析 "id:value" 格式, 如 "1:4500"
+ * 解析 "id:value" 格式, 如 "1:45"
  * ================================================================ */
 
 static int _parse_id_val(const char *arg, int *id, int *val)
@@ -45,7 +45,7 @@ static int _parse_id_val(const char *arg, int *id, int *val)
 }
 
 /* ================================================================
- * pdo <id> <mode> <target> [acc*100]
+ * pdo <id> <mode> <target> [acc]
  *   pos=PP, vel=PV, cur=电流, csp=CSP
  * ================================================================ */
 
@@ -56,13 +56,13 @@ int cmd_do_pdo(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
 
     if (argc < 4) {
-        fprintf(stderr, "Usage: motor_tool pdo <id> <mode> <target> [acc_or_feedfwd*100]\n");
+        fprintf(stderr, "Usage: motor_tool pdo <id> <mode> <target> [acc_or_feedfwd]\n");
         fprintf(stderr, "  mode: pos / vel / cur / csp\n");
-        fprintf(stderr, "  pos: <deg*100>   vel: <rpm*100>   cur: <mA>   csp: <cnt>\n");
-        fprintf(stderr, "  [acc*100]: profile accel RPM/s*100 (pos/vel mode only)\n");
+        fprintf(stderr, "  pos: <deg>   vel: <rpm>   cur: <mA>   csp: <cnt>\n");
+        fprintf(stderr, "  [acc]: profile accel RPM/s (pos/vel mode only)\n");
         fprintf(stderr, "Examples:\n");
-        fprintf(stderr, "  motor_tool pdo 1 pos 4500         # 电机1: 45°\n");
-        fprintf(stderr, "  motor_tool pdo 1 vel 5000 100000  # 电机1: 50RPM acc=1000RPM/s\n");
+        fprintf(stderr, "  motor_tool pdo 1 pos 45           # 电机1: 45°\n");
+        fprintf(stderr, "  motor_tool pdo 1 vel 50 1000      # 电机1: 50RPM acc=1000RPM/s\n");
         fprintf(stderr, "  motor_tool pdo 1 cur 1000         # 电机1: 1000mA\n");
         fprintf(stderr, "  motor_tool pdo 1 csp 16384        # 电机1: CSP 16384cnt\n");
         return -1;
@@ -79,14 +79,14 @@ int cmd_do_pdo(motor_hal_t *hal, int cmd_id, int argc, char **argv)
         return ret;
 
     } else if (strcmp(mode_str, "vel") == 0) {
-        float rpm = (float)atoi(argv[4]) / 100.0f;
+        float rpm = (float)atof(argv[4]);
         int ret = motor_hal_set_velocity(g_hal, (uint8_t)id, rpm);
         if (ret == 0) printf("✓ Motor %d: PDO vel=%.2f RPM\n", id, rpm);
         else fprintf(stderr, "✗ Motor %d: PDO vel failed (ret=%d)\n", id, ret);
         return ret;
 
     } else if (strcmp(mode_str, "pos") == 0) {
-        float deg = (float)atoi(argv[4]) / 100.0f;
+        float deg = (float)atof(argv[4]);
         int ret = motor_hal_set_position(g_hal, (uint8_t)id, deg);
         if (ret == 0) printf("✓ Motor %d: PDO pos=%.2f°\n", id, deg);
         else fprintf(stderr, "✗ Motor %d: PDO pos failed (ret=%d)\n", id, ret);
@@ -118,11 +118,11 @@ int cmd_do_multi(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (argc < 4) {
         fprintf(stderr, "Usage: motor_tool multi <mode> <id1:val1> [id2:val2] ...\n");
         fprintf(stderr, "  mode: pos / vel / cur / csp\n");
-        fprintf(stderr, "  pos: <deg*100>   vel: <rpm*100>   cur: <mA>   csp: <cnt>\n");
+        fprintf(stderr, "  pos: <deg>   vel: <rpm>   cur: <mA>   csp: <cnt>\n");
         fprintf(stderr, "  Max 8 motors per command.\n");
         fprintf(stderr, "Examples:\n");
-        fprintf(stderr, "  motor_tool multi pos 1:4500 2:-4500          # 双关节位置\n");
-        fprintf(stderr, "  motor_tool multi vel 1:5000 2:-3000 3:2000   # 三关节速度\n");
+        fprintf(stderr, "  motor_tool multi pos 1:45 2:-45            # 双关节位置\n");
+        fprintf(stderr, "  motor_tool multi vel 1:50 2:-30 3:20       # 三关节速度\n");
         fprintf(stderr, "  motor_tool multi cur 1:1000 2:500            # 双关节电流\n");
         return -1;
     }
@@ -157,10 +157,10 @@ int cmd_do_multi(motor_hal_t *hal, int cmd_id, int argc, char **argv)
         cmds[i].clear_error   = false;
 
         if (strcmp(mode_str, "pos") == 0) {
-            int16_t cnt = motor_deg_to_counts((float)val / 100.0f);
+            int16_t cnt = motor_deg_to_counts((float)val);
             cmds[i].target1 = cnt;
         } else if (strcmp(mode_str, "vel") == 0) {
-            cmds[i].target1 = (int16_t)(val / 100);
+            cmds[i].target1 = (int16_t)val;
         } else if (strcmp(mode_str, "cur") == 0) {
             cmds[i].target1 = (int16_t)val;
         } else {

@@ -45,14 +45,14 @@ int cmd_do_help(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 
     printf("┌─ 控制 (×100精度, id=0=广播) ────────────────────────────┐\n");
     printf("│ torque  <id> <mA>         Q轴电流 [V-G]   例: 2000→2A    │\n");
-    printf("│ speed   <id> <rpm*100>    目标速度 [V-I]  例: 5050→50.50 │\n");
-    printf("│ accel   <id> <acc*100>    加减速度 [V-J]                 │\n");
-    printf("│ abs     <id> <deg*100>    绝对位置 [V-K]  例: 4500→45°   │\n");
+    printf("│ speed   <id> <rpm>       目标速度 [V-I]  例: 50→50 RPM │\n");
+    printf("│ accel   <id> <acc>       加减速度 [V-J]  例: 100→100 RPM/s│\n");
+    printf("│ abs     <id> <deg>       绝对位置 [V-K]  例: 45→45°     │\n");
     printf("│ rel     <id> <delta*100>  相对位置 [V-L]                 │\n");
-    printf("│ maxv    <id> <rpm*100>    最大速度 [V-U]                 │\n");
+    printf("│ maxv    <id> <rpm>       最大速度 [V-U]  例: 10→10 RPM  │\n");
     printf("│ stop    [id]              停止                            │\n");
     printf("│ mode    <id> <pp|pv|csp|csv|cur>  切换模式                │\n");
-    printf("│ csp     <id> <deg*100>    CSP 同步位置                    │\n");
+    printf("│ csp     <id> <deg>       CSP 同步位置   例: 45→45°     │\n");
     printf("│ mit  <id> <p> <v> <kp> <kd> <t>  MIT 阻抗控制            │\n");
     printf("│ brake   <id> <rel|lock>  抱闸控制                         │\n");
     printf("│ quickstop <id>           急停 (DS402)                     │\n");
@@ -91,8 +91,8 @@ int cmd_do_help(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     printf("│         motor_tool sensor config 2 250  # 开透传左        │\n");
     printf("│                              ★ 校准+透传完成, 电机就绪 ★   │\n");
     printf("│  步骤5: motor_tool torque 1 2000    # 2A 力矩            │\n");
-    printf("│         motor_tool abs 1 4500       # 45° 绝对位置       │\n");
-    printf("│         motor_tool speed 1 5000     # 50RPM 速度         │\n");
+    printf("│         motor_tool abs 1 45         # 45° 绝对位置       │\n");
+    printf("│         motor_tool speed 1 50       # 50RPM 速度         │\n");
     printf("│         控制命令透明: 不关心使能/模式/时序                 │\n");
     printf("│ 调试:    motor_tool state 1          # 确认 OPERATION_ENABLED │\n");
     printf("│         motor_tool report 5          # 5ms 数据流        │\n");
