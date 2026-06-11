@@ -69,6 +69,9 @@ target_link_libraries(motor_example_dual_full motor_hal m)
 add_executable(motor_example_fb_cb    examples/feedback_callback.c)
 target_link_libraries(motor_example_fb_cb motor_hal m)
 
+add_executable(hal_stress_test        test/hal_stress_test.c)
+target_link_libraries(hal_stress_test motor_hal pthread)
+
 # ============================================================================
 # 选项
 # ============================================================================
