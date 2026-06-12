@@ -267,14 +267,14 @@ int main(int argc, char** argv)
                 ECO_INFO_NEW("[main] motors ready → ENABLED");
                 state_transition(STATE_ENABLED);
             }
-            /* 处理 RT 线程的状态切换请求 */
-            exo_state_t pending = g_rt_worker->GetPendingState();
-            if (pending == STATE_RUNNING && g_exo_state == STATE_FAULT) {
-                /* 算法重连 → FAULT 自动恢复到 READY */
-                ECO_INFO_NEW("[main] FAULT → READY (algo reconnect)");
+            /* FAULT 状态自动恢复: RT 线程检测到算法重连时清 severity → 主线程切 READY */
+            if (g_exo_state == STATE_FAULT && shm->motor_severity == MOTOR_OK) {
+                ECO_INFO_NEW("[main] FAULT → READY (algo reconnected, severity=OK)");
                 state_transition(STATE_READY);
             }
-            else if (pending == STATE_RUNNING && g_exo_state == STATE_ENABLED) {
+            /* 处理 RT 线程的状态切换请求 */
+            exo_state_t pending = g_rt_worker->GetPendingState();
+            if (pending == STATE_RUNNING && g_exo_state == STATE_ENABLED) {
                 state_transition(STATE_RUNNING);
             }
             else if (pending == STATE_FAULT && g_exo_state != STATE_FAULT) {
