@@ -59,6 +59,9 @@ ExoRtLog*                g_rt_log = &g_rt_log_instance;
 static ExoNodeContext    g_node_ctx;
 ExoNodeContext*          g_ctx = &g_node_ctx;
 
+/* sensor 透传防重配置标记 */
+static bool g_sensor_configured[EXO_MOTOR_COUNT];
+
 static void sig_handler(int sig)
 {
     (void)sig;
@@ -234,10 +237,28 @@ int main(int argc, char** argv)
         ros::spinOnce();
 #endif
 
-        /* 轮询 auto-startup (处理热插拔) */
+        /* 轮询 auto-startup (处理热插拔) + sensor 透传自动配置 */
         if (hal) {
             motor_hal_process_pending_startups(hal);
             update_shm_online(hal, shm);
+
+            /* startup 完成后自动配置 sensor 透传 (对齐 motor_tool daemon) */
+            for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; id++) {
+                if (!g_sensor_configured[id - 1]) {
+                    motor_state_t st = motor_hal_get_state(hal, id);
+                    if (st >= MOTOR_STATE_SWITCH_ON_DIS && st != MOTOR_STATE_UNKNOWN) {
+                        uint16_t period_div = (uint16_t)(g_node_ctx.sensor_period_ms * 4);
+                        int ret = motor_hal_sensor_config(hal, id, period_div,
+                                                          g_node_ctx.sensor_bus_format);
+                        if (ret == 0) {
+                            g_sensor_configured[id - 1] = true;
+                            ECO_INFO_NEW("[main] sensor passthrough: motor {} period={}ms bus={}",
+                                         id, g_node_ctx.sensor_period_ms,
+                                         g_node_ctx.sensor_bus_format == 3 ? "CANFD BRS" : "Classic CAN");
+                        }
+                    }
+                }
+            }
         }
 
         /* ── 自动推进状态: READY → ENABLED (跳过校准) ── */

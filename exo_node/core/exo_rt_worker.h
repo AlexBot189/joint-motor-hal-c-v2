@@ -126,6 +126,7 @@ private:
 
     /* ── 去重标志 ── */
     bool     m_fault_triggered = false;
+    bool     m_handshake_done = false;   /* 首次算法握手, 解耦 SHM 残留 seq */
 
     /* ── 延迟追踪 (EXO_LATENCY_TRACE=0 时零开销) ── */
     ExoLatencyTracer m_tracer;

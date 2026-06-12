@@ -158,8 +158,9 @@ void ExoRtWorker::ProcessMailbox()
     if (begin == m_last_seq) return;   /* 无新命令 */
 
     /* ── 首次收到算法命令 → 设标志, 让主循环调 state_transition ── */
-    if (m_last_seq == 0 && begin > 0) {
-        m_pending_state = STATE_RUNNING;  /* RT 线程只设标志, 不写 shm->node_state */
+    if (!m_handshake_done && begin > 0) {
+        m_handshake_done = true;
+        m_pending_state = STATE_RUNNING;
     }
 
     /* ── 处理双电机命令 ── */
@@ -427,13 +428,24 @@ void ExoRtWorker::SafetyCheck()
             }
         }
         else {
-            /* seq 恢复 */
+            /* seq 恢复 → 自动恢复 */
             m_seq_stall_us = 0;
-            m_fault_triggered = false;
-            if (m_shm->motor_severity == MOTOR_WARN &&
+            if (m_shm->motor_severity == MOTOR_FAULT &&
                 m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
             {
+                /* 算法重连 → 清除 FAULT, 重新握手 */
+                m_handshake_done = false;
+                m_fault_triggered = false;
+                m_shm->motor_severity = MOTOR_OK;
+                m_shm->fault_reason   = FAULT_NONE;
+                m_pending_state = STATE_RUNNING;
+                RT_LOG("SAFETY RECOVER: algo reconnected");
+            }
+            else if (m_shm->motor_severity == MOTOR_WARN &&
+                     m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
+            {
                 /* WARN 级自动恢复 */
+                m_fault_triggered = false;
                 m_shm->motor_severity = MOTOR_OK;
                 m_shm->fault_reason   = FAULT_NONE;
             }

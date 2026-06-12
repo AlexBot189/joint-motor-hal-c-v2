@@ -96,8 +96,9 @@ int main()
             float t_sec    = (float)(t4_us - t0_us) / 1e6f;
 
             static bool initialized = false;
-            if (state == STATE_RUNNING && !initialized) {
-                printf("[algo_sim] motor ready → PDO enable + set mode\n");
+            /* ENABLED 状态即可发初始化命令 (ENABLE + SET_MODE), 不等 RUNNING */
+            if ((state >= STATE_ENABLED) && !initialized) {
+                printf("[algo_sim] state=%u → PDO enable + set mode\n", state);
                 cmd_set(shm, 0, 1, EXO_CMD_ENABLE,   0, 0, 0, 0);
                 seq++;
                 __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
@@ -113,14 +114,16 @@ int main()
             }
 
             if (!initialized) goto next_cycle;
+            /* 等 RUNNING 后再发控制命令 */
+            if (state != STATE_RUNNING) goto next_cycle;
 
             /* ── 单电机控制场景 ── */
             if (t_sec < 3.0f) {
-                /* 力矩模式 200mA */
-                cmd_set(shm, 0, 1, EXO_CMD_TORQUE, 200, 0, 0, fb->timestamp_us);
+                /* 力矩模式 800mA */
+                cmd_set(shm, 0, 1, EXO_CMD_TORQUE, 800, 0, 0, fb->timestamp_us);
 
             } else if (t_sec < 6.0f) {
-                /* 位置模式 正弦 ±15° */
+                /* 位置模式 正弦 ±10° */
                 static bool pos_mode_set = false;
                 if (!pos_mode_set) {
                     printf("[algo_sim] switching to POS mode\n");
@@ -131,7 +134,7 @@ int main()
                     usleep(5000);
                     pos_mode_set = true;
                 }
-                float angle = 15.0f * sinf((t_sec - 3.0f) * 2.0f * M_PI);
+                float angle = 10.0f * sinf((t_sec - 3.0f) * 2.0f * M_PI);
                 cmd_set(shm, 0, 1, EXO_CMD_POS,
                         (int32_t)(angle * 100.0f), 0, 0, fb->timestamp_us);
 

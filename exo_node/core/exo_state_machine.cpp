@@ -99,24 +99,8 @@ void enter_calibrating(void) {
 }
 
 void enter_enabled(void) {
-    ECO_INFO_NEW("[StateMachine] enter ENABLED — PDO enable + sensor passthrough");
-
-    if (!g_ctx || !g_ctx->hal) return;
-
-    uint8_t online = g_ctx->shm ? g_ctx->shm->motor_online : 0;
-    for (uint8_t id = 1; id <= (uint8_t)g_ctx->motor_count; id++) {
-        if (!(online & (1 << (id - 1)))) continue;
-        motor_hal_pdo_enable(g_ctx->hal, id);
-
-        /* period_ms=0 → 不开启透传 (对齐 cmd_sensor.c) */
-        if (g_ctx->sensor_period_ms == 0) {
-            ECO_INFO_NEW("[StateMachine] sensor period=0, skip passthrough for motor {}", id);
-            motor_hal_sensor_stop(g_ctx->hal, id);
-        } else {
-            uint16_t period_div = (uint16_t)(g_ctx->sensor_period_ms * 4);  /* 250us tick */
-            motor_hal_sensor_config(g_ctx->hal, id, period_div, g_ctx->sensor_bus_format);
-        }
-    }
+    ECO_INFO_NEW("[StateMachine] enter ENABLED");
+    /* PDO enable 由算法 EXO_CMD_ENABLE 触发, sensor 透传由 auto-startup 完成时自动配置 */
 }
 
 void enter_running(void) {
@@ -172,6 +156,7 @@ bool state_transition_allowed(exo_state_t from, exo_state_t to)
     if (to == STATE_FAULT) return true;
     if (from == STATE_FAULT && to == STATE_READY) return true;
     if (from == STATE_CALIBRATING && to == STATE_READY) return true;
+    if (from == STATE_READY && to == STATE_ENABLED) return true;  /* 跳过校准直达使能 */
     if ((int)to == (int)from + 1) return true;
     return false;
 }
