@@ -172,7 +172,6 @@ bool state_transition_allowed(exo_state_t from, exo_state_t to)
     if (to == STATE_FAULT) return true;
     if (from == STATE_FAULT && to == STATE_READY) return true;
     if (from == STATE_CALIBRATING && to == STATE_READY) return true;
-    if (from == STATE_READY && to == STATE_ENABLED) return true;  /* 跳过校准直达使能 */
     if ((int)to == (int)from + 1) return true;
     return false;
 }
