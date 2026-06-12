@@ -96,9 +96,8 @@ int main()
             float t_sec    = (float)(t4_us - t0_us) / 1e6f;
 
             static bool initialized = false;
-            /* 必须 ENABLED 时就发命令 → 触发 RT worker 切 RUNNING */
-            if ((state == STATE_ENABLED || state == STATE_RUNNING) && !initialized) {
-                printf("[algo_sim] state=%u → PDO enable + set mode\n", state);
+            if (state == STATE_RUNNING && !initialized) {
+                printf("[algo_sim] motor ready → PDO enable + set mode\n");
                 cmd_set(shm, 0, 1, EXO_CMD_ENABLE,   0, 0, 0, 0);
                 seq++;
                 __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
@@ -114,9 +113,6 @@ int main()
             }
 
             if (!initialized) goto next_cycle;
-
-            /* 等 RUNNING 后才发控制命令 */
-            if (state != STATE_RUNNING) goto next_cycle;
 
             /* ── 单电机控制场景 ── */
             if (t_sec < 3.0f) {
