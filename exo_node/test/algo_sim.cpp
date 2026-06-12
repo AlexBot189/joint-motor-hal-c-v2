@@ -135,14 +135,14 @@ int main()
                 cmd_set(shm, 1, 2, EXO_CMD_ENABLE,   0, 0, 0, 0);
                 seq++;
                 __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-                shm->mailbox.seq_end = seq;
+                __atomic_store_n(&shm->mailbox.seq_end, seq, __ATOMIC_RELEASE);
                 usleep(5000);
 
                 cmd_set(shm, 0, 1, EXO_CMD_SET_MODE, ALGO_MODE_CURRENT, 0, 0, 0);
                 cmd_set(shm, 1, 2, EXO_CMD_SET_MODE, ALGO_MODE_CURRENT, 0, 0, 0);
                 seq++;
                 __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-                shm->mailbox.seq_end = seq;
+                __atomic_store_n(&shm->mailbox.seq_end, seq, __ATOMIC_RELEASE);
                 usleep(5000);
                 initialized = true;
             }
@@ -182,7 +182,7 @@ int main()
                     cmd_set(shm, 1, 2, EXO_CMD_SET_MODE, ALGO_MODE_CSP, 0, 0, 0);
                     seq++;
                     __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-                    shm->mailbox.seq_end = seq;
+                    __atomic_store_n(&shm->mailbox.seq_end, seq, __ATOMIC_RELEASE);
                     usleep(5000);
                     pos_mode_set = true;
                 }
@@ -206,7 +206,7 @@ int main()
                     cmd_set(shm, 1, 2, EXO_CMD_SET_MODE, ALGO_MODE_MIT, 0, 0, 0);
                     seq++;
                     __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-                    shm->mailbox.seq_end = seq;
+                    __atomic_store_n(&shm->mailbox.seq_end, seq, __ATOMIC_RELEASE);
                     usleep(5000);
                     mit_mode_set = true;
                 }
@@ -270,7 +270,7 @@ int main()
 
             seq++;
             __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-            shm->mailbox.seq_end = seq;
+            __atomic_store_n(&shm->mailbox.seq_end, seq, __ATOMIC_RELEASE);
         }
 
 next_cycle:
@@ -298,7 +298,7 @@ next_cycle:
     cmd_set(shm, 1, 2, EXO_CMD_ESTOP, 0, 0, 0, 0);
     seq++;
     __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-    shm->mailbox.seq_end = seq;
+    __atomic_store_n(&shm->mailbox.seq_end, seq, __ATOMIC_RELEASE);
     usleep(20000);
 
     printf("[algo_sim] total loops: %lu\n", (unsigned long)loop_count);
