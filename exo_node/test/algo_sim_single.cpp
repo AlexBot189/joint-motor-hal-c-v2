@@ -96,6 +96,8 @@ int main()
             float t_sec    = (float)(t4_us - t0_us) / 1e6f;
 
             static bool initialized = false;
+            /* FAULT 后状态恢复 → 重新初始化 */
+            if (state == STATE_FAULT) initialized = false;
             /* ENABLED 状态即可发初始化命令 (ENABLE + SET_MODE), 不等 RUNNING */
             if ((state >= STATE_ENABLED) && !initialized) {
                 printf("[algo_sim] state=%u → PDO enable + set mode\n", state);
