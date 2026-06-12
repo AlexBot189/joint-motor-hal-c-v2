@@ -197,6 +197,13 @@ int main(int argc, char** argv)
     g_node_ctx.motor_count  = EXO_MOTOR_COUNT;
     g_node_ctx.startup_timeout_sec = 30;
 
+    /* 从 config.json 读取透传配置 */
+    g_node_ctx.sensor_period_ms = g_dispatcher->GetSensorPeriodMs();
+    g_node_ctx.sensor_bus_format = g_dispatcher->GetSensorBusFormat();
+
+    ECO_INFO_NEW("[main] config: sensor_period={}ms, bus_fmt={}",
+                 g_node_ctx.sensor_period_ms, g_node_ctx.sensor_bus_format);
+
     state_transition(STATE_DISCOVERY);  /* 阻塞: enter_discovery 做实际探测 */
 
     /* ════════════════════════════════════════════════════════════
@@ -232,8 +239,13 @@ int main(int argc, char** argv)
             update_shm_online(hal, shm);
         }
 
-        /* ── 处理 RT 线程的状态切换请求 ── */
+        /* ── 自动推进状态: READY → ENABLED (跳过校准) ── */
         if (g_rt_worker && shm) {
+            if (g_exo_state == STATE_READY) {
+                ECO_INFO_NEW("[main] motors ready → ENABLED");
+                state_transition(STATE_ENABLED);
+            }
+            /* 处理 RT 线程的状态切换请求 */
             exo_state_t pending = g_rt_worker->GetPendingState();
             if (pending == STATE_RUNNING && g_exo_state == STATE_ENABLED) {
                 state_transition(STATE_RUNNING);

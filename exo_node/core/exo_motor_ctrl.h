@@ -57,14 +57,14 @@ public:
      * SDO 控制命令 (SDO 路径, 非 RT)
      * ════════════════════════════════════════════════════════════ */
 
-    /** @brief 力矩控制 (使能→切电流模式→写0x6071), mA [0,20000] */
+    /** @brief 力矩控制 (使能→切电流模式→写0x6071), mA [-20000,20000] */
     int  Torque(uint8_t id, int32_t ma);
 
-    /** @brief 速度控制 (使能→切PV模式→设加减速→写0x60FF), rpm×100 */
-    int  Speed(uint8_t id, int32_t rpm_x100, int32_t acc_x100 = 200000, int32_t dec_x100 = 200000);
+    /** @brief 速度控制 (使能→切PV模式→设加减速→写0x60FF), RPM */
+    int  Speed(uint8_t id, int32_t rpm, int32_t acc = 1000, int32_t dec = 1000);
 
-    /** @brief 绝对位置控制 (使能→切PP模式→设参→目标→启动), °×100 */
-    int  AbsPosition(uint8_t id, int32_t deg_x100);
+    /** @brief 绝对位置控制 (使能→切PP模式→设参→目标→启动), ° */
+    int  AbsPosition(uint8_t id, float deg);
 
     /** @brief 停止位置运动 (CW=0x0F) */
     void AbsStop(uint8_t id);
@@ -73,10 +73,10 @@ public:
     int  SetZero(uint8_t id);
 
     /** @brief 正限位 (失能→写0x607D/02→save_flash) */
-    int  SetPosLimit(uint8_t id, int32_t deg_x100);
+    int  SetPosLimit(uint8_t id, float deg);
 
     /** @brief 负限位 (失能→写0x607D/01→save_flash) */
-    int  SetNegLimit(uint8_t id, int32_t deg_x100);
+    int  SetNegLimit(uint8_t id, float deg);
 
     /** @brief 读正限位 */
     int  ReadPosLimit(uint8_t id, float* out_deg);
@@ -136,8 +136,8 @@ public:
      * PDO 控制 (非阻塞, RT 安全)
      * ════════════════════════════════════════════════════════════ */
 
-    /** @brief PDO 单轴控制 (自定义 PDO 0x100+ID) */
-    void PdoCtrl(uint8_t id, motor_mode_t mode, int16_t target);
+    /** @brief PDO 单轴控制 (自定义 PDO 0x100+ID), 位置/速度单位同 motor_hal API */
+    void PdoCtrl(uint8_t id, motor_mode_t mode, float target);
 
     /** @brief PDO 多轴广播 (0x200, 64B CANFD) */
     void PdoMultiCtrl(const multi_axis_cmd_t* cmds, uint8_t count);

@@ -18,6 +18,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/3rd_party
     ${CMAKE_SOURCE_DIR}/3rd_party/usr/include
     ${MOTOR_HAL_DIR}/inc
+    ${MOTOR_HAL_DIR}/src
 )
 
 link_directories(

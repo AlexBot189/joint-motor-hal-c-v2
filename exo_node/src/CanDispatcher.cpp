@@ -329,7 +329,7 @@ bool CanDispatcher::LoadMotorConfig()
             }
         }
 
-        /* ── 解析 shm ── */
+    /* ── 解析 shm ── */
         if (cfg.contains("shm")) {
             m_shm_name = cfg["shm"].value("name", std::string(EXO_SHM_NAME));
             size_t kb  = cfg["shm"].value("size_kb", (size_t)(EXO_SHM_SIZE / 1024));
@@ -341,11 +341,31 @@ bool CanDispatcher::LoadMotorConfig()
             }
         }
 
+        /* ── 解析 calib ── */
+        if (cfg.contains("calib")) {
+            auto& c = cfg["calib"];
+            m_calib_auto = c.value("auto_calib", false);
+            m_calib_timeout_ms = c.value("timeout_ms", 10000);
+        }
+
+        /* ── 解析 sensor ── */
+        if (cfg.contains("sensor")) {
+            auto& s = cfg["sensor"];
+            m_sensor_period_ms = s.value("period_ms", 1u);
+            m_sensor_bus_format = s.value("bus_format", 3u);  /* CANFD BRS */
+        }
+
         return true;  /* 文件解析完成, 缺失字段用默认值 */
     }
 
     /* 配置文件不存在 → 全部默认值 (对齐 daemon) */
     ECO_INFO_NEW("[CanDispatcher] config not found, using hardcoded defaults");
+
+    /* 校准/透传默认值 */
+    m_calib_auto       = true;
+    m_calib_timeout_ms = 10000;
+    m_sensor_period_ms = 1;
+    m_sensor_bus_format = 3;  /* CANFD BRS */
 
     motor_config_t def = {};
     def.heartbeat_ms      = 2000;

@@ -18,6 +18,16 @@ struct ExoNodeContext {
     exo_shm_t*   shm          = nullptr;
     int          motor_count  = 2;
     int          startup_timeout_sec = 30;
+
+    /* ── 校准相关 ── */
+    bool         auto_calib       = false;
+    void*        calib_ctx        = nullptr;  /* motor_calib_t* opaque */
+    bool         calib_running    = false;
+
+    /* ── 传感器透传 ── */
+    uint16_t     sensor_period_ms = 1;        /* ms, 默认1ms */
+    uint8_t      sensor_bus_format = 3;       /* 3=CANFD BRS (默认), 0=Classic CAN */
+    int          calib_timeout_ms = 10000;
 };
 
 }  /* namespace stark_periph_manager_node */

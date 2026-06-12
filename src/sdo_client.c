@@ -129,29 +129,8 @@ static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
                 found = i;
                 break;
             }
-            /* 索引不匹配: 遗留帧(如过期 Abort), 丢弃并继续扫描 */
-            fprintf(stderr, "[SDO] queue: dropping stale frame idx=0x%04X for idx=0x%04X\n",
-                    idx_in, expected_index);
-            _dump_hex("DROP", &g_sdo_queue.frames[idx]);
-            if (g_sdo_queue.frames[idx].data[0] == SDO_CC_ABORT) {
-                uint32_t ac = (uint32_t)g_sdo_queue.frames[idx].data[4]
-                            | ((uint32_t)g_sdo_queue.frames[idx].data[5] << 8)
-                            | ((uint32_t)g_sdo_queue.frames[idx].data[6] << 16)
-                            | ((uint32_t)g_sdo_queue.frames[idx].data[7] << 24);
-                const char *reason = motor_utils_sdo_abort_str(ac);
-                fprintf(stderr, "[SDO]   ABORT code=0x%08X (%s)\n",
-                        ac, reason ? reason : "unknown");
-            }
-
-            /* 紧凑移除不匹配帧 */
-            for (int j = i; j < g_sdo_queue.count - 1; j++) {
-                int src = (g_sdo_queue.tail + j + 1) % SDO_QUEUE_SIZE;
-                int dst = (g_sdo_queue.tail + j) % SDO_QUEUE_SIZE;
-                memcpy(&g_sdo_queue.frames[dst], &g_sdo_queue.frames[src], sizeof(canfd_frame_t));
-            }
-            g_sdo_queue.head = (g_sdo_queue.head + SDO_QUEUE_SIZE - 1) % SDO_QUEUE_SIZE;
-            g_sdo_queue.count--;
-            i--;  /* 重新扫描当前位置 */
+            /* 索引不匹配 → 跳过, 不删除(可能其他线程在等) */
+            continue;
         }
 
         if (found >= 0) {

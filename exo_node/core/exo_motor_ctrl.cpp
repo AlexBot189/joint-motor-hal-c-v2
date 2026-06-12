@@ -128,8 +128,8 @@ void ExoMotorCtrl::NmtStopAll()
 
 int ExoMotorCtrl::Torque(uint8_t id, int32_t ma)
 {
-    if (ma < 0 || ma > 20000) {
-        ECO_ERROR_NEW("[ExoMotorCtrl] torque {} mA out of range (0~20000)", ma);
+    if (ma < -20000 || ma > 20000) {
+        ECO_ERROR_NEW("[ExoMotorCtrl] torque {} mA out of range (-20000~20000)", ma);
         return -EINVAL;
     }
 
@@ -153,12 +153,11 @@ int ExoMotorCtrl::Torque(uint8_t id, int32_t ma)
     return 0;
 }
 
-int ExoMotorCtrl::Speed(uint8_t id, int32_t rpm_x100,
-                         int32_t acc_x100, int32_t dec_x100)
+int ExoMotorCtrl::Speed(uint8_t id, int32_t rpm,
+                         int32_t acc, int32_t dec)
 {
-    uint16_t accel = (uint16_t)(acc_x100 / 100);
-    uint16_t decel = (uint16_t)(dec_x100 / 100);
-    int32_t  rpm   = rpm_x100 / 100;
+    uint16_t accel = (uint16_t)acc;
+    uint16_t decel = (uint16_t)dec;
 
     if (accel > 10000 || decel > 10000) {
         ECO_ERROR_NEW("[ExoMotorCtrl] accel/decel out of range: {}/{}", accel, decel);
@@ -193,9 +192,8 @@ int ExoMotorCtrl::Speed(uint8_t id, int32_t rpm_x100,
     return 0;
 }
 
-int ExoMotorCtrl::AbsPosition(uint8_t id, int32_t deg_x100)
+int ExoMotorCtrl::AbsPosition(uint8_t id, float deg)
 {
-    float   deg    = (float)deg_x100 / 100.0f;
     int32_t counts = motor_deg_to_counts(deg);
 
     if (counts < -32767 || counts > 32768) {
@@ -265,10 +263,9 @@ int ExoMotorCtrl::SetZero(uint8_t id)
     return 0;
 }
 
-int ExoMotorCtrl::SetPosLimit(uint8_t id, int32_t deg_x100)
+int ExoMotorCtrl::SetPosLimit(uint8_t id, float deg)
 {
-    float   deg    = (float)deg_x100 / 100.0f;
-    int32_t counts = (int32_t)(deg * 65536.0f / 360.0f);
+    int32_t counts = motor_deg_to_counts(deg);
 
     ECO_INFO_NEW("[ExoMotorCtrl] motor {} pos limit = {:.2f}° ({} counts)", id, deg, counts);
 
@@ -283,10 +280,9 @@ int ExoMotorCtrl::SetPosLimit(uint8_t id, int32_t deg_x100)
     return ret;
 }
 
-int ExoMotorCtrl::SetNegLimit(uint8_t id, int32_t deg_x100)
+int ExoMotorCtrl::SetNegLimit(uint8_t id, float deg)
 {
-    float   deg    = (float)deg_x100 / 100.0f;
-    int32_t counts = (int32_t)(deg * 65536.0f / 360.0f);
+    int32_t counts = motor_deg_to_counts(deg);
 
     ECO_INFO_NEW("[ExoMotorCtrl] motor {} neg limit = {:.2f}° ({} counts)", id, deg, counts);
 
@@ -412,17 +408,17 @@ int ExoMotorCtrl::ReadMode(uint8_t id, uint8_t* out_mode)
  * PDO 控制 (非阻塞, RT 安全)
  * ════════════════════════════════════════════════════════════════════ */
 
-void ExoMotorCtrl::PdoCtrl(uint8_t id, motor_mode_t mode, int16_t target)
+void ExoMotorCtrl::PdoCtrl(uint8_t id, motor_mode_t mode, float target)
 {
     switch (mode) {
     case MOTOR_MODE_CURRENT:
-        motor_hal_set_torque(m_hal, id, target);
+        motor_hal_set_torque(m_hal, id, (int16_t)target);
         break;
     case MOTOR_MODE_PROFILE_VEL:
         motor_hal_set_velocity(m_hal, id, target);
         break;
     case MOTOR_MODE_CSP:
-        motor_hal_set_position(m_hal, id, motor_counts_to_deg(target));
+        motor_hal_set_position(m_hal, id, target);
         break;
     default:
         break;

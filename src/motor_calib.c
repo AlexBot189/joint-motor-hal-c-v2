@@ -77,19 +77,24 @@ int motor_calib_start(motor_calib_t *cal, const motor_calib_config_t *cfg)
               cfg->motor_id_r, cfg->motor_id_l,
               cal->cfg.timeout_ms, cal->cfg.angle_threshold_deg);
 
-    /* Step 1: Shutdown 左右电机 (GD32: jx_motor_enable(0x06,...)) */
-    int ret;
-    ret  = motor_hal_sdo_write(cal->hal, cfg->motor_id_r, 0x6040, 0, 0x06, 2);
-    ret |= motor_hal_sdo_write(cal->hal, cfg->motor_id_l, 0x6040, 0, 0x06, 2);
+    /* Step 1: Shutdown 左右电机 (跳过未使用的电机) */
+    int ret = 0;
+    if (cfg->motor_id_r > 0)
+        ret |= motor_hal_sdo_write(cal->hal, cfg->motor_id_r, 0x6040, 0, 0x06, 2);
+    if (cfg->motor_id_l > 0)
+        ret |= motor_hal_sdo_write(cal->hal, cfg->motor_id_l, 0x6040, 0, 0x06, 2);
     if (ret != 0) {
         CALIB_LOG("shutdown failed");
         return -1;
     }
     usleep(50000); /* 50ms */
 
-    /* Step 2: 设零位 (GD32: jx_motor_SetZeroPos, SDO 0x2531=1) */
-    ret  = motor_hal_set_zero(cal->hal, cfg->motor_id_r);
-    ret |= motor_hal_set_zero(cal->hal, cfg->motor_id_l);
+    /* Step 2: 设零位 (跳过未使用的电机) */
+    ret = 0;
+    if (cfg->motor_id_r > 0)
+        ret |= motor_hal_set_zero(cal->hal, cfg->motor_id_r);
+    if (cfg->motor_id_l > 0)
+        ret |= motor_hal_set_zero(cal->hal, cfg->motor_id_l);
     if (ret != 0) {
         CALIB_LOG("set_zero failed");
         return -1;
@@ -118,18 +123,20 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
         return MOTOR_CALIB_TIMEOUT;
     }
 
-    /* 从 feedback 缓存读取左右电机当前角度 */
-    motor_feedback_t fb_r, fb_l;
-    int r_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_r, &fb_r);
-    int l_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_l, &fb_l);
+    /* 从 feedback 缓存读取左右电机当前角度 (跳过未使用的电机) */
+    motor_feedback_t fb_r = {0}, fb_l = {0};
+    int r_ok = 0, l_ok = 0;
+    if (cal->cfg.motor_id_r > 0) r_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_r, &fb_r);
+    if (cal->cfg.motor_id_l > 0) l_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_l, &fb_l);
 
-    if (r_ok != 0 || l_ok != 0) {
+    if ((cal->cfg.motor_id_r > 0 && r_ok != 0) ||
+        (cal->cfg.motor_id_l > 0 && l_ok != 0)) {
         /* 还没有反馈数据, 继续等待 */
         return MOTOR_CALIB_CHECKING;
     }
 
-    float angle_r = motor_counts_to_deg(fb_r.position);
-    float angle_l = motor_counts_to_deg(fb_l.position);
+    float angle_r = cal->cfg.motor_id_r > 0 ? motor_counts_to_deg(fb_r.position) : 0;
+    float angle_l = cal->cfg.motor_id_l > 0 ? motor_counts_to_deg(fb_l.position) : 0;
     float thresh  = cal->cfg.angle_threshold_deg;
 
     /* GD32 判定: 左右位置均在 ±1° 范围 */
@@ -187,16 +194,16 @@ int motor_calib_exit(motor_calib_t *cal)
     CALIB_LOG("exit: stopping motors");
 
     /* 关闭透传 */
-    motor_hal_sensor_stop(cal->hal, id_r);
-    motor_hal_sensor_stop(cal->hal, id_l);
+    if (id_r > 0) motor_hal_sensor_stop(cal->hal, id_r);
+    if (id_l > 0) motor_hal_sensor_stop(cal->hal, id_l);
 
-    /* 电流置零 */
-    motor_hal_sdo_write(cal->hal, id_r, 0x6071, 0, 0, 3);
-    motor_hal_sdo_write(cal->hal, id_l, 0x6071, 0, 0, 3);
+    /* 电流置零 (0x6071 2字节 int16) */
+    if (id_r > 0) motor_hal_sdo_write(cal->hal, id_r, 0x6071, 0, 0, 2);
+    if (id_l > 0) motor_hal_sdo_write(cal->hal, id_l, 0x6071, 0, 0, 2);
 
     /* 脱使能 */
-    motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 2);
-    motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 2);
+    if (id_r > 0) motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 2);
+    if (id_l > 0) motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 2);
 
     cal->state = MOTOR_CALIB_IDLE;
     return 0;

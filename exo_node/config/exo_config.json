@@ -46,8 +46,13 @@
     "cpu_affinity": [3]
   },
   "calib": {
+    "auto_calib": false,
     "timeout_ms": 10000,
     "threshold_deg": 1.0
+  },
+  "sensor": {
+    "period_ms": 1,
+    "bus_format": 3
   },
   "ros": {
     "enabled": false,

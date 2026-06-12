@@ -58,6 +58,12 @@ public:
     const std::string&  GetShmName()       { return m_shm_name; }
     const std::string&  GetCanIface()      { return m_can_iface; }
 
+    /* ── 配置获取 (主线程读取, 设置 g_ctx) ── */
+    bool GetCalibAuto()      const { return m_calib_auto; }
+    int  GetCalibTimeoutMs() const { return m_calib_timeout_ms; }
+    uint16_t GetSensorPeriodMs()   const { return m_sensor_period_ms; }
+    uint8_t  GetSensorBusFormat()  const { return m_sensor_bus_format; }
+
     bool IsRunning() const { return m_running; }
     void SetConfigPath(const std::string& path) { m_config_path = path; }
 
@@ -84,6 +90,12 @@ private:
     std::string  m_can_iface = "can0";
     int          m_can_arb_rate  = 1000000;
     int          m_can_data_rate = 5000000;
+
+    /* ── 校准/透传配置 (来自 config.json) ── */
+    bool         m_calib_auto       = false;
+    int          m_calib_timeout_ms = 10000;
+    uint16_t     m_sensor_period_ms = 1;
+    uint8_t      m_sensor_bus_format = 3;  /* CANFD BRS */
 };
 
 }  /* namespace stark_periph_manager_node */
