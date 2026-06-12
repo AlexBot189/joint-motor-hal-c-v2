@@ -158,8 +158,7 @@ void ExoRtWorker::ProcessMailbox()
     if (begin == m_last_seq) return;   /* 无新命令 */
 
     /* ── 首次收到算法命令 → 设标志, 让主循环调 state_transition ── */
-    if (!m_handshake_done && begin > 0) {
-        m_handshake_done = true;
+    if (m_last_seq == 0 && begin > 0) {
         m_pending_state = STATE_RUNNING;  /* RT 线程只设标志, 不写 shm->node_state */
     }
 
