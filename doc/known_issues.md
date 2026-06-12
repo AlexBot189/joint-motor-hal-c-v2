@@ -1,7 +1,7 @@
 # Known Issues & Design Decisions
 
 > motor_hal_c + motor_tool + motor_node 项目问题和设计决策记录  
-> 最后更新: 2026-06-08
+> 最后更新: 2026-06-12
 
 ---
 
@@ -954,3 +954,46 @@ candump can0 -ta -x                       # 带时间戳
 ### 发现日期
 
 2026-06-11
+
+---
+
+## 审阅反馈评估 (2026-06-12)
+
+> 来源: 第三方 AI 代码审阅, 张君宝逐条分析
+
+### 已驳回 (6 条, 审阅者理解有误)
+
+| # | 审阅意见 | 驳回理由 |
+|---|---------|---------|
+| clock_gettime in RT | "系统调用导致上下文切换" | Linux vDSO 实现, 不进内核, ~20ns, 零上下文切换 |
+| FAULT 响应延迟 100ms | "安全关键场景过长" | RT 线程 1ms 内 PDO estop, 主线程 100ms 后 SDO Shutdown 是善后 |
+| 状态机竞态 | "RT 线程同时写 shm->node_state" | enter_discovery 同步阻塞在主线程, RT 线程不写 node_state |
+| SHM 清零破坏 algo | "算法侧无重连逻辑" | 代码注释已说明: seq 回零触发算法重连, 是设计意图 |
+| memset 500B 不稳定 | "耗时不稳定" | ~几十 ns, 远不到 μs 级, 不影响 1KHz 周期 |
+| 双 Buffer ABA | "读者读到旧数据" | seq 版本号会检测变化, 即使 active_idx 回到原值 seq 也不同 |
+
+### 不修复, 可记 (2 条)
+
+| # | 问题 | 分析 | 决策 |
+|---|------|------|:--:|
+| SHM mailbox `seq_end` plain store | `stlr/ldar` 已保证 cmd[0/1] 可见性。seq_end 唯一作用是被 reader 做 `begin!=end` 跳过检测, 最坏情况多等 1ms, 无数据损坏 | 🟢 不修 |
+| RT overrun 重置基准导致相位漂移 | overrun 极罕见(周期 <80μs, 余量 920μs), 且控制闭环不依赖绝对相位 | 🟢 不修 |
+
+### 确认需修但低优 (1 条)
+
+| # | 问题 | 风险 | 优先级 |
+|---|------|------|:---:|
+| DestroyDispatcher 析构顺序 | 先 destroy HAL 再 reset m_ctrl, 理论上 m_ctrl 析构可能访问已释放的 HAL 指针 | 当前 m_ctrl 析构为空, 不触发 | 🟢 |
+
+---
+
+## 编译修复: enter_calibrating 调用未 include 的 motor_calib API (2026-06-12)
+
+**问题**: `motor_calib.h` 在 HAL `src/` 内部目录, exo_node CMakeLists.txt 未 include 该路径。
+enter_calibrating/exit_calibrating 调用了 motor_calib_create/start/destroy/exit 等函数, 编译报错。
+
+**修复**: 将 enter_calibrating/exit_calibrating 改为空桩(TODO 标记), 保留状态机接口。
+STATE_CALIBRATING 枚举和状态转移规则不变, main.cpp 不触发校准, 完全符合"不开启此功能"的要求。
+
+**影响文件**: `exo_node/core/exo_state_machine.cpp`
+

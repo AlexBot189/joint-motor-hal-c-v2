@@ -94,39 +94,8 @@ void enter_ready(void) {
 }
 
 void enter_calibrating(void) {
-    ECO_INFO_NEW("[StateMachine] enter CALIBRATING");
-
-    if (!g_ctx || !g_ctx->hal) return;
-
-    uint8_t online = g_ctx->shm ? g_ctx->shm->motor_online : 0;
-    if (online == 0) {
-        ECO_WARN_NEW("[StateMachine] no motors online, wait in CALIBRATING");
-        return;
-    }
-
-    uint8_t id_r = (online & 0x01) ? 1 : 0;
-    uint8_t id_l = (online & 0x02) ? 2 : 0;
-
-    motor_calib_t* cal = motor_calib_create(g_ctx->hal);
-    if (!cal) { ECO_ERROR_NEW("[StateMachine] calib_create failed"); return; }
-
-    motor_calib_config_t cfg = {};
-    cfg.motor_id_r          = id_r;
-    cfg.motor_id_l          = id_l;
-    cfg.timeout_ms          = g_ctx->calib_timeout_ms;
-    cfg.angle_threshold_deg = 1.0f;
-    cfg.ctrl_mode           = MOTOR_MODE_CURRENT;
-
-    int ret = motor_calib_start(cal, &cfg);
-    if (ret != 0) {
-        ECO_ERROR_NEW("[StateMachine] calib_start failed: {}", ret);
-        motor_calib_destroy(cal);
-        return;
-    }
-
-    g_ctx->calib_ctx     = cal;
-    g_ctx->calib_running = true;
-    ECO_INFO_NEW("[StateMachine] calib started");
+    ECO_INFO_NEW("[StateMachine] enter CALIBRATING — not implemented yet");
+    /* TODO: 校准暂不开启, 入口保留供后续实现 */
 }
 
 void enter_enabled(void) {
@@ -164,12 +133,7 @@ void exit_init(void) {}
 void exit_discovery(void) {}
 void exit_ready(void) {}
 void exit_calibrating(void) {
-    if (g_ctx && g_ctx->calib_ctx) {
-        motor_calib_exit((motor_calib_t*)g_ctx->calib_ctx);
-        motor_calib_destroy((motor_calib_t*)g_ctx->calib_ctx);
-        g_ctx->calib_ctx     = nullptr;
-        g_ctx->calib_running = false;
-    }
+    /* TODO: 校准暂不开启, 出口保留供后续实现 */
 }
 void exit_enabled(void) {
     ECO_INFO_NEW("[StateMachine] exit ENABLED — stop sensor passthrough");
