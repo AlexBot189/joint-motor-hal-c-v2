@@ -240,10 +240,10 @@ int main(int argc, char** argv)
             update_shm_online(hal, shm);
         }
 
-        /* ── 自动推进状态: READY → ENABLED (跳过校准) ── */
+        /* ── 自动推进状态: READY → ENABLED (跳过校准, 需至少1电机在线) ── */
         if (g_rt_worker && shm) {
-            if (g_exo_state == STATE_READY) {
-                ECO_INFO_NEW("[main] motors ready → ENABLED");
+            if (g_exo_state == STATE_READY && shm->motor_online > 0) {
+                ECO_INFO_NEW("[main] motor online=0x{:02X} → ENABLED", shm->motor_online);
                 state_transition(STATE_ENABLED);
             }
             /* 处理 RT 线程的状态切换请求 */
