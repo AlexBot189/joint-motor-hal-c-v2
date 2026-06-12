@@ -431,8 +431,19 @@ void ExoRtWorker::SafetyCheck()
             /* seq 恢复 */
             m_seq_stall_us = 0;
             m_fault_triggered = false;
-            if (m_shm->motor_severity == MOTOR_WARN &&
+            if (m_shm->motor_severity == MOTOR_FAULT &&
                 m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
+            {
+                /* FAULT 级自动恢复: 算法重启, 重新握手 */
+                m_handshake_done = false;
+                m_shm->motor_severity = MOTOR_OK;
+                m_shm->fault_reason   = FAULT_NONE;
+                m_pending_state = STATE_READY;
+                RT_LOG("SAFETY RECOVER: algo reconnected, seq=%llu",
+                       (unsigned long long)begin);
+            }
+            else if (m_shm->motor_severity == MOTOR_WARN &&
+                     m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
             {
                 /* WARN 级自动恢复 */
                 m_shm->motor_severity = MOTOR_OK;
