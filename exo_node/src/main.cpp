@@ -194,8 +194,9 @@ int main(int argc, char** argv)
 
     g_node_ctx.hal          = hal;
     g_node_ctx.shm          = shm;
-    g_node_ctx.motor_count  = EXO_MOTOR_COUNT;
-    g_node_ctx.startup_timeout_sec = 30;
+    /* TEMP: 单电机测试 → 推生产前改回 EXO_MOTOR_COUNT + 30 */
+    g_node_ctx.motor_count  = 1;  /* 只测右髋 */
+    g_node_ctx.startup_timeout_sec = 5;  /* 单电机快速超时 */
 
     /* 从 config.json 读取透传配置 */
     g_node_ctx.sensor_period_ms = g_dispatcher->GetSensorPeriodMs();
