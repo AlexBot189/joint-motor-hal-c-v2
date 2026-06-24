@@ -1,0 +1,33 @@
+# Build
+build/
+*.o
+*.a
+*.so
+*.bin
+*.out
+stark_periph_manager_node
+
+# IDE
+.lingma/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Images
+img/
+*.png
+*.jpg
+*.jpeg
+*.bmp
+
+# 3rd party binaries
+exo_node/3rd_party/usr/
+
+# Patch files (not source)
+*.patch
