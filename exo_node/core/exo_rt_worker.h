@@ -9,9 +9,8 @@
  *
  * 单周期时序 (< 80μs, 1ms 预算的 8%):
  *   ① ProcessMailbox()   → 读 SHM mailbox → PDO multi_ctrl      ~25μs
- *   ② PublishFeedback()  → 读 fb_cache → SHM double buffer      ~30μs (每5周期)
+ *   ② PublishFeedback()  → fb_cache + IMU → SHM double buffer   ~35μs (每5周期)
  *   ③ SafetyCheck()      → seq停滞 / torque归零 (PDO)           ~10μs
- *   ④ MockSensorTick()   → 模拟 IMU + 气压计                     ~5μs
  *
  * 延迟追踪: 在每个关键节点往 feedback_frame_t 打时间戳,
  *           支持端到端 (T0~T8) 闭环延迟分析.
@@ -32,7 +31,7 @@ extern "C" {
 namespace stark_periph_manager_node {
 
 class ExoMotorCtrl;
-class ExoMockSensor;
+class ImuHALSensor;
 
 struct SafetyConfig {
     uint32_t algo_timeout_ms   = 200;
@@ -53,7 +52,7 @@ struct RtConfig {
 class ExoRtWorker {
 public:
     ExoRtWorker(motor_hal_t* hal, exo_shm_t* shm,
-                ExoMotorCtrl* ctrl, ExoMockSensor* mock_sensor);
+                ExoMotorCtrl* ctrl, ImuHALSensor* imu_sensor);
     ~ExoRtWorker();
 
     void Start();
@@ -82,7 +81,7 @@ private:
     void ProcessMailbox();
     void PublishFeedback();
     void SafetyCheck(uint64_t seq_before_process);
-    void MockSensorTick();
+
     void SetThreadRt();
 
     /* ── 双电机 torque=0 (PDO, RT安全) ── */
@@ -96,7 +95,7 @@ private:
     motor_hal_t*    m_hal;
     exo_shm_t*      m_shm;
     ExoMotorCtrl*   m_ctrl;
-    ExoMockSensor*  m_mock_sensor;
+    ImuHALSensor*   m_imu_sensor;
 
     std::atomic<bool> m_running{false};
     std::thread       m_thread;

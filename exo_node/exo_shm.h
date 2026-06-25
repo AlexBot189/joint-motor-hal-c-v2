@@ -56,23 +56,40 @@ typedef struct {
 } exo_sensor_data_t;
 
 /* ============================================================================
- * IMU 数据 (ICM45608, 当前 mock 填充)
+ * IMU 数据 (ICM45608 + eDMP GAF 9轴融合)
+ *
+ * 数据来源: libimu_hal.so, emd_gaf_get_output() 非阻塞读取
+ * 未初始化硬件时所有字段为 0
  * ============================================================================ */
 typedef struct {
+    /* 原始传感器数据 */
     float    roll;              /* 横滚角, °                                         */
     float    pitch;             /* 俯仰角, °                                         */
     float    yaw;               /* 偏航角, °                                         */
-    float    acc_x;             /* 加速度 X, m/s²                                    */
-    float    acc_y;             /* 加速度 Y, m/s²                                    */
-    float    acc_z;             /* 加速度 Z, m/s²                                    */
-    float    gyro_x;            /* 角速度 X, °/s                                     */
-    float    gyro_y;            /* 角速度 Y, °/s                                     */
-    float    gyro_z;            /* 角速度 Z, °/s                                     */
-    uint64_t timestamp_us;      /* IMU 采样时刻, μs                                   */
+    float    acc_x;             /* 校准加速度 X, g                                    */
+    float    acc_y;             /* 校准加速度 Y, g                                    */
+    float    acc_z;             /* 校准加速度 Z, g                                    */
+    float    gyro_x;            /* 校准角速度 X, dps                                  */
+    float    gyro_y;            /* 校准角速度 Y, dps                                  */
+    float    gyro_z;            /* 校准角速度 Z, dps                                  */
+    /* 9轴融合输出 */
+    float    quat_w;            /* 9轴四元数 W                                       */
+    float    quat_x;            /* 9轴四元数 X                                       */
+    float    quat_y;            /* 9轴四元数 Y                                       */
+    float    quat_z;            /* 9轴四元数 Z                                       */
+    float    mag_x;             /* 校准磁力计 X, uT                                   */
+    float    mag_y;             /* 校准磁力计 Y, uT                                   */
+    float    mag_z;             /* 校准磁力计 Z, uT                                   */
+    float    heading_deg;       /* 航向角, °                                          */
+    float    temp_c;            /* IMU 芯片温度, °C                                   */
+    int      stationary;        /* 静止检测: 0=运动, 2=静止                            */
+    int      gyr_accuracy;      /* 陀螺校准精度: 0=未校准, 3=精校准                     */
+    int      mag_accuracy;      /* 磁力计校准精度: 0=未校准, 3=精校准                   */
+    uint64_t timestamp_us;      /* 融合输出时刻, μs                                    */
 } imu_data_t;
 
 /* ============================================================================
- * 气压计数据 (QMP6990, 当前 mock 填充)
+ * 气压计数据 (QMP6990, 硬件未接入时全零)
  * ============================================================================ */
 typedef struct {
     float    pressure_hpa;      /* 气压, hPa                                         */

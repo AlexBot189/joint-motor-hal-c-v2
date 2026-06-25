@@ -8,6 +8,7 @@ option(ENABLE_ROS "Build ROS adapter" OFF)
 option(ENABLE_WEBSERVER "Build WebServer adapter" OFF)
 
 set(MOTOR_HAL_DIR "${CMAKE_SOURCE_DIR}/..")
+set(IMU_HAL_DIR  "/home/workspace/08-agent/openclaw/sw-zhangsan/business/joint-motor-hal-c-v2/../emd-gaf-hal")
 
 include_directories(
     ${CMAKE_SOURCE_DIR}
@@ -19,10 +20,12 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/3rd_party/usr/include
     ${MOTOR_HAL_DIR}/inc
     ${MOTOR_HAL_DIR}/src
+    ${IMU_HAL_DIR}/inc
 )
 
 link_directories(
     ${MOTOR_HAL_DIR}/build
+    ${IMU_HAL_DIR}/build
     ${CMAKE_SOURCE_DIR}/log_helper/build
 )
 
@@ -35,7 +38,7 @@ set(SOURCES
     core/exo_state_machine.cpp
     core/exo_rt_worker.cpp
     core/exo_motor_ctrl.cpp
-    core/exo_mock_sensor.cpp
+    core/exo_imu_sensor.cpp
     core/exo_latency_trace.cpp
 )
 
@@ -50,7 +53,7 @@ set(HEADERS
     core/exo_rt_worker.h
     core/exo_rt_log.h
     core/exo_motor_ctrl.h
-    core/exo_mock_sensor.h
+    core/exo_imu_sensor.h
 
     interface/Defines.hpp
     interface/IListener.hpp
@@ -61,6 +64,8 @@ add_executable(stark_periph_manager_node ${SOURCES} ${HEADERS})
 
 target_link_libraries(stark_periph_manager_node
     motor_hal
+    imu_hal
+    gpiod
     log_helper
     pthread
     rt

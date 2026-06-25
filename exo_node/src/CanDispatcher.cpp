@@ -5,6 +5,7 @@
  * 所有 SDO/PDO/OD 通过 ExoMotorCtrl 封装.
  */
 #include "CanDispatcher.h"
+#include "core/exo_imu_sensor.h"
 #include "nlohmann/json.hpp"
 
 #include <cstring>
@@ -79,6 +80,38 @@ bool CanDispatcher::InitDispatcher()
     /* 6. 创建 ExoMotorCtrl 封装 */
     m_ctrl = std::make_unique<ExoMotorCtrl>(m_hal);
 
+    /* 6. 初始化 IMU HAL (如果硬件可用) */
+    {
+        const char* imu_i2c  = "/dev/i2c-3";
+        const char* imu_gpio = "gpiochip4";
+        unsigned int imu_line = 2;
+        int imu_mode = 5;  /* GAF 50Hz 融合 */
+
+        /* 从 config.json 读取 IMU 配置 (如果存在) */
+        {
+            std::ifstream ifs(m_config_path);
+            if (ifs.is_open()) {
+                nlohmann::json cfg;
+                try { ifs >> cfg; }
+                catch (...) {}
+                ifs.close();
+
+                if (cfg.contains("imu")) {
+                    auto& imu = cfg["imu"];
+                    imu_i2c  = imu.value("i2c_dev",  std::string("/dev/i2c-3")).c_str();
+                    imu_gpio = imu.value("gpio_chip", std::string("gpiochip4")).c_str();
+                    imu_line = imu.value("gpio_line", 2u);
+                    imu_mode = imu.value("op_mode",   5);
+                }
+            }
+        }
+
+        m_imu_sensor = std::make_unique<ImuHALSensor>();
+        if (!m_imu_sensor->Init(imu_i2c, imu_gpio, imu_line, imu_mode)) {
+            ECO_WARN_NEW("[CanDispatcher] IMU HAL init failed, operating without IMU");
+        }
+    }
+
     /* 7. 打开共享内存 */
     m_shm_mgr = exo_shm_mgr_open(m_shm_name.c_str(), true, m_shm_size_bytes);
     if (!m_shm_mgr) {
@@ -118,7 +151,13 @@ bool CanDispatcher::DestroyDispatcher()
         }
     }
 
-    /* 2. 停止 recv + 销毁 HAL */
+    /* 2. 停止 IMU HAL */
+    if (m_imu_sensor) {
+        m_imu_sensor->Deinit();
+        m_imu_sensor.reset();
+    }
+
+    /* 3. 停止 recv + 销毁 HAL */
     if (m_hal) {
         motor_hal_recv_stop(m_hal);
         motor_hal_destroy(m_hal);

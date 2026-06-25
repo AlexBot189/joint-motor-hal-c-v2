@@ -30,6 +30,7 @@ extern "C" {
 }
 
 #include "core/exo_motor_ctrl.h"
+#include "core/exo_imu_sensor.h"
 #include "core/exo_rt_worker.h"
 
 namespace stark_periph_manager_node {
@@ -48,9 +49,10 @@ public:
     void NotifyObserver(const boost::any& data) override;
 
     /* ── 获取内部实例 ── */
-    motor_hal_t*   GetHal()  { return m_hal; }
-    exo_shm_t*     GetShm()  { return m_shm; }
-    ExoMotorCtrl*  GetCtrl() { return m_ctrl.get(); }
+    motor_hal_t*   GetHal()       { return m_hal; }
+    exo_shm_t*     GetShm()       { return m_shm; }
+    ExoMotorCtrl*  GetCtrl()      { return m_ctrl.get(); }
+    ImuHALSensor*  GetImuSensor() { return m_imu_sensor.get(); }
 
     /* ── 配置 (从 config.json 读取, 或默认值) ── */
     const SafetyConfig& GetSafetyConfig()  { return m_safety_cfg; }
@@ -90,6 +92,9 @@ private:
     std::string  m_can_iface = "can0";
     int          m_can_arb_rate  = 1000000;
     int          m_can_data_rate = 5000000;
+
+    /* ── IMU HAL ── */
+    std::unique_ptr<ImuHALSensor> m_imu_sensor;
 
     /* ── 校准/透传配置 (来自 config.json) ── */
     bool         m_calib_auto       = false;

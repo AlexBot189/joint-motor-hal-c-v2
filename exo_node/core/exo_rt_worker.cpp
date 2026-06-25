@@ -11,7 +11,7 @@
 #include "exo_rt_log.h"
 #include "exo_latency_trace.h"
 #include "exo_motor_ctrl.h"
-#include "exo_mock_sensor.h"
+#include "exo_imu_sensor.h"
 
 #include <cstring>
 #include <ctime>
@@ -29,11 +29,11 @@ namespace stark_periph_manager_node {
  * ════════════════════════════════════════════════════════════════════ */
 
 ExoRtWorker::ExoRtWorker(motor_hal_t* hal, exo_shm_t* shm,
-                         ExoMotorCtrl* ctrl, ExoMockSensor* mock_sensor)
+                         ExoMotorCtrl* ctrl, ImuHALSensor* imu_sensor)
     : m_hal(hal)
     , m_shm(shm)
     , m_ctrl(ctrl)
-    , m_mock_sensor(mock_sensor)
+    , m_imu_sensor(imu_sensor)
     , m_last_seq(0)
     , m_seq_stall_us(0)
     , m_can_last_frame_us(0)
@@ -101,12 +101,8 @@ void ExoRtWorker::Run()
 
     while (m_running.load(std::memory_order_acquire)) {
 
-        /* 快照: 保存 ProcessMailbox 之前的 seq, 供 SafetyCheck 比较
-         * Bug: 不能直接比较 m_last_seq, 因为 ProcessMailbox 刚更新了它 */
+        /* 快照: 保存 ProcessMailbox 之前的 seq, 供 SafetyCheck 比较 */
         uint64_t seq_before = m_last_seq;
-
-        /* ── 更新 mock 传感器 ── */
-        MockSensorTick();
 
         /* ① 控制下发: 读 SHM mailbox → multi_ctrl → PDO */
         ProcessMailbox();
@@ -338,13 +334,17 @@ void ExoRtWorker::PublishFeedback()
         }
     }
 
-    /* ── 填充 mock IMU ── */
-    if (m_mock_sensor) {
-        fb->imu  = m_mock_sensor->GetImu();
-        fb->baro = m_mock_sensor->GetBaro();
+    /* ── 填充 IMU 融合数据 (非阻塞, 硬件未就绪时全零) ── */
+    if (m_imu_sensor && m_imu_sensor->IsReady()) {
+        m_imu_sensor->Read(&fb->imu);
+    } else {
+        memset(&fb->imu, 0, sizeof(fb->imu));
     }
 
-    /* ── T3: mock传感器+IMU+气压计 组装完成 ── */
+    /* ── 气压计: 硬件未接入, 保持全零 ── */
+    memset(&fb->baro, 0, sizeof(fb->baro));
+
+    /* ── IMU+传感器+气压计 组装完成 ── */
     m_tracer.mark_mock_sensor_done();
 
     /* ── T4: SHM 切换 ── */
@@ -493,21 +493,6 @@ void ExoRtWorker::_safe_disable_all()
         cmds[i].target1       = 0;
     }
     motor_hal_multi_ctrl(m_hal, cmds, EXO_MOTOR_COUNT);
-}
-
-/* ════════════════════════════════════════════════════════════════════
- * MockSensorTick() — 更新 mock IMU + 气压计
- * ════════════════════════════════════════════════════════════════════ */
-
-void ExoRtWorker::MockSensorTick()
-{
-    if (!m_mock_sensor) return;
-
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    uint64_t now_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-
-    m_mock_sensor->Tick(now_us);
 }
 
 /* ════════════════════════════════════════════════════════════════════

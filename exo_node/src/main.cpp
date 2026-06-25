@@ -37,7 +37,7 @@ extern "C" {
 #include "core/exo_rt_log.h"
 #include "core/exo_state_machine.h"
 #include "core/exo_node_context.h"
-#include "core/exo_mock_sensor.h"
+#include "core/exo_imu_sensor.h"
 #include "src/Factory.h"
 #include "exo_shm.h"
 
@@ -51,7 +51,6 @@ static volatile int g_running = 1;
 static volatile int g_log_running = 1;
 static CanDispatcher*    g_dispatcher = nullptr;
 static ExoRtWorker*      g_rt_worker  = nullptr;
-static ExoMockSensor     g_mock_sensor;
 static ExoRtLog          g_rt_log_instance;
 ExoRtLog*                g_rt_log = &g_rt_log_instance;
 
@@ -157,20 +156,12 @@ int main(int argc, char** argv)
     ECO_INFO_NEW("[main] CANFD ready, INIT done");
 
     /* ════════════════════════════════════════════════════════════
-     * 步骤 2: 初始化 mock 传感器 (IMU + 气压计)
-     * ════════════════════════════════════════════════════════════ */
-
-    g_mock_sensor.Init();
-    ECO_INFO_NEW("[main] mock sensor (IMU+Baro) ready");
-
-    /* ════════════════════════════════════════════════════════════
-     * 步骤 3: 启动 RT 工作线程
-     * 先发 torque=0, 等算法 cmd 后才真正切入控制
+     * 步骤 2: 启动 RT 工作线程 (IMU 在 CanDispatcher 中已初始化)
      * ════════════════════════════════════════════════════════════ */
 
     g_rt_worker = new ExoRtWorker(hal, shm,
                                   g_dispatcher->GetCtrl(),
-                                  &g_mock_sensor);
+                                  g_dispatcher->GetImuSensor());
 
     /* 注入 config.json 配置 (读失败则保持默认值) */
     g_rt_worker->SetSafetyConfig(g_dispatcher->GetSafetyConfig());
@@ -191,7 +182,7 @@ int main(int argc, char** argv)
     ECO_INFO_NEW("[main] log drain thread started");
 
     /* ════════════════════════════════════════════════════════════
-     * 步骤 4: 状态机驱动 — enter_discovery 阻塞等待全部电机上线
+     * 步骤 3: 状态机驱动 — enter_discovery 阻塞等待全部电机上线
      *         成功后自动切 READY, 超时也会切 READY (允许部分在线)
      * ════════════════════════════════════════════════════════════ */
 
@@ -218,7 +209,7 @@ int main(int argc, char** argv)
     state_transition(STATE_DISCOVERY);  /* 阻塞: enter_discovery 做实际探测 */
 
     /* ════════════════════════════════════════════════════════════
-     * 步骤 5: 初始化 ROS (编译可选)
+     * 步骤 4: 初始化 ROS (编译可选)
      * ════════════════════════════════════════════════════════════ */
 
 #ifdef ENABLE_ROS
@@ -232,7 +223,7 @@ int main(int argc, char** argv)
 #endif
 
     /* ════════════════════════════════════════════════════════════
-     * 步骤 6: 主循环
+     * 步骤 5: 主循环
      * ════════════════════════════════════════════════════════════ */
 
     ECO_INFO_NEW("[main] node ready");
@@ -320,7 +311,7 @@ int main(int argc, char** argv)
     }
 
     /* ════════════════════════════════════════════════════════════
-     * 步骤 7: 清理
+     * 步骤 6: 清理
      * ════════════════════════════════════════════════════════════ */
 
     ECO_INFO_NEW("[main] shutting down...");
