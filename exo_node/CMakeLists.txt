@@ -8,7 +8,9 @@ option(ENABLE_ROS "Build ROS adapter" OFF)
 option(ENABLE_WEBSERVER "Build WebServer adapter" OFF)
 
 set(MOTOR_HAL_DIR "${CMAKE_SOURCE_DIR}/..")
-set(IMU_HAL_DIR  "/home/workspace/08-agent/openclaw/sw-zhangsan/business/joint-motor-hal-c-v2/../emd-gaf-hal")
+
+# 先编译 imu_hal.so (ICM45608 eDMP GAF 9轴融合)
+add_subdirectory(imu_hal)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}
@@ -20,12 +22,11 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/3rd_party/usr/include
     ${MOTOR_HAL_DIR}/inc
     ${MOTOR_HAL_DIR}/src
-    ${IMU_HAL_DIR}/inc
+    ${CMAKE_SOURCE_DIR}/imu_hal/inc
 )
 
 link_directories(
     ${MOTOR_HAL_DIR}/build
-    ${IMU_HAL_DIR}/build
     ${CMAKE_SOURCE_DIR}/log_helper/build
 )
 
@@ -65,7 +66,6 @@ add_executable(stark_periph_manager_node ${SOURCES} ${HEADERS})
 target_link_libraries(stark_periph_manager_node
     motor_hal
     imu_hal
-    gpiod
     log_helper
     pthread
     rt
