@@ -1,8 +1,8 @@
 /*
- * exo_motor_ctrl.cpp — motor_tool 全部 SDO/PDO/OD 控制封装实现
+ * exo_motor_ctrl.cpp — SDO/PDO/OD 控制封装实现
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * 所有 SDO 控制路径与 motor_tool daemon 完全对齐,
- * 每个函数内部做完整时序 (使能→模式→参数→执行).
+ * 所有 SDO 控制路径与 motor_tool 对齐.
  * PDO 路径直接透传 motor_hal 非阻塞 API.
  */
 #include "exo_motor_ctrl.h"
@@ -21,12 +21,9 @@ ExoMotorCtrl::ExoMotorCtrl(motor_hal_t* hal)
     memset(m_mode_cache, 0xFF, sizeof(m_mode_cache));
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * 内部: 幂等 set_mode
- *
- * 如果缓存的模式与请求一致, 跳过 SDO 写 (节省 ~50ms).
- * 否则 SDO 写 0x6060 并更新缓存.
- * ════════════════════════════════════════════════════════════════════ */
+/*
+ * 内部: 幂等 set_mode — 缓存模式, 跳过重复 SDO 写.
+ */
 
 int ExoMotorCtrl::_set_mode_cached(uint8_t id, motor_mode_t mode)
 {
@@ -44,9 +41,7 @@ int ExoMotorCtrl::_set_mode_cached(uint8_t id, motor_mode_t mode)
     return ret;
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * 系统命令
- * ════════════════════════════════════════════════════════════════════ */
+/* 系统命令 */
 
 int ExoMotorCtrl::Startup(uint8_t id, uint32_t timeout_ms)
 {
@@ -122,9 +117,7 @@ void ExoMotorCtrl::NmtStopAll()
     ECO_INFO_NEW("[ExoMotorCtrl] NMT broadcast STOP");
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * SDO 控制命令 (完整时序, 对齐 tool_hal.c)
- * ════════════════════════════════════════════════════════════════════ */
+/* SDO 控制命令 (完整时序, 对齐 tool_hal.c) */
 
 int ExoMotorCtrl::Torque(uint8_t id, int32_t ma)
 {
@@ -339,9 +332,7 @@ int ExoMotorCtrl::ReadPid(uint8_t id, motor_pid_t* out_pid)
     return motor_hal_read_pid(m_hal, id, out_pid);
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * 通用 SDO
- * ════════════════════════════════════════════════════════════════════ */
+/* 通用 SDO */
 
 int ExoMotorCtrl::SdoRead(uint8_t id, uint16_t index, uint8_t subidx, uint32_t* out_val)
 {
@@ -354,9 +345,7 @@ int ExoMotorCtrl::SdoWrite(uint8_t id, uint16_t index, uint8_t subidx,
     return motor_hal_sdo_write(m_hal, id, index, subidx, value, size);
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * 读取命令 (SDO 路径, 非 RT)
- * ════════════════════════════════════════════════════════════════════ */
+/* 读取命令 (SDO 路径, 非 RT) */
 
 float ExoMotorCtrl::ReadAngle(uint8_t id)
 {
@@ -404,9 +393,7 @@ int ExoMotorCtrl::ReadMode(uint8_t id, uint8_t* out_mode)
     return ret;
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * PDO 控制 (非阻塞, RT 安全)
- * ════════════════════════════════════════════════════════════════════ */
+/* PDO 控制 (非阻塞, RT 安全) */
 
 void ExoMotorCtrl::PdoCtrl(uint8_t id, motor_mode_t mode, float target)
 {
@@ -436,9 +423,7 @@ void ExoMotorCtrl::PdoMitCtrl(uint8_t id, float pos, float vel,
     motor_hal_mit_control(m_hal, id, pos, vel, kp, kd, torque);
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * PDO 映射
- * ════════════════════════════════════════════════════════════════════ */
+/* PDO 映射 */
 
 int ExoMotorCtrl::PdoMap(uint8_t id, pdo_type_t type,
                           const pdo_map_entry_cfg_t* entries, uint8_t count,
@@ -453,9 +438,7 @@ int ExoMotorCtrl::RpdoSend(uint8_t id, const uint8_t* data, uint8_t dlc)
     return motor_hal_rpdo_send(m_hal, id, data, dlc);
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * 传感器/反馈
- * ════════════════════════════════════════════════════════════════════ */
+/* 传感器/反馈 */
 
 int ExoMotorCtrl::GetFeedback(uint8_t id, motor_feedback_t* out_fb)
 {
@@ -477,9 +460,7 @@ int ExoMotorCtrl::SensorStop(uint8_t id)
     return motor_hal_sensor_stop(m_hal, id);
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * 辅助
- * ════════════════════════════════════════════════════════════════════ */
+/* 辅助 */
 
 bool ExoMotorCtrl::IsOnline(uint8_t id)
 {

@@ -1,5 +1,6 @@
 /*
  * RosAdapter.h — ROS 适配器
+ * Copyright (c) 2026 zhiqiang.yang
  *
  * pull 模式: 独立线程从 SHM 读反馈帧 → publish ROS Topic
  * Subscriber 路径: ROS → dispatcher->Send (JSON) → SDO → CAN

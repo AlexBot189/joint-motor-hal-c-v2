@@ -1,31 +1,16 @@
 /*
  * exo_latency_trace.h — 耗时追踪 (宏开关控制)
- *
- * 用途: 对比 RT vs Non-RT + SHM vs memcpy 的性能收益
+ * Copyright (c) 2026 zhiqiang.yang
  *
  * 启用:   #define EXO_LATENCY_TRACE  1
- * 关闭:   #define EXO_LATENCY_TRACE  0  (零开销, 所有代码不编译)
+ * 关闭:   #define EXO_LATENCY_TRACE  0  (零开销)
  *
- * 追踪节点 (不动HAL层, 全在RT线程内):
+ * 追踪节点 (RT线程内):
+ *   反馈路径: T1 fb_read_start → T4 shm_write_done
+ *   控制路径: T5 mailbox_read → T6 pdo_sent
  *
- *   反馈路径:
- *     T1  fb_read_start    — PublishFeedback 开始, 读fb_cache前
- *     T2  fb_read_done     — fb_cache 读取完成 (电机+传感器)
- *     T3  mock_sensor_done — IMU+气压计 组装完成
- *     T4  shm_write_done   — SHM double buffer 切换完成
- *
- *   控制路径:
- *     T5  mailbox_read     — ProcessMailbox 读mailbox开始
- *     T6  pdo_sent         — multi_ctrl PDO 下发完成
- *
- *   统计:
- *     反馈路径总延迟 = T4 - T1
- *     控制路径总延迟 = T6 - T5
- *     单周期总延迟   = T4 - T1 (反馈) + T6 - T5 (控制)
- *
- * 输出:
- *   每1000个周期打印一次统计 (min/avg/max),
- *   同时写入 SHM 的 latency_stats 字段供 perf_test 读取.
+ * 输出: 每1000周期统计一次 (min/avg/max),
+ *       同时写入 SHM 供 perf_test 读取.
  */
 #pragma once
 
@@ -38,9 +23,7 @@
 
 namespace stark_periph_manager_node {
 
-/* ════════════════════════════════════════════════════════════════════
- * 追踪数据结构
- * ════════════════════════════════════════════════════════════════════ */
+/* 追踪数据结构 */
 
 struct latency_sample_t {
     uint64_t t1_fb_read_start;
@@ -76,9 +59,7 @@ struct latency_stats_t {
     uint32_t overrun_count;       /* 周期超限次数 */
 };
 
-/* ════════════════════════════════════════════════════════════════════
- * 追踪器 (RT线程内使用, 全部非阻塞)
- * ════════════════════════════════════════════════════════════════════ */
+/* 追踪器 (RT线程内使用, 全部非阻塞) */
 
 class ExoLatencyTracer {
 public:

@@ -1,20 +1,14 @@
 /*
  * exo_shm.h — 共享内存布局
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * 数据方向:
- *   motor_node 写 → fb_buffer (反馈帧) → 算法/ROS/Web 读
- *   算法写       → mailbox (控制命令)  → motor_node 读
+ * 数据方向: motor_node → fb_buffer → 算法/ROS/Web
+ *           算法 → mailbox → motor_node
  *
- * 并发模型: 所有字段单写者, 多读者安全. 不需要锁.
- *   - fb_buffer: 双 Buffer, RT 工作线程写, 多个非 RT 读者
- *   - mailbox:   算法进程写, RT 工作线程读 (seq_begin/seq_end snapshot 保护)
- *   - 状态字段:  motor_node 内部写, 算法只读
- *
- * v3.0 (2026-06-09):
- *   - 简化为 2 电机 (髋关节)
- *   - 加入端到端延迟追踪字段
- *   - 加入 mock IMU + 气压计数据
- *   - 加入双电机 mailbox
+ * 并发: 单写多读, 无锁.
+ *   fb_buffer: 双 Buffer, RT 线程写, 多读者
+ *   mailbox:   算法写, RT 读 (seq_begin/seq_end 防撕裂)
+ *   status:    motor_node 写, 算法只读
  */
 #pragma once
 
@@ -28,9 +22,7 @@
 extern "C" {
 #endif
 
-/* ============================================================================
- * 电机反馈 (来自 CAN 反馈帧 0x300, 大端)
- * ============================================================================ */
+/* 电机反馈 (CAN 反馈帧 0x300, 大端) */
 typedef struct {
     int16_t  position;          /* 编码器角度, counts [-32768,32767] → [-180°,180°]   */
     int16_t  velocity;          /* 转速, RPM                                          */
@@ -42,9 +34,7 @@ typedef struct {
     uint8_t  _pad;
 } motor_data_t;
 
-/* ============================================================================
- * 传感器透传 (来自 CAN 0x680 帧, 小端 bit-packed)
- * ============================================================================ */
+/* 传感器透传 (CAN 0x680 帧, 小端 bit-packed) */
 typedef struct {
     uint16_t hall_adc0;         /* 线性霍尔 A, 0~4095                                */
     uint16_t hall_adc1;         /* 线性霍尔 B, 0~4095                                */
@@ -55,12 +45,7 @@ typedef struct {
     uint8_t  data_valid;        /* 力矩数据有效标志                                    */
 } exo_sensor_data_t;
 
-/* ============================================================================
- * IMU 数据 (ICM45608 + eDMP GAF 9轴融合)
- *
- * 数据来源: libimu_hal.so, emd_gaf_get_output() 非阻塞读取
- * 未初始化硬件时所有字段为 0
- * ============================================================================ */
+/* IMU 数据 (ICM45608, 9轴融合) */
 typedef struct {
     /* 原始传感器数据 */
     float    roll;              /* 横滚角, °                                         */
@@ -88,9 +73,7 @@ typedef struct {
     uint64_t timestamp_us;      /* 融合输出时刻, μs                                    */
 } imu_data_t;
 
-/* ============================================================================
- * 气压计数据 (QMP6990, 硬件未接入时全零)
- * ============================================================================ */
+/* 气压计数据 (QMP6990) */
 typedef struct {
     float    pressure_hpa;      /* 气压, hPa                                         */
     float    temperature_c;     /* 温度, °C                                          */
@@ -98,33 +81,29 @@ typedef struct {
     uint64_t timestamp_us;      /* 采样时刻, μs                                       */
 } barometer_data_t;
 
-/* ============================================================================
- * 反馈帧 — motor_node 组装后写入 SHM 双 Buffer
- * ============================================================================ */
+/* 反馈帧 — 写入 SHM 双 Buffer */
 typedef struct {
     motor_data_t      motor[EXO_MOTOR_COUNT];   /* [0]=右髋(ID=1) [1]=左髋(ID=2)       */
     exo_sensor_data_t sensor[EXO_MOTOR_COUNT];  /* 传感器透传, 与电机一一对应              */
     imu_data_t        imu;                      /* IMU 姿态数据                          */
     barometer_data_t  baro;                     /* 气压计数据                            */
 
-    /* ── 端到端延迟追踪 (调试, 单位 μs) ── */
-    uint64_t ts_can_rx;          /* T0: CANFD 反馈帧到达 (recv 线程)                     */
-    uint64_t ts_cache_write;     /* T1: fb_cache 写入完成                                */
-    uint64_t ts_shm_read;        /* T2: RT 线程读 fb_cache                               */
-    uint64_t ts_shm_write;       /* T3: SHM 双 Buffer 切换 (atomic_store 前)             */
-    uint64_t ts_algo_read;       /* T4: 算法读 SHM 完成 (算法填充)                        */
-    uint64_t ts_algo_done;       /* T5: 算法计算完成 (算法填充)                           */
-    uint64_t ts_mailbox_read;    /* T7: RT 线程读 mailbox (RT 填充)                      */
-    uint64_t ts_pdo_sent;        /* T8: PDO/广播 下发完成 (RT 填充)                      */
-    uint64_t ts_frame_assembly;  /* RT 线程组装反馈帧完成                                  */
+    /* 端到端延迟追踪 (μs) */
+    uint64_t ts_can_rx;          /* T0: CANFD 反馈帧到达 */
+    uint64_t ts_cache_write;     /* T1: fb_cache 写入完成 */
+    uint64_t ts_shm_read;        /* T2: RT 线程读 fb_cache */
+    uint64_t ts_shm_write;       /* T3: SHM 双 Buffer 切换前 */
+    uint64_t ts_algo_read;       /* T4: 算法读 SHM (算法填充) */
+    uint64_t ts_algo_done;       /* T5: 算法计算完成 (算法填充) */
+    uint64_t ts_mailbox_read;    /* T7: RT 读 mailbox (RT 填充) */
+    uint64_t ts_pdo_sent;        /* T8: PDO 发送完成 (RT 填充) */
+    uint64_t ts_frame_assembly;  /* 反馈帧组装完成 */
 
     uint64_t timestamp_us;       /* 组装时刻, μs                                        */
     uint8_t  _pad[4];            /* 对齐到字边界                                         */
 } feedback_frame_t;
 
-/* ============================================================================
- * 电机控制命令
- * ============================================================================ */
+/* 电机控制命令 */
 typedef enum {
     EXO_CMD_TORQUE   = 1,       /* 力矩模式, value=mA                                   */
     EXO_CMD_SPEED    = 2,       /* 速度模式, value=RPM×100                              */
@@ -132,16 +111,16 @@ typedef enum {
     EXO_CMD_MIT      = 4,       /* MIT 阻抗控制                                          */
     EXO_CMD_PP       = 5,       /* 轮廓位置模式 PP                                       */
     EXO_CMD_CSV      = 6,       /* 循环同步速度 CSV, value=RPM×100                          */
-    /* 多轴广播: 当 cmd[0]和cmd[1]都设为MULTI时，RT线程打包成一帧64B多轴广播(COB 0x200) */
+    /* 多轴广播: 两电机 cmd 都为 MULTI 时, 打包一帧 64B CANFD 发出 */
     EXO_CMD_MULTI    = 7,       /* 多轴广播, mode/value/value2/feedforward 字段有效            */
-    /* PDO Byte0 控制 (不发 target, 只改 Byte0 状态) */
+    /* PDO Byte0 位控制 (不发 target) */
     EXO_CMD_ENABLE   = 10,      /* PDO使能 (Byte0 bit7=1)                                */
     EXO_CMD_DISABLE  = 11,      /* PDO失能 (Byte0 bit7=0)                                */
-    EXO_CMD_ESTOP    = 12,      /* 急停: enable=0 + bus=OFF (Byte0=0x00, 保留mode)         */
-    EXO_CMD_RECOVER  = 13,      /* 恢复: enable=1 + bus=ON (Byte0=0xC0, 保留mode)          */
-    EXO_CMD_SET_MODE = 14,      /* 切换 PDO 控制模式, value=motor_mode_t                   */
-    /* bit5 清错: 算法先读 fb->motor[i].error_code, 判断后决定是否清除 */
-    EXO_CMD_CLEAR_FAULT = 15,   /* PDO Byte0 bit5 脉冲清除                               */
+    EXO_CMD_ESTOP    = 12,      /* 急停: enable=0 + bus=OFF */
+    EXO_CMD_RECOVER  = 13,      /* 恢复: enable=1 + bus=ON */
+    EXO_CMD_SET_MODE = 14,      /* 切换 PDO 控制模式 */
+    /* PDO Byte0 bit5 清错 */
+    EXO_CMD_CLEAR_FAULT = 15,
 } exo_cmd_type_t;
 
 typedef struct {
@@ -150,7 +129,7 @@ typedef struct {
     int32_t  value;             /* target1: 主目标值 (位置/速度/电流)                     */
     int32_t  value2;            /* target2: 加减速(PP/PV模式, RPM/s)                     */
     int32_t  feedforward;       /* 前馈 (PP模式轮廓速度 RPM, 其他模式填0)                */
-    /* MIT 模式专用 (其他模式忽略) */
+    /* MIT 模式专用 */
     uint16_t mit_pos;           /* 目标位置 [0-65535]                                  */
     uint16_t mit_vel;           /* 目标速度 [0-4095]                                   */
     uint16_t mit_kp;            /* 位置刚度 [0-4095]                                   */
@@ -160,27 +139,21 @@ typedef struct {
     uint64_t timestamp_us;      /* 算法下发时刻                                          */
 } motor_command_t;
 
-/* ============================================================================
- * Mailbox — 双电机命令 (算法写, motor_node 读)
- * ============================================================================ */
+/* Mailbox — 双电机命令 (算法写, motor_node 读) */
 typedef struct {
-    uint64_t          seq_begin;   /* ★ 一机制三用途: 命令传输+握手信号+心跳              */
+    uint64_t          seq_begin;   /* 命令传输+握手+心跳 */
     motor_command_t   cmd[EXO_MOTOR_COUNT];  /* 双电机命令数组                           */
     uint64_t          seq_end;     /* 写完置为 seq_begin, reader 对比防撕裂               */
 } exo_mailbox_t;
 
-/* ============================================================================
- * 故障严重级别
- * ============================================================================ */
+/* 故障级别 */
 typedef enum {
     MOTOR_OK    = 0,            /* 正常运行                                            */
     MOTOR_WARN  = 1,            /* 降额: torque=0, 保持使能 (可自动恢复)                 */
     MOTOR_FAULT = 2,            /* 停机: DS402 Shutdown (需人工干预)                    */
 } motor_severity_t;
 
-/* ============================================================================
- * 故障原因
- * ============================================================================ */
+/* 故障原因 */
 typedef enum {
     FAULT_NONE             = 0,
     FAULT_ALGO_TIMEOUT,         /* 算法失联 (seq_begin 200ms 不变)                      */
@@ -192,9 +165,7 @@ typedef enum {
     FAULT_CALIB_TIMEOUT,        /* 校准超时                                             */
 } fault_reason_t;
 
-/* ============================================================================
- * 节点状态机
- * ============================================================================ */
+/* 节点状态机 */
 typedef enum {
     STATE_INIT        = 0,
     STATE_DISCOVERY   = 1,
@@ -207,19 +178,17 @@ typedef enum {
 
 #define EXO_STATE_COUNT  7
 
-/* ============================================================================
- * 共享内存总结构 (64KB)
- * ============================================================================ */
+/* 共享内存总结构 (64KB) */
 
 typedef struct {
-    /* ── 双 Buffer 反馈区 (motor_node 写, 算法/ROS/Web 读) ── */
+    /* 双 Buffer 反馈区 (motor_node 写, 算法/ROS/Web 读) */
     uint32_t          active_idx;            /* 0 或 1, atomic release/acquire          */
     feedback_frame_t  fb_buffer[2];          /* 双 Buffer 防撕裂                         */
 
-    /* ── Mailbox 命令区 (算法写, motor_node 读) ── */
+    /* Mailbox 命令区 (算法写, motor_node 读) */
     exo_mailbox_t     mailbox;
 
-    /* ── 状态区 (motor_node 写, 算法只读) ── */
+    /* 状态区 (motor_node 写, 算法只读) */
     uint8_t   motor_online;               /* bit0=右(1) bit1=左(2)                       */
     uint8_t   calib_state;                /* 0=空闲 1=校准中 2=完成 3=超时                */
     uint8_t   motor_enabled;              /* 每 bit 对应电机使能状态                       */
@@ -227,16 +196,16 @@ typedef struct {
     uint8_t   fault_reason;               /* fault_reason_t 枚举                         */
     uint8_t   node_state;                 /* exo_state_t                                 */
 
-    /* ── 耗时追踪 (EXO_LATENCY_TRACE) ── */
-    /* 反馈路径 (μs) */
+    /* 耗时追踪 (μs) */
+    /* 反馈路径 */
     uint16_t  fb_read_avg_us;
     uint16_t  fb_read_max_us;
     uint16_t  fb_total_avg_us;       /* T1→T4 反馈总延迟 */
     uint16_t  fb_total_max_us;
-    /* 控制路径 (μs) */
+    /* 控制路径 */
     uint16_t  ctrl_total_avg_us;     /* T5→T6 控制总延迟 */
     uint16_t  ctrl_total_max_us;
-    /* 全局 */
+    /* 统计 */
     uint32_t  trace_cycle_count;     /* 已采样周期数 */
     uint32_t  shm_write_avg_us;      /* SHM 写入耗时 */
     uint16_t  cycle_overrun_count;   /* 周期超限次数 */

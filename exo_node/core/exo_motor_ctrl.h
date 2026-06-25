@@ -1,19 +1,12 @@
 /*
- * exo_motor_ctrl.h — motor_tool 全部 SDO/PDO/OD 控制封装
+ * exo_motor_ctrl.h — SDO/PDO/OD 控制封装
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * 封装 motor_tool daemon 中调试验证过的所有控制路径:
- *   - 系统: enable / disable / fault_reset / reboot
- *   - SDO:  torque / speed / abs / setzero / limit / pid / save / sdo_read / sdo_write
- *   - PDO:  pdo_ctrl / multi_ctrl / mit_ctrl
- *   - 读取: read_angle / read_speed / read_current / read_temp / read_state / read_error / read_version / read_pid / read_all
- *   - 映射: tpdo_map / rpdo_map / rpdo_send
- *   - 启动: startup (完整 DS402 时序)
- *
- * 使用:
- *   ExoMotorCtrl ctrl(hal);
- *   ctrl.Torque(1, 500);         // 电机1 = 500mA 电流模式
- *   ctrl.PdoMultiCtrl(...);      // PDO 广播 (RT 路径)
- *   ctrl.ReadAngle(2);           // 读电机2角度
+ * 封装 motor_tool 中验证过的所有控制路径:
+ *   系统: enable / disable / fault_reset / reboot
+ *   SDO:  torque / speed / abs / setzero / limit / pid / save
+ *   PDO:  pdo_ctrl / multi_ctrl / mit_ctrl
+ *   读取: read_angle / read_speed / read_current / read_temp 等
  */
 #pragma once
 
@@ -31,9 +24,7 @@ public:
     explicit ExoMotorCtrl(motor_hal_t* hal);
     ~ExoMotorCtrl() = default;
 
-    /* ════════════════════════════════════════════════════════════
-     * 系统命令 (SDO 路径, 非 RT)
-     * ════════════════════════════════════════════════════════════ */
+    /* 系统命令 (SDO 路径, 非 RT) */
 
     /** @brief 手动启动电机 (Bootup → NMT → DS402 enable) */
     int  Startup(uint8_t id, uint32_t timeout_ms = 5000);
@@ -53,9 +44,7 @@ public:
     /** @brief NMT 广播 Stop */
     void NmtStopAll();
 
-    /* ════════════════════════════════════════════════════════════
-     * SDO 控制命令 (SDO 路径, 非 RT)
-     * ════════════════════════════════════════════════════════════ */
+    /* SDO 控制命令 (SDO 路径, 非 RT) */
 
     /** @brief 力矩控制 (使能→切电流模式→写0x6071), mA [-20000,20000] */
     int  Torque(uint8_t id, int32_t ma);
@@ -94,9 +83,7 @@ public:
     /** @brief 读取 PID 参数 */
     int  ReadPid(uint8_t id, motor_pid_t* out_pid);
 
-    /* ════════════════════════════════════════════════════════════
-     * 通用 SDO 读写
-     * ════════════════════════════════════════════════════════════ */
+    /* 通用 SDO 读写 */
 
     /** @brief SDO 读 U32 */
     int  SdoRead(uint8_t id, uint16_t index, uint8_t subidx, uint32_t* out_val);
@@ -104,9 +91,7 @@ public:
     /** @brief SDO 写 */
     int  SdoWrite(uint8_t id, uint16_t index, uint8_t subidx, uint32_t value, uint8_t size);
 
-    /* ════════════════════════════════════════════════════════════
-     * 读取命令 (从反馈缓存, 非阻塞)
-     * ════════════════════════════════════════════════════════════ */
+    /* 读取命令 (从反馈缓存, 非阻塞) */
 
     /** @brief 读编码器角度 (°) via SDO */
     float ReadAngle(uint8_t id);
@@ -132,9 +117,7 @@ public:
     /** @brief 读当前模式 */
     int ReadMode(uint8_t id, uint8_t* out_mode);
 
-    /* ════════════════════════════════════════════════════════════
-     * PDO 控制 (非阻塞, RT 安全)
-     * ════════════════════════════════════════════════════════════ */
+    /* PDO 控制 (非阻塞, RT 安全) */
 
     /** @brief PDO 单轴控制 (自定义 PDO 0x100+ID), 位置/速度单位同 motor_hal API */
     void PdoCtrl(uint8_t id, motor_mode_t mode, float target);
@@ -146,9 +129,7 @@ public:
     void PdoMitCtrl(uint8_t id, float pos, float vel,
                     int16_t kp, int16_t kd, int16_t torque);
 
-    /* ════════════════════════════════════════════════════════════
-     * PDO 映射 (SDO 路径, 非 RT)
-     * ════════════════════════════════════════════════════════════ */
+    /* PDO 映射 (SDO 路径, 非 RT) */
 
     /** @brief 通用 PDO 映射 */
     int PdoMap(uint8_t id, pdo_type_t type,
@@ -158,9 +139,7 @@ public:
     /** @brief 发送标准 RPDO */
     int RpdoSend(uint8_t id, const uint8_t* data, uint8_t dlc);
 
-    /* ════════════════════════════════════════════════════════════
-     * 传感器/反馈 (非阻塞)
-     * ════════════════════════════════════════════════════════════ */
+    /* 传感器/反馈 (非阻塞) */
 
     /** @brief 从反馈缓存读电机反馈, 0=成功 */
     int GetFeedback(uint8_t id, motor_feedback_t* out_fb);
@@ -174,9 +153,7 @@ public:
     /** @brief 停止传感器透传 */
     int SensorStop(uint8_t id);
 
-    /* ════════════════════════════════════════════════════════════
-     * 辅助
-     * ════════════════════════════════════════════════════════════ */
+    /* 辅助 */
 
     /** @brief 获取 HAL 原始指针 (高级用途) */
     motor_hal_t* GetHal() { return m_hal; }
@@ -187,11 +164,11 @@ public:
 private:
     motor_hal_t* m_hal;
 
-    /* ── 位置控制参数 (同 motor_tool tool_hal 全局) ── */
+    /* 位置控制参数 */
     uint16_t m_abs_accel;   /* RPM/s, 默认 2000 */
     uint16_t m_abs_speed;   /* RPM 输出端, 默认 10 */
 
-    /* ── 模式缓存 (幂等优化: 跳过重复 set_mode) ── */
+    /* 模式缓存 (幂等优化) */
     uint8_t m_mode_cache[128];  /* 按 node_id 索引 */
 
     int _set_mode_cached(uint8_t id, motor_mode_t mode);

@@ -1,5 +1,6 @@
 /*
  * RosAdapter.cpp — ROS 适配器实现
+ * Copyright (c) 2026 zhiqiang.yang
  *
  * 简化: 2 电机, snprintf JSON, ECO_INFO_NEW 日志.
  */
@@ -57,7 +58,7 @@ void RosAdapter::Stop()
     }
 }
 
-/* ── PullLoop: 200Hz 从 SHM 读反馈 → publish ── */
+/* PullLoop: 200Hz 从 SHM 读反馈 → publish */
 
 void RosAdapter::PullLoop()
 {
@@ -82,7 +83,7 @@ void RosAdapter::PullLoop()
     }
 }
 
-/* ── PubFeedback: feedback_frame_t → JSON → /stark/motor/feedback ── */
+/* PubFeedback: feedback_frame_t → JSON → /stark/motor/feedback */
 
 void RosAdapter::PubFeedback(const feedback_frame_t& fb)
 {
@@ -127,7 +128,7 @@ void RosAdapter::PubFeedback(const feedback_frame_t& fb)
     m_feedbackPub.publish(msg);
 }
 
-/* ── PubState ── */
+/* PubState */
 
 void RosAdapter::PubState(exo_state_t state)
 {
@@ -148,7 +149,7 @@ void RosAdapter::PubState(exo_state_t state)
     m_statePub.publish(msg);
 }
 
-/* ── OnMotorCtrl: ROS → dispatcher->Send ── */
+/* OnMotorCtrl: ROS → dispatcher->Send */
 
 void RosAdapter::OnMotorCtrl(const std_msgs::String::ConstPtr& msg)
 {

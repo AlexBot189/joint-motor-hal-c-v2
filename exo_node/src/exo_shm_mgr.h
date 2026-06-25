@@ -1,9 +1,9 @@
 /*
  * @file exo_shm_mgr.h
  * @brief 共享内存管理 — POSIX shm 封装
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * 提供 exo_shm_mgr_open() / exo_shm_mgr_close() 接口，
- * 管理 /dev/shm/exo_shm 的创建、映射和销毁。
+ * 管理 /dev/shm/exo_shm 的创建、映射和销毁.
  * 数据类型定义见 exo_shm.h (跨进程共享头文件)。
  */
 #pragma once

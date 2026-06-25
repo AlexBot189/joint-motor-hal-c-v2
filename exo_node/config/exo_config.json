@@ -50,6 +50,12 @@
     "timeout_ms": 10000,
     "threshold_deg": 1.0
   },
+  "imu": {
+    "i2c_dev": "/dev/i2c-3",
+    "gpio_chip": "gpiochip4",
+    "gpio_line": 6,
+    "op_mode": 5
+  },
   "sensor": {
     "period_ms": 1,
     "bus_format": 3

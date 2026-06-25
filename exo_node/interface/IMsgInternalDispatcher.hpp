@@ -1,11 +1,12 @@
 /*
  * @file IMsgInternalDispatcher.hpp
  * @brief 被观察者基类 — 电机数据调度中心
+ * Copyright (c) 2026 zhiqiang.yang
  *
  * CanDispatcher 实现此接口，负责:
- *   - 管理 IListener 注册/注销
- *   - 接收上层控制命令 (Send)
- *   - 向所有 Listener 广播反馈数据 (NotifyObserver)
+ *   管理 IListener 注册/注销
+ *   接收上层控制命令 (Send)
+ *   向所有 Listener 广播反馈数据 (NotifyObserver)
  */
 #pragma once
 

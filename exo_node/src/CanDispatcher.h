@@ -1,13 +1,13 @@
 /*
  * CanDispatcher.h — 电机数据调度中心
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * 对齐 motor_tool daemon 的初始化流程:
+ * 初始化流程:
  *   1. motor_hal_create + init (CANFD)
  *   2. 注册电机 (ID 1,2)
- *   3. fork 后台化 (★ 在 recv_start 之前)
- *   4. recv_start (子进程)
- *   5. 创建 SHM
- *   6. 主循环 (事件驱动)
+ *   3. recv_start
+ *   4. 创建 SHM
+ *   5. 主循环 (事件驱动)
  *
  * 所有 SDO/PDO/OD 控制通过 ExoMotorCtrl 封装.
  * RT 控制走 ExoRtWorker → SHM mailbox.
@@ -40,7 +40,7 @@ public:
     CanDispatcher();
     ~CanDispatcher();
 
-    /* ── IMsgInternalDispatcher ── */
+    /* IMsgInternalDispatcher */
     bool InitDispatcher() override;
     bool DestroyDispatcher() override;
     void Send(const std::string& data) override;
@@ -48,19 +48,19 @@ public:
     void RemoveObserver(ListenerType type, std::shared_ptr<IListener> listener) override;
     void NotifyObserver(const boost::any& data) override;
 
-    /* ── 获取内部实例 ── */
+    /* 获取内部实例 */
     motor_hal_t*   GetHal()       { return m_hal; }
     exo_shm_t*     GetShm()       { return m_shm; }
     ExoMotorCtrl*  GetCtrl()      { return m_ctrl.get(); }
     ImuHALSensor*  GetImuSensor() { return m_imu_sensor.get(); }
 
-    /* ── 配置 (从 config.json 读取, 或默认值) ── */
+    /* 配置 (从 config.json 读取, 或默认值) */
     const SafetyConfig& GetSafetyConfig()  { return m_safety_cfg; }
     const RtConfig&     GetRtConfig()      { return m_rt_cfg; }
     const std::string&  GetShmName()       { return m_shm_name; }
     const std::string&  GetCanIface()      { return m_can_iface; }
 
-    /* ── 配置获取 (主线程读取, 设置 g_ctx) ── */
+    /* 配置获取 (主线程读取, 设置 g_ctx) */
     bool GetCalibAuto()      const { return m_calib_auto; }
     int  GetCalibTimeoutMs() const { return m_calib_timeout_ms; }
     uint16_t GetSensorPeriodMs()   const { return m_sensor_period_ms; }
@@ -84,7 +84,7 @@ private:
     std::unordered_map<ListenerType, std::shared_ptr<IListener>> m_listeners;
     std::string m_config_path;
 
-    /* ── 配置 (优先 config.json, 读失败则默认值) ── */
+    /* 配置 (优先 config.json, 读失败则默认值) */
     SafetyConfig m_safety_cfg;
     RtConfig     m_rt_cfg;
     std::string  m_shm_name  = EXO_SHM_NAME;
@@ -93,10 +93,10 @@ private:
     int          m_can_arb_rate  = 1000000;
     int          m_can_data_rate = 5000000;
 
-    /* ── IMU HAL ── */
+    /* IMU HAL */
     std::unique_ptr<ImuHALSensor> m_imu_sensor;
 
-    /* ── 校准/透传配置 (来自 config.json) ── */
+    /* 校准/透传配置 (来自 config.json) */
     bool         m_calib_auto       = false;
     int          m_calib_timeout_ms = 10000;
     uint16_t     m_sensor_period_ms = 1;

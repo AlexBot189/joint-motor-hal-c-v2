@@ -1,19 +1,14 @@
 /*
  * exo_rt_worker.h — RT 工作线程
+ * Copyright (c) 2026 zhiqiang.yang
  *
  * 三合一: 控制下发 + 反馈上报 + 安全监控
+ * 周期 1KHz, SCHED_FIFO prio=90
  *
- * 周期:   1KHz (1000μs)
- * 调度:   SCHED_FIFO, prio=90
- * 名称:   "exo_rt"
- *
- * 单周期时序 (< 80μs, 1ms 预算的 8%):
- *   ① ProcessMailbox()   → 读 SHM mailbox → PDO multi_ctrl      ~25μs
- *   ② PublishFeedback()  → fb_cache + IMU → SHM double buffer   ~35μs (每5周期)
- *   ③ SafetyCheck()      → seq停滞 / torque归零 (PDO)           ~10μs
- *
- * 延迟追踪: 在每个关键节点往 feedback_frame_t 打时间戳,
- *           支持端到端 (T0~T8) 闭环延迟分析.
+ * 单周期流程:
+ *   ① ProcessMailbox()   → 读 SHM mailbox → PDO multi_ctrl
+ *   ② PublishFeedback()  → fb_cache + IMU → SHM double buffer
+ *   ③ SafetyCheck()      → seq停滞 / torque归零 (PDO)
  */
 #pragma once
 
@@ -84,12 +79,10 @@ private:
 
     void SetThreadRt();
 
-    /* ── 双电机 torque=0 (PDO, RT安全) ── */
+    /* 双电机 torque=0 (PDO, RT安全) */
     void _safe_torque_zero_all();
 
-    /* ── 双电机 紧急降险: PDO enable=false + torque=0
-     *     这是第一步(立即切断扭矩), 第二步 SDO Shutdown
-     *     由主循环在 state_transition(FAULT) 后补发. ── */
+    /* 双电机紧急降险: PDO enable=false + torque=0 */
     void _safe_disable_all();
 
     motor_hal_t*    m_hal;
@@ -103,34 +96,34 @@ private:
     SafetyConfig m_safety;
     RtConfig     m_rt;
 
-    /* ── 延迟追踪 ── */
+    /* 延迟追踪 */
     uint64_t m_last_seq;
     uint64_t m_seq_stall_us;
     uint64_t m_can_last_frame_us;
     uint64_t m_latency_history[64];     /* 最近64次闭环延迟 (T8-T0) */
     uint32_t m_latency_idx;
 
-    /* ── 周期控制 ── */
+    /* 周期控制 */
     int      m_report_divider;
     uint64_t m_cycle_count;
     uint64_t m_overrun_count;
 
-    /* ── 停滞检测 ── */
+    /* 停滞检测 */
     int16_t  m_last_position[EXO_MOTOR_COUNT];
     uint64_t m_pos_stall_us[EXO_MOTOR_COUNT];
 
-    /* ── 一次性日志 ── */
+    /* 一次性日志 */
     bool     m_sensor_notified[EXO_MOTOR_COUNT];
     bool     m_imu_notified;
 
-    /* ── RT→主线程 状态切换请求 (atomic, RT 写, 主线程读后清零) ── */
+    /* RT→主线程 状态切换请求 (atomic, RT 写, 主线程读后清零) */
     uint32_t m_pending_state = STATE_INIT;
 
-    /* ── 去重标志 ── */
+    /* 去重标志 */
     bool     m_fault_triggered = false;
     std::atomic<bool> m_handshake_done{false};   /* 首次算法握手, 解耦 SHM 残留 seq */
 
-    /* ── 延迟追踪 (EXO_LATENCY_TRACE=0 时零开销) ── */
+    /* 延迟追踪 (EXO_LATENCY_TRACE=0 时零开销) */
     ExoLatencyTracer m_tracer;
 };
 

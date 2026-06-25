@@ -1,5 +1,6 @@
 /*
  * Factory.cpp — 对象工厂实现
+ * Copyright (c) 2026 zhiqiang.yang
  */
 #include "Factory.h"
 #include "CanDispatcher.h"

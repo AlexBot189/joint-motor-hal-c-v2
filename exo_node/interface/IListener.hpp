@@ -1,9 +1,9 @@
 /*
  * @file IListener.hpp
  * @brief 观察者基类 — 接收 CanDispatcher 推送的数据
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * 所有需要接收电机反馈/传感器/状态数据的模块实现此接口。
- * RosAdapter / WebServer 通过 Update() 接收 boost::any 数据包。
+ * RosAdapter / WebServer 通过 Update() 接收 boost::any 数据包.
  */
 #pragma once
 

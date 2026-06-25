@@ -1,15 +1,11 @@
 /*
  * exo_rt_log.h — RT 线程安全日志
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * RT 工作线程不能直接调写盘/控制台 (ECO_INFO_NEW/fprintf 可能阻塞).
- * 用 lock-free ring buffer 缓冲, 由独立日志线程 drain 到 log_helper.
+ * RT 工作线程不能直接调写盘/控制台 (可能阻塞).
+ * 用 lock-free ring buffer 缓冲, 由独立日志线程 drain.
  *
- * 用法:
- *   RT 线程:  RT_LOG("motor {} overtemp", id);
- *   日志线程: rt_log_drain();  (循环调用)
- *
- * ring buffer 是单写(1个RT线程)单读(1个日志线程), 不需要锁.
- * 使用 __ATOMIC_RELAXED (单写单读场景下足够, 不需要 barrier).
+ * ring buffer 单写单读, 不需要锁.
  */
 #pragma once
 
@@ -31,7 +27,7 @@ public:
         memset(m_ring, 0, sizeof(m_ring));
     }
 
-    /* ── RT 线程调用: lock-free push (< 1μs) ── */
+    /* RT 线程调用: lock-free push (< 1μs) */
     void Push(const char* fmt, ...) __attribute__((format(printf, 2, 3)))
     {
         char buf[RT_LOG_BUF_SIZE];
@@ -52,7 +48,7 @@ public:
         __atomic_store_n(&m_wr, next, __ATOMIC_RELAXED);
     }
 
-    /* ── 非 RT 日志线程调用: drain → callback ── */
+    /* 非 RT 日志线程调用: drain → callback */
     void Drain(void (*output_fn)(const char* msg))
     {
         uint32_t w = __atomic_load_n(&m_wr, __ATOMIC_RELAXED);

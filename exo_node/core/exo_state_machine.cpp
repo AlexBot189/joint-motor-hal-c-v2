@@ -1,5 +1,6 @@
 /*
  * exo_state_machine.cpp — 7 状态机实现
+ * Copyright (c) 2026 zhiqiang.yang
  *
  * enter/exit 钩子为日志+状态记录, 业务逻辑在 main.cpp 中驱动.
  */
@@ -24,7 +25,7 @@ const char* state_name(exo_state_t s)
     }
 }
 
-/* ── enter ── */
+/* enter */
 
 void enter_init(void) {
     ECO_INFO_NEW("[StateMachine] enter INIT");
@@ -75,7 +76,7 @@ void enter_discovery(void) {
         usleep(interval_ms * 1000);
         elapsed_ms += interval_ms;
 
-        /* Bug#2: 检测安全标志, RT 线程可能已触发 FAULT */
+        /* 检测安全标志, RT 线程可能已触发 FAULT */
         if (shm->motor_severity == MOTOR_FAULT) {
             ECO_WARN_NEW("[StateMachine] FAULT detected during DISCOVERY, exit");
             shm->node_state = STATE_FAULT;
@@ -100,7 +101,7 @@ void enter_calibrating(void) {
 
 void enter_enabled(void) {
     ECO_INFO_NEW("[StateMachine] enter ENABLED");
-    /* PDO enable 由算法 EXO_CMD_ENABLE 触发, sensor 透传由 auto-startup 完成时自动配置 */
+    /* PDO enable 由算法触发, sensor 透传在 auto-startup 完成时配置 */
 }
 
 void enter_running(void) {
@@ -111,7 +112,7 @@ void enter_fault(void) {
     ECO_INFO_NEW("[StateMachine] enter FAULT — emergency stop");
 }
 
-/* ── exit ── */
+/* exit */
 
 void exit_init(void) {}
 void exit_discovery(void) {}
@@ -136,7 +137,7 @@ void exit_fault(void) {
     ECO_INFO_NEW("[StateMachine] exit FAULT — attempting recovery");
 }
 
-/* ── 钩子表 ── */
+/* 钩子表 */
 
 enter_fn enter_hooks[EXO_STATE_COUNT] = {
     enter_init, enter_discovery, enter_ready,
@@ -148,7 +149,7 @@ exit_fn exit_hooks[EXO_STATE_COUNT] = {
     exit_calibrating, exit_enabled, exit_running, exit_fault,
 };
 
-/* ── state_transition_allowed ── */
+/* state_transition_allowed */
 
 bool state_transition_allowed(exo_state_t from, exo_state_t to)
 {
@@ -161,7 +162,7 @@ bool state_transition_allowed(exo_state_t from, exo_state_t to)
     return false;
 }
 
-/* ── state_transition ── */
+/* state_transition */
 
 bool state_transition(exo_state_t to)
 {

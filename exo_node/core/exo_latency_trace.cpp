@@ -1,5 +1,6 @@
 /*
  * exo_latency_trace.cpp — 耗时追踪实现
+ * Copyright (c) 2026 zhiqiang.yang
  *
  * RT 线程内不做 printf, 统计摘要通过 RT_LOG ring buffer 输出.
  */

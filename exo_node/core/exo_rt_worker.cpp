@@ -1,11 +1,11 @@
 /*
  * exo_rt_worker.cpp — RT 工作线程实现
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * ★ 关键约束:
- *   - Run() 循环内禁止任何阻塞调用 (SDO/sleep/malloc)
- *   - 仅使用 motor_hal non-blocking API (get_feedback / multi_ctrl / multi_pdo)
- *   - 安全动作 (torque=0 / disable) 必须走 PDO 路径, 不能走 SDO
- *   - 延迟追踪每周期记录 T0~T8, 支持端到端性能分析
+ * 关键约束:
+ *   Run() 循环内禁止阻塞调用 (SDO/sleep/malloc)
+ *   仅用 motor_hal non-blocking API (get_feedback / multi_ctrl / multi_pdo)
+ *   安全动作 (torque=0 / disable) 走 PDO 路径
  */
 #include "exo_rt_worker.h"
 #include "exo_rt_log.h"
@@ -24,9 +24,7 @@
 
 namespace stark_periph_manager_node {
 
-/* ════════════════════════════════════════════════════════════════════
- * 构造 / 析构
- * ════════════════════════════════════════════════════════════════════ */
+/* 构造 / 析构 */
 
 ExoRtWorker::ExoRtWorker(motor_hal_t* hal, exo_shm_t* shm,
                          ExoMotorCtrl* ctrl, ImuHALSensor* imu_sensor)
@@ -48,7 +46,7 @@ ExoRtWorker::ExoRtWorker(motor_hal_t* hal, exo_shm_t* shm,
     memset(m_latency_history, 0, sizeof(m_latency_history));
     m_imu_notified = false;
 
-    /* Bug#1: 对齐 SHM 残留 seq_begin, 防止假 FAULT */
+    /* 对齐 SHM 残留 seq_begin, 防止假 FAULT */
     if (m_shm) {
         m_last_seq = __atomic_load_n(&m_shm->mailbox.seq_begin, __ATOMIC_ACQUIRE);
     }
@@ -61,9 +59,7 @@ ExoRtWorker::~ExoRtWorker()
     }
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * Start() / Stop()
- * ════════════════════════════════════════════════════════════════════ */
+/* Start() / Stop() */
 
 void ExoRtWorker::Start()
 {
@@ -86,9 +82,7 @@ void ExoRtWorker::SetRtConfig(const RtConfig& cfg)
     m_report_divider = cfg.report_divider;  /* 立即生效 */
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * Run() — RT 线程主循环 1KHz
- * ════════════════════════════════════════════════════════════════════ */
+/* Run() — RT 线程主循环 1KHz */
 
 void ExoRtWorker::Run()
 {
@@ -118,7 +112,7 @@ void ExoRtWorker::Run()
 
         m_cycle_count++;
 
-        /* ── 精确周期休眠 ── */
+        /* 精确周期休眠 */
         next_wake.tv_nsec += period_ns;
         while (next_wake.tv_nsec >= 1000000000L) {
             next_wake.tv_nsec -= 1000000000L;
@@ -134,10 +128,10 @@ void ExoRtWorker::Run()
     }
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/*
  * ProcessMailbox() — 读 SHM mailbox → PDO multi_ctrl 广播
  *
- * ★ v3: 支持双电机同时控制 (一次 multi_ctrl 发完 ID 1,2)
+ * 支持双电机同时控制 (一次 multi_ctrl 发完 ID 1,2)
  *
  * Mailbox 并发协议:
  *   算法写: seq_begin++ → write cmd[0], cmd[1] → seq_end = seq_begin
@@ -145,7 +139,7 @@ void ExoRtWorker::Run()
  *          if begin != end: 正在写, 跳过
  *          if begin == m_last_seq: 无新命令, 返回
  *          else: 读全部 cmd → multi_ctrl → m_last_seq = begin
- * ════════════════════════════════════════════════════════════════════ */
+ */
 
 void ExoRtWorker::ProcessMailbox()
 {
@@ -157,18 +151,18 @@ void ExoRtWorker::ProcessMailbox()
     if (begin != end)  return;   /* 算法正在写 */
     if (begin == m_last_seq) return;   /* 无新命令 */
 
-    /* ── 首次收到算法命令 → 设标志, 让主循环调 state_transition ── */
+    /* 首次收到算法命令 → 设标志, 让主循环调 state_transition */
     if (!m_handshake_done.load(std::memory_order_acquire) && begin > 0) {
         m_handshake_done.store(true, std::memory_order_release);
         __atomic_store_n(&m_pending_state, (uint32_t)STATE_RUNNING, __ATOMIC_RELEASE);
     }
 
-    /* ── 处理双电机命令 ── */
+    /* 处理双电机命令 */
     motor_command_t cmd0 = m_shm->mailbox.cmd[0];
     motor_command_t cmd1 = m_shm->mailbox.cmd[1];
     m_last_seq = begin;
 
-    /* ── 先处理 Byte0 控制命令 (改 pdo_byte0, 不发 target) ── */
+    /* 先处理 Byte0 控制命令 (改 pdo_byte0, 不发 target) */
     for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
         motor_command_t c = (i == 0) ? cmd0 : cmd1;
         uint8_t mid = c.motor_id;
@@ -191,7 +185,7 @@ void ExoRtWorker::ProcessMailbox()
         }
     }
 
-    /* ── 再处理控制命令 (通过已设好的 pdo_byte0 发控制帧) ── */
+    /* 再处理控制命令 (通过已设好的 pdo_byte0 发控制帧) */
 
     /* 多轴广播: 两个 cmd 都是 MULTI → 打包一帧 64B CANFD 发出 */
     if (cmd0.cmd == EXO_CMD_MULTI && cmd1.cmd == EXO_CMD_MULTI) {
@@ -245,11 +239,7 @@ void ExoRtWorker::ProcessMailbox()
                                (int16_t)c.feedforward);
             break;
         case EXO_CMD_MIT:
-            /* MIT 值转 float (uint16→float→uint16, 经 motor_hal_mit_control 编码)
-             * mit_pos [0,65535] → deg: pos / 65535 * 360 - 180
-             * mit_vel [0,4095] → 12bit signed: (int16)(vel<<4)/16 = RPM
-             * mit_kp/kd [0,4095] → ×0.01
-             * mit_torque [0,4095] → 12bit signed: (int16)(tq<<4)/16 */
+            /* MIT 值转 float (uint16→float→uint16, 经 motor_hal_mit_control 编码) */
             motor_hal_mit_control(m_hal, mid,
                 (float)c.mit_pos * (360.0f / 65535.0f) - 180.0f,
                 (float)((int16_t)(c.mit_vel << 4)) / 16.0f,
@@ -262,22 +252,18 @@ void ExoRtWorker::ProcessMailbox()
     }
     } /* end else (non-MULTI path) */
 
-    /* ── T7: 读 mailbox 完成 ── */
+    /* T7: 读 mailbox 完成 */
     m_tracer.mark_mailbox_read();
 
     /* T8: PDO 已在上面每条命令中发出 */
     m_tracer.mark_pdo_sent();
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/*
  * PublishFeedback() — 读 fb_cache + 组装 feedback_frame_t → SHM
  *
  * 频率: 每 m_report_divider (5) 个周期 = 200Hz
- *
- * 延迟追踪时间戳:
- *   T2: 读 fb_cache 完成
- *   T3: SHM 双 Buffer 切换 (atomic_store 前)
- * ════════════════════════════════════════════════════════════════════ */
+ */
 
 void ExoRtWorker::PublishFeedback()
 {
@@ -294,10 +280,10 @@ void ExoRtWorker::PublishFeedback()
 
     struct timespec ts;
 
-    /* ── T1: 开始读 fb_cache ── */
+    /* T1: 开始读 fb_cache */
     m_tracer.mark_fb_read_start();
 
-    /* ── 填充电机反馈 (从 HAL 反馈缓存) ── */
+    /* 填充电机反馈 (从 HAL 反馈缓存) */
     for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; ++id) {
         motor_feedback_t mfb;
         if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
@@ -312,10 +298,10 @@ void ExoRtWorker::PublishFeedback()
         }
     }
 
-    /* ── T2: fb_cache 读取完成 ── */
+    /* T2: fb_cache 读取完成 */
     m_tracer.mark_fb_read_done();
 
-    /* ── 填充传感器透传 ── */
+    /* 填充传感器透传 */
     for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; ++id) {
         motor_sensor_t s;
         int ret = motor_hal_get_sensor(m_hal, id, &s);
@@ -334,32 +320,32 @@ void ExoRtWorker::PublishFeedback()
         }
     }
 
-    /* ── 填充 IMU 融合数据 (非阻塞, 硬件未就绪时全零) ── */
+    /* 填充 IMU 融合数据 (非阻塞, 硬件未就绪时全零) */
     if (m_imu_sensor && m_imu_sensor->IsReady()) {
         m_imu_sensor->Read(&fb->imu);
     } else {
         memset(&fb->imu, 0, sizeof(fb->imu));
     }
 
-    /* ── 气压计: 硬件未接入, 保持全零 ── */
+    /* 气压计: 硬件未接入, 保持全零 */
     memset(&fb->baro, 0, sizeof(fb->baro));
 
-    /* ── IMU+传感器+气压计 组装完成 ── */
+    /* IMU+传感器+气压计 组装完成 */
     m_tracer.mark_mock_sensor_done();
 
-    /* ── T4: SHM 切换 ── */
+    /* T4: SHM 切换 */
     clock_gettime(CLOCK_MONOTONIC, &ts);
     fb->ts_shm_write      = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
     fb->ts_frame_assembly = fb->ts_shm_write;
     fb->timestamp_us      = fb->ts_shm_write;
 
-    /* ── 切换活跃 Buffer ── */
+    /* 切换活跃 Buffer */
     __atomic_store_n(&m_shm->active_idx, write_idx, __ATOMIC_RELEASE);
 
-    /* ── T4: SHM 双 Buffer 切换完成 ── */
+    /* T4: SHM 双 Buffer 切换完成 */
     m_tracer.mark_shm_write_done();
 
-    /* ── 填充 SHM 耗时统计 (供 perf_test 读取) ── */
+    /* 填充 SHM 耗时统计 (供 perf_test 读取) */
     {
         latency_stats_t st = {};
         m_tracer.fill_shm_stats(st);
@@ -376,10 +362,10 @@ void ExoRtWorker::PublishFeedback()
     m_shm->cycle_overrun_count = (uint16_t)(m_overrun_count & 0xFFFF);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/*
  * SafetyCheck() — 安全监控
  *
- * ★ 安全动作必须走 PDO, 不在 RT 线程中调 SDO.
+ * 安全动作必须走 PDO, 不在 RT 线程中调 SDO.
  *
  * 检查项:
  *   1. seq_begin 停滞 > 200ms → PDO torque=0, WARN
@@ -387,7 +373,7 @@ void ExoRtWorker::PublishFeedback()
  *   3. (TODO) 编码器停滞
  *   4. (TODO) 过温检测
  *   5. (TODO) CAN 断线
- * ════════════════════════════════════════════════════════════════════ */
+ */
 
 void ExoRtWorker::SafetyCheck(uint64_t seq_before_process)
 {
@@ -397,7 +383,7 @@ void ExoRtWorker::SafetyCheck(uint64_t seq_before_process)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t now_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 
-    /* ── seq_begin 停滞检测 ── */
+    /* seq_begin 停滞检测 */
     if (seq_before_process > 0) {
         uint64_t begin = __atomic_load_n(&m_shm->mailbox.seq_begin, __ATOMIC_ACQUIRE);
 
@@ -457,9 +443,7 @@ void ExoRtWorker::SafetyCheck(uint64_t seq_before_process)
     }
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * _safe_torque_zero_all — PDO 路径 torque=0 (RT 安全)
- * ════════════════════════════════════════════════════════════════════ */
+/* _safe_torque_zero_all — PDO 路径 torque=0 (RT 安全) */
 
 void ExoRtWorker::_safe_torque_zero_all()
 {
@@ -476,14 +460,16 @@ void ExoRtWorker::_safe_torque_zero_all()
     motor_hal_multi_ctrl(m_hal, cmds, EXO_MOTOR_COUNT);
 }
 
+/* _safe_disable_all — PDO 路径 enable=false + torque=0 */
+
 void ExoRtWorker::_safe_disable_all()
 {
     if (!m_hal) return;
 
-    /* PDO 降险: 一帧 enable=false + torque=0
-     * 电机记住此状态直到收到新 PDO, 后续控制循环不覆盖。
+    /* PDO 降险: enable=false + torque=0
+     * 电机记住此状态直到收到新 PDO.
      * 算法失联时 ProcessMailbox 因 seq 不变直接 return,
-     * 不会发新 PDO。算法恢复后通过 EXO_CMD_RECOVER/ENABLE 恢复。 */
+     * 不会发新 PDO。算法恢复后通过 EXO_CMD_RECOVER/ENABLE 恢复. */
     multi_axis_cmd_t cmds[EXO_MOTOR_COUNT] = {};
     for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
         cmds[i].node_id       = (uint8_t)(i + 1);
@@ -495,9 +481,7 @@ void ExoRtWorker::_safe_disable_all()
     motor_hal_multi_ctrl(m_hal, cmds, EXO_MOTOR_COUNT);
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * SetThreadRt() — RT 线程属性
- * ════════════════════════════════════════════════════════════════════ */
+/* SetThreadRt() — RT 线程属性 */
 
 void ExoRtWorker::SetThreadRt()
 {
@@ -537,9 +521,7 @@ void ExoRtWorker::SetThreadRt()
            m_rt.cpu_affinity[0], m_rt.cpu_affinity[1]);
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * GetAvgLatencyUs() — 诊断: 最近 64 次闭环延迟平均值
- * ════════════════════════════════════════════════════════════════════ */
+/* GetAvgLatencyUs() — 诊断: 最近 64 次闭环延迟平均值 */
 
 uint32_t ExoRtWorker::GetAvgLatencyUs() const
 {
@@ -553,12 +535,10 @@ uint32_t ExoRtWorker::GetAvgLatencyUs() const
     return (uint32_t)(sum / n);
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/*
  * GetPendingState() — 主循环读取 RT 线程请求的状态切换
- *
  * atomic exchange: 读当前值并清零为 STATE_INIT
- * STATE_INIT 表示无待处理请求.
- * ════════════════════════════════════════════════════════════════════ */
+ */
 
 exo_state_t ExoRtWorker::GetPendingState()
 {

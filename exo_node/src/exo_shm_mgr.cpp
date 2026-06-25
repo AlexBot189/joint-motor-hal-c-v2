@@ -1,8 +1,9 @@
 /*
  * @file exo_shm_mgr.cpp
  * @brief 共享内存管理实现 — POSIX shm_open + mmap
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * 管理 /dev/shm/exo_shm 的生命周期。
+ * 管理 /dev/shm/exo_shm 的生命周期.
  * 数据类型由 exo_shm.h 定义 (跨进程共享布局)。
  */
 #include "exo_shm_mgr.h"

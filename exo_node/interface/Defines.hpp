@@ -1,6 +1,7 @@
 /*
  * @file Defines.hpp
- * @brief stark_periph_manager_node 类型定义
+ * @brief 类型定义
+ * Copyright (c) 2026 zhiqiang.yang
  */
 #pragma once
 

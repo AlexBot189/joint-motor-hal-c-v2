@@ -1,24 +1,13 @@
 /*
- * main.cpp — stark_periph_manager_node 入口
+ * main.cpp — 节点入口
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * ★ 启动流程完全对齐 motor_tool daemon:
- *
- *   1. CanDispatcher::InitDispatcher()
- *      ├─ motor_hal_create + motor_hal_init("can0", 1M, 5M)
- *      ├─ 注册电机 (ID 1,2, auto_enable=true, tpdo_sync_count=1)
- *      ├─ motor_hal_recv_start (★ 必须在 startup 之前)
- *      └─ exo_shm_mgr_open
- *
- *   2. wait_bootup_and_startup()
- *      ├─ 轮询 motor_hal_process_pending_startups
- *      ├─ 检测反馈缓存确认在线
- *      └─ 状态: INIT → DISCOVERY → READY
- *
+ * 启动流程:
+ *   1. CanDispatcher::InitDispatcher() — CANFD + 电机注册 + recv + SHM
+ *   2. wait_bootup_and_startup() — 轮询电机上线
  *   3. ExoRtWorker::Start() — RT 线程 (torque=0, 等算法 cmd)
- *
  *   4. 主循环: process_pending_startups + 状态检测 + ros::spinOnce
- *
- *   5. 退出: NMT Stop → recv_stop → destroy
+ *   5. 退出: PDO estop → recv_stop → destroy
  */
 #include <signal.h>
 #include <unistd.h>
@@ -43,9 +32,7 @@ extern "C" {
 
 using namespace stark_periph_manager_node;
 
-/* ════════════════════════════════════════════════════════════════════
- * 全局状态
- * ════════════════════════════════════════════════════════════════════ */
+/* 全局状态 */
 
 static volatile int g_running = 1;
 static volatile int g_log_running = 1;
@@ -67,12 +54,10 @@ static void sig_handler(int sig)
     g_running = 0;
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/*
  * log_drain_thread — 从 ring buffer drain → ECO_INFO_NEW
- *
- * RT 线程写 ring buffer (lock-free, <1μs),
- * 这个非 RT 线程负责 drain 到 log_helper.
- * ════════════════════════════════════════════════════════════════════ */
+ * RT 线程写 ring buffer (lock-free, <1μs), 此非 RT 线程负责 drain.
+ */
 
 static void rt_log_output_fn(const char* msg)
 {
@@ -85,7 +70,7 @@ static void* log_drain_thread(void*)
         if (g_rt_log) {
             g_rt_log->Drain(rt_log_output_fn);
         }
-        usleep(50000);  /* 50ms drain 一次 */
+        usleep(50000);  /* 50ms drain */
     }
     /* 最后再 drain 一次, 清空残留 */
     if (g_rt_log) {
@@ -94,9 +79,9 @@ static void* log_drain_thread(void*)
     return nullptr;
 }
 
-/* ════════════════════════════════════════════════════════════════════
+/*
  * update_shm_online — 更新 SHM motor_online 掩码
- * ════════════════════════════════════════════════════════════════════ */
+ */
 
 static void update_shm_online(motor_hal_t* hal, exo_shm_t* shm, uint8_t motor_count)
 {
@@ -112,9 +97,7 @@ static void update_shm_online(motor_hal_t* hal, exo_shm_t* shm, uint8_t motor_co
     shm->motor_online = mask;
 }
 
-/* ════════════════════════════════════════════════════════════════════
- * main
- * ════════════════════════════════════════════════════════════════════ */
+/* main */
 
 int main(int argc, char** argv)
 {
@@ -124,7 +107,7 @@ int main(int argc, char** argv)
 
     ECO_INFO_NEW("[main] stark_periph_manager_node starting...");
 
-    /* ── 解析参数 ── */
+    /* 解析参数 */
     std::string config_path = "/data/config/stark/exo_config.json";
     bool enable_rt = true;
     for (int i = 1; i < argc; i++) {
@@ -135,10 +118,7 @@ int main(int argc, char** argv)
         }
     }
 
-    /* ════════════════════════════════════════════════════════════
-     * 步骤 1: 初始化 CANFD + 注册电机 + recv + SHM
-     * (对齐 motor_tool daemon 的 tool_init → add_motor → recv_start)
-     * ════════════════════════════════════════════════════════════ */
+    /* 步骤 1: 初始化 CANFD + 注册电机 + recv + SHM */
 
     g_dispatcher = new CanDispatcher();
     g_dispatcher->SetConfigPath(config_path);
@@ -155,9 +135,7 @@ int main(int argc, char** argv)
     state_transition(STATE_INIT);
     ECO_INFO_NEW("[main] CANFD ready, INIT done");
 
-    /* ════════════════════════════════════════════════════════════
-     * 步骤 2: 启动 RT 工作线程 (IMU 在 CanDispatcher 中已初始化)
-     * ════════════════════════════════════════════════════════════ */
+    /* 步骤 2: 启动 RT 工作线程 (IMU 在 CanDispatcher 中已初始化) */
 
     g_rt_worker = new ExoRtWorker(hal, shm,
                                   g_dispatcher->GetCtrl(),
@@ -176,15 +154,12 @@ int main(int argc, char** argv)
     ECO_INFO_NEW("[main] RT worker started (1KHz, {})",
                  enable_rt ? "SCHED_FIFO 90" : "SCHED_OTHER");
 
-    /* ── 启动日志 drain 线程 ── */
+    /* 启动日志 drain 线程 */
     pthread_t log_tid;
     pthread_create(&log_tid, nullptr, log_drain_thread, nullptr);
     ECO_INFO_NEW("[main] log drain thread started");
 
-    /* ════════════════════════════════════════════════════════════
-     * 步骤 3: 状态机驱动 — enter_discovery 阻塞等待全部电机上线
-     *         成功后自动切 READY, 超时也会切 READY (允许部分在线)
-     * ════════════════════════════════════════════════════════════ */
+    /* 步骤 3: 状态机驱动 — enter_discovery 阻塞等待电机上线 */
 
     g_node_ctx.hal          = hal;
     g_node_ctx.shm          = shm;
@@ -199,7 +174,7 @@ int main(int argc, char** argv)
     ECO_INFO_NEW("[main] config: sensor_period={}ms, bus_fmt={}",
                  g_node_ctx.sensor_period_ms, g_node_ctx.sensor_bus_format);
 
-    /* ★ 启动 SYNC 线程: TPDO sync_every=1 依赖 SYNC 帧触发反馈上报 */
+    /* 启动 SYNC 线程: TPDO 依赖 SYNC 帧触发反馈上报 */
     if (hal) {
         int sync_ret = motor_hal_sync_start(hal, 5000);  /* 5ms = 200Hz */
         ECO_INFO_NEW("[main] SYNC thread {} (ret={})",
@@ -208,9 +183,7 @@ int main(int argc, char** argv)
 
     state_transition(STATE_DISCOVERY);  /* 阻塞: enter_discovery 做实际探测 */
 
-    /* ════════════════════════════════════════════════════════════
-     * 步骤 4: 初始化 ROS (编译可选)
-     * ════════════════════════════════════════════════════════════ */
+    /* 步骤 4: 初始化 ROS (编译可选) */
 
 #ifdef ENABLE_ROS
     ros::init(argc, argv, "stark_periph_manager_node");
@@ -222,9 +195,7 @@ int main(int argc, char** argv)
     ECO_INFO_NEW("[main] ROS adapter enabled");
 #endif
 
-    /* ════════════════════════════════════════════════════════════
-     * 步骤 5: 主循环
-     * ════════════════════════════════════════════════════════════ */
+    /* 步骤 5: 主循环 */
 
     ECO_INFO_NEW("[main] node ready");
     ECO_INFO_NEW("[main]   state: {}", state_name(g_exo_state));
@@ -240,7 +211,7 @@ int main(int argc, char** argv)
             motor_hal_process_pending_startups(hal);
             update_shm_online(hal, shm, g_node_ctx.motor_count);
 
-            /* startup 完成后自动配置 sensor 透传 (对齐 motor_tool daemon) */
+            /* startup 完成后自动配置 sensor 透传 */
             for (uint8_t id = 1; id <= g_node_ctx.motor_count; id++) {
                 if (!g_sensor_configured[id - 1]) {
                     motor_state_t st = motor_hal_get_state(hal, id);
@@ -259,14 +230,13 @@ int main(int argc, char** argv)
             }
         }
 
-        /* ── 自动推进状态: READY → ENABLED → RUNNING ── */
+        /* 自动推进状态: READY → ENABLED → RUNNING */
         if (g_rt_worker && shm) {
             if (g_exo_state == STATE_READY) {
                 ECO_INFO_NEW("[main] motors ready → ENABLED");
                 state_transition(STATE_ENABLED);
             }
-            /* FAULT 恢复后, handshake 已在 RT 线程完成 (算法持续发命令),
-             * 但 pending=RUNNING 已被 FAULT→READY 消费,
+            /* FAULT 恢复后, handshake 已在 RT 线程完成,
              * 这里补发 ENABLED→RUNNING */
             if (g_exo_state == STATE_ENABLED && g_rt_worker->IsHandshakeDone()) {
                 ECO_INFO_NEW("[main] algo connected → RUNNING");
@@ -285,14 +255,12 @@ int main(int argc, char** argv)
             else if (pending == STATE_FAULT && g_exo_state != STATE_FAULT) {
                 state_transition(STATE_FAULT);
 
-                /* ★ 补发 SDO DS402 Shutdown (非 RT 路径, 可阻塞)
-                 * RT 线程已通过 PDO enable=false + torque=0 完成降险,
-                 * 这里走标准 DS402 状态机退出到 READY_TO_SWITCH_ON. */
+                /* 补发 SDO DS402 Shutdown (非 RT 路径, 可阻塞)
+                 * RT 线程已通过 PDO enable=false + torque=0 完成降险. */
                 auto* ctrl = g_dispatcher->GetCtrl();
                 if (ctrl) {
                     for (uint8_t id = 1; id <= g_node_ctx.motor_count; id++) {
                         if (shm->motor_online & (1 << (id - 1))) {
-                            /* SDO 0x6040=0x06: Shutdown → READY_TO_SWITCH_ON */
                             int ret = ctrl->SdoWrite(id, 0x6040, 0, 0x0006, 2);
                             ECO_INFO_NEW("[main] SDO Shutdown motor {}: {}",
                                          id, (ret == 0 ? "OK" : "FAIL"));
@@ -310,13 +278,11 @@ int main(int argc, char** argv)
         usleep(100000);  /* 100ms 轮询 */
     }
 
-    /* ════════════════════════════════════════════════════════════
-     * 步骤 6: 清理
-     * ════════════════════════════════════════════════════════════ */
+    /* 步骤 6: 清理 */
 
     ECO_INFO_NEW("[main] shutting down...");
 
-    /* ── 停止 SYNC 线程 ── */
+    /* 停止 SYNC 线程 */
     if (hal) {
         motor_hal_sync_stop(hal);
     }

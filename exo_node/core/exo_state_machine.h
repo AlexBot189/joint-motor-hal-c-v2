@@ -1,9 +1,9 @@
 /*
  * exo_state_machine.h — 7 状态机
+ * Copyright (c) 2026 zhiqiang.yang
  *
- * 状态:
- *   INIT → DISCOVERY → READY → CALIBRATING → ENABLED → RUNNING
- *   任意状态 → FAULT
+ * 状态: INIT → DISCOVERY → READY → CALIBRATING → ENABLED → RUNNING
+ *       任意状态 → FAULT
  *
  * 使用: state_transition(new_state) 一次调用完成 exit+enter
  */

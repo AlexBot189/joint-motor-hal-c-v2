@@ -1,5 +1,6 @@
 /*
  * Factory.h — 对象工厂
+ * Copyright (c) 2026 zhiqiang.yang
  */
 #pragma once
 
