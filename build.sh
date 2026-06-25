@@ -134,7 +134,15 @@ fi
 
 echo "库文件:"
 ls -lh "$LIB_FILE"
-
+echo ""
+echo "EXO_SHM_HEADER:"
+ls -lh "$PROJECT_DIR/exo_node/exo_shm.h"
+echo ""
+echo "IMU HAL:"
+ls -lh "$EXO_BUILD_DIR/imu_hal/libimu_hal.so" 2>/dev/null || echo "  (内置编译, 已链接到 exo_node)"
+echo ""
+echo "IMU 示例:"
+ls -lh "$EXO_BUILD_DIR/imu_hal/emd-gaf" "$EXO_BUILD_DIR/imu_hal/read_sensor" 2>/dev/null || true
 echo ""
 echo "工具:"
 ls -lh "$TOOLS_BUILD_DIR/motor_tool"
