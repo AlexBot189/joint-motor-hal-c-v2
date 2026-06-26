@@ -43,6 +43,12 @@
     "period_ms": 1,
     "bus_format": 3
   },
+  "imu": {
+    "i2c_dev": "/dev/i2c-3",
+    "gpio_chip": "gpiochip4",
+    "gpio_line": 6,
+    "op_mode": 5
+  },
   "ros": {
     "enabled": false,
     "feedback_topic": "/stark/motor/feedback",
