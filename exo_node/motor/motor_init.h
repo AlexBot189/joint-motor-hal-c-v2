@@ -25,13 +25,13 @@
 
 extern "C" {
 #include "exo_shm.h"
-#include "shm_mgr.h"
+#include "shm/shm_mgr.h"
 #include "motor_hal.h"
 }
 
-#include "motor_ctrl.h"
-#include "imu_sensor.h"
-#include "motor_rt_worker.h"
+#include "motor/motor_ctrl.h"
+#include "imu/imu_sensor.h"
+#include "motor/motor_rt_worker.h"
 
 namespace stark_periph_manager_node {
 

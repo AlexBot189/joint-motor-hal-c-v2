@@ -2,12 +2,12 @@
  * Factory.cpp — 对象工厂实现
  * Copyright (c) 2026 zhiqiang.yang
  */
-#include "factory.h"
-#include "motor_init.h"
+#include "utils/factory.h"
+#include "motor/motor_init.h"
 #include "exo_shm.h"
 
 #ifdef ENABLE_ROS
-#include "RosAdapter.h"
+#include "ros/RosAdapter.h"
 #endif
 
 #include <cstdio>

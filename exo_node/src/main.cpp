@@ -21,14 +21,14 @@ extern "C" {
 }
 
 #include <log_helper/LogHelper.h>
-#include "motor_init.h"
-#include "motor_rt_worker.h"
-#include "motor_state.h"
-#include "motor_context.h"
-#include "imu_sensor.h"
-#include "rt_log.h"
-#include "factory.h"
-#include "main_loop.h"
+#include "motor/motor_init.h"
+#include "motor/motor_rt_worker.h"
+#include "motor/motor_state.h"
+#include "motor/motor_context.h"
+#include "imu/imu_sensor.h"
+#include "utils/rt_log.h"
+#include "utils/factory.h"
+#include "main_loop/main_loop.h"
 #include "exo_shm.h"
 
 using namespace stark_periph_manager_node;

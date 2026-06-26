@@ -16,7 +16,7 @@
 #include <thread>
 #include <cstdint>
 
-#include "latency_trace.h"
+#include "utils/latency_trace.h"
 
 extern "C" {
 #include "motor_hal.h"

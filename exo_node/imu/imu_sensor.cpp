@@ -6,7 +6,7 @@
  *
  * Copyright (c) 2026 zhiqiang.yang
  */
-#include "imu_sensor.h"
+#include "imu/imu_sensor.h"
 
 #include <cstring>
 #include <cstdio>
