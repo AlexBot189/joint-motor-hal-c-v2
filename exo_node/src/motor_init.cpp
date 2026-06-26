@@ -4,8 +4,8 @@
  *
  * 所有 SDO/PDO/OD 通过 ExoMotorCtrl 封装.
  */
-#include "motor/motor_init.h"
-#include "imu/imu_sensor.h"
+#include "motor_init.h"
+#include "imu_sensor.h"
 #include "nlohmann/json.hpp"
 
 #include <cstring>
@@ -16,7 +16,7 @@
 
 namespace stark_periph_manager_node {
 
-#include "shm/shm_mgr.h"
+#include "shm_mgr.h"
 extern "C" {
 exo_shm_mgr_t* exo_shm_mgr_open(const char* name, bool create, size_t size);
 void            exo_shm_mgr_close(exo_shm_mgr_t* mgr);

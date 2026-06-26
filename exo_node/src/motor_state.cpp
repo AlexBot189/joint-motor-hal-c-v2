@@ -5,8 +5,8 @@
  * enter/exit 钩子为日志+状态记录, 业务逻辑在 main.cpp 中驱动.
  * 校准逻辑已移至 main.cpp 主循环, 不再作为独立状态.
  */
-#include "motor/motor_state.h"
-#include "motor/motor_context.h"
+#include "motor_state.h"
+#include "motor_context.h"
 #include <log_helper/LogHelper.h>
 
 exo_state_t g_exo_state = STATE_BOOTING;

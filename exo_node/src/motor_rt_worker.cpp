@@ -7,11 +7,11 @@
  *   仅用 motor_hal non-blocking API (get_feedback / multi_ctrl / multi_pdo)
  *   安全动作 (torque=0 / disable) 走 PDO 路径
  */
-#include "motor/motor_rt_worker.h"
-#include "utils/rt_log.h"
-#include "utils/latency_trace.h"
-#include "motor/motor_ctrl.h"
-#include "imu/imu_sensor.h"
+#include "motor_rt_worker.h"
+#include "rt_log.h"
+#include "latency_trace.h"
+#include "motor_ctrl.h"
+#include "imu_sensor.h"
 
 #include <cstring>
 #include <ctime>

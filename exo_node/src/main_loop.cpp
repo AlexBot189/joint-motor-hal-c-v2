@@ -19,11 +19,11 @@ extern "C" {
 }
 
 #include <log_helper/LogHelper.h>
-#include "motor/motor_init.h"
-#include "motor/motor_rt_worker.h"
-#include "motor/motor_state.h"
-#include "motor/motor_context.h"
-#include "utils/rt_log.h"
+#include "motor_init.h"
+#include "motor_rt_worker.h"
+#include "motor_state.h"
+#include "motor_context.h"
+#include "rt_log.h"
 #include "exo_shm.h"
 
 #ifdef ENABLE_ROS

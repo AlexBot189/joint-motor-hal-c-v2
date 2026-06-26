@@ -6,7 +6,7 @@
  * 管理 /dev/shm/exo_shm 的生命周期.
  * 数据类型由 exo_shm.h 定义 (跨进程共享布局)。
  */
-#include "shm/shm_mgr.h"
+#include "shm_mgr.h"
 #include <log_helper/LogHelper.h>
 
 #include <sys/mman.h>

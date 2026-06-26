@@ -6,7 +6,7 @@
  */
 #include "RosAdapter.h"
 #include "interface/IMsgInternalDispatcher.hpp"
-#include "motor/motor_state.h"
+#include "motor_state.h"
 
 #include <cstdio>
 #include <cstring>

@@ -15,12 +15,8 @@ add_subdirectory(${IMU_HAL_DIR} ${CMAKE_BINARY_DIR}/imu_hal)
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/interface
-    ${CMAKE_CURRENT_SOURCE_DIR}/main_loop
-    ${CMAKE_CURRENT_SOURCE_DIR}/motor
-    ${CMAKE_CURRENT_SOURCE_DIR}/shm
-    ${CMAKE_CURRENT_SOURCE_DIR}/imu
-    ${CMAKE_CURRENT_SOURCE_DIR}/utils
     ${CMAKE_CURRENT_SOURCE_DIR}/log_helper
     ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party
     ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/usr/include
@@ -37,37 +33,30 @@ link_directories(
 
 set(SOURCES
     src/main.cpp
-    main_loop/main_loop.cpp
-
-    motor/motor_init.cpp
-    motor/motor_state.cpp
-    motor/motor_rt_worker.cpp
-    motor/motor_ctrl.cpp
-
-    imu/imu_sensor.cpp
-
-    utils/latency_trace.cpp
-    utils/factory.cpp
-    shm/shm_mgr.cpp
+    src/main_loop.cpp
+    src/motor_init.cpp
+    src/motor_state.cpp
+    src/motor_rt_worker.cpp
+    src/motor_ctrl.cpp
+    src/imu_sensor.cpp
+    src/latency_trace.cpp
+    src/factory.cpp
+    src/shm_mgr.cpp
 )
 
 set(HEADERS
-    exo_shm.h
-    main_loop/main_loop.h
-
-    motor/motor_init.h
-    motor/motor_state.h
-    motor/motor_context.h
-    motor/motor_rt_worker.h
-    motor/motor_ctrl.h
-
-    imu/imu_sensor.h
-
-    utils/rt_log.h
-    utils/latency_trace.h
-    utils/factory.h
-    shm/shm_mgr.h
-
+    src/exo_shm.h
+    src/main_loop.h
+    src/motor_init.h
+    src/motor_state.h
+    src/motor_context.h
+    src/motor_rt_worker.h
+    src/motor_ctrl.h
+    src/imu_sensor.h
+    src/rt_log.h
+    src/latency_trace.h
+    src/factory.h
+    src/shm_mgr.h
     interface/Defines.hpp
     interface/IListener.hpp
     interface/IMsgInternalDispatcher.hpp
@@ -87,12 +76,12 @@ if(ENABLE_ROS)
     find_package(roscpp REQUIRED)
     find_package(std_msgs REQUIRED)
     include_directories(${roscpp_INCLUDE_DIRS} ${std_msgs_INCLUDE_DIRS})
-    target_sources(stark_periph_manager_node PRIVATE ros/RosAdapter.cpp)
+    target_sources(stark_periph_manager_node PRIVATE src/RosAdapter.cpp)
     target_link_libraries(stark_periph_manager_node ${roscpp_LIBRARIES})
     add_definitions(-DENABLE_ROS)
 endif()
 
 if(ENABLE_WEBSERVER)
-    target_sources(stark_periph_manager_node PRIVATE web/WebServer.cpp)
+    target_sources(stark_periph_manager_node PRIVATE src/WebServer.cpp)
     add_definitions(-DENABLE_WEBSERVER)
 endif()

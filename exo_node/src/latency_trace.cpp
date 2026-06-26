@@ -4,8 +4,8 @@
  *
  * RT 线程内不做 printf, 统计摘要通过 RT_LOG ring buffer 输出.
  */
-#include "utils/latency_trace.h"
-#include "utils/rt_log.h"
+#include "latency_trace.h"
+#include "rt_log.h"
 
 namespace stark_periph_manager_node {
 
