@@ -14,9 +14,12 @@ add_subdirectory(imu_hal)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/interface
-    ${CMAKE_SOURCE_DIR}/core
+    ${CMAKE_SOURCE_DIR}/main_loop
+    ${CMAKE_SOURCE_DIR}/motor
+    ${CMAKE_SOURCE_DIR}/shm
+    ${CMAKE_SOURCE_DIR}/imu
+    ${CMAKE_SOURCE_DIR}/utils
     ${CMAKE_SOURCE_DIR}/log_helper
     ${CMAKE_SOURCE_DIR}/3rd_party
     ${CMAKE_SOURCE_DIR}/3rd_party/usr/include
@@ -32,29 +35,36 @@ link_directories(
 
 set(SOURCES
     src/main.cpp
-    src/CanDispatcher.cpp
-    src/Factory.cpp
-    src/exo_shm_mgr.cpp
+    main_loop/main_loop.cpp
 
-    core/exo_state_machine.cpp
-    core/exo_rt_worker.cpp
-    core/exo_motor_ctrl.cpp
-    core/exo_imu_sensor.cpp
-    core/exo_latency_trace.cpp
+    motor/motor_init.cpp
+    motor/motor_state.cpp
+    motor/motor_rt_worker.cpp
+    motor/motor_ctrl.cpp
+
+    imu/imu_sensor.cpp
+
+    utils/latency_trace.cpp
+    utils/factory.cpp
+    shm/shm_mgr.cpp
 )
 
 set(HEADERS
     exo_shm.h
-    src/exo_shm_mgr.h
-    src/CanDispatcher.h
-    src/Factory.h
+    main_loop/main_loop.h
 
-    core/exo_state_machine.h
-    core/exo_node_context.h
-    core/exo_rt_worker.h
-    core/exo_rt_log.h
-    core/exo_motor_ctrl.h
-    core/exo_imu_sensor.h
+    motor/motor_init.h
+    motor/motor_state.h
+    motor/motor_context.h
+    motor/motor_rt_worker.h
+    motor/motor_ctrl.h
+
+    imu/imu_sensor.h
+
+    utils/rt_log.h
+    utils/latency_trace.h
+    utils/factory.h
+    shm/shm_mgr.h
 
     interface/Defines.hpp
     interface/IListener.hpp

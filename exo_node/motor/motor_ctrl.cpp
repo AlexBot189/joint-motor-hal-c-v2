@@ -5,7 +5,7 @@
  * 所有 SDO 控制路径与 motor_tool 对齐.
  * PDO 路径直接透传 motor_hal 非阻塞 API.
  */
-#include "exo_motor_ctrl.h"
+#include "motor/motor_ctrl.h"
 #include <log_helper/LogHelper.h>
 #include <cstring>
 #include <cmath>
