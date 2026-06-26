@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <getopt.h>
+#include <math.h>
 
 #include "emd_gaf.h"
 
@@ -117,8 +118,18 @@ int main(int argc, char *argv[])
 
         /* 非阻塞读取融合输出 */
         if (emd_gaf_get_output(gaf, &out) == 0) {
-            printf("ts=%llu heading=%.1f° quat=(%.3f,%.3f,%.3f,%.3f) acc=(%.3f,%.3f,%.3f) gyr=(%.1f,%.1f,%.1f) mag=(%.1f,%.1f,%.1f) temp=%.1f°C sta=%d ga=%d ma=%d\n",
+
+            /* 四元数 → 欧拉角 (ZYX: Yaw-Pitch-Roll) */
+            float qw = out.quat_w, qx = out.quat_x, qy = out.quat_y, qz = out.quat_z;
+            float yaw   = atan2f(2.0f*(qw*qz + qx*qy), 1.0f - 2.0f*(qy*qy + qz*qz));
+            float sp    = 2.0f*(qw*qy - qz*qx);
+            if (sp > 1.0f) sp = 1.0f; else if (sp < -1.0f) sp = -1.0f;
+            float pitch = asinf(sp);
+            float roll  = atan2f(2.0f*(qw*qx + qy*qz), 1.0f - 2.0f*(qx*qx + qy*qy));
+
+            printf("ts=%llu euler=(yaw=%.1f° pitch=%.1f° roll=%.1f°) heading=%.1f° quat=(%.3f,%.3f,%.3f,%.3f) acc=(%.3f,%.3f,%.3f) gyr=(%.1f,%.1f,%.1f) mag=(%.1f,%.1f,%.1f) temp=%.1f°C sta=%d ga=%d ma=%d\n",
                    (unsigned long long)out.timestamp_us,
+                   yaw, pitch, roll,
                    out.heading_deg,
                    out.quat_w, out.quat_x, out.quat_y, out.quat_z,
                    out.accel_x, out.accel_y, out.accel_z,
