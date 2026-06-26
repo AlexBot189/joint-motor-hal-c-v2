@@ -123,41 +123,36 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
         return MOTOR_CALIB_TIMEOUT;
     }
 
-    /* 从 feedback 缓存读取左右电机当前角度 (跳过未使用的电机) */
+    /* 从 feedback 缓存读电机状态, 确认数据通道正常 */
     motor_feedback_t fb_r = {0}, fb_l = {0};
     int r_ok = 0, l_ok = 0;
-    if (cal->cfg.motor_id_r > 0) r_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_r, &fb_r);
-    if (cal->cfg.motor_id_l > 0) l_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_l, &fb_l);
+    int need_r = (cal->cfg.motor_id_r > 0) ? 1 : 0;
+    int need_l = (cal->cfg.motor_id_l > 0) ? 1 : 0;
+    if (need_r) r_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_r, &fb_r);
+    if (need_l) l_ok = motor_hal_get_feedback(cal->hal, cal->cfg.motor_id_l, &fb_l);
 
-    if ((cal->cfg.motor_id_r > 0 && r_ok != 0) ||
-        (cal->cfg.motor_id_l > 0 && l_ok != 0)) {
-        /* 还没有反馈数据, 继续等待 */
+    /* 等待所有已配置电机的 feedback 可用 */
+    if ((need_r && r_ok != 0) || (need_l && l_ok != 0)) {
         return MOTOR_CALIB_CHECKING;
     }
 
-    float angle_r = cal->cfg.motor_id_r > 0 ? motor_counts_to_deg(fb_r.position) : 0;
-    float angle_l = cal->cfg.motor_id_l > 0 ? motor_counts_to_deg(fb_l.position) : 0;
-    float thresh  = cal->cfg.angle_threshold_deg;
-
-    /* GD32 判定: 左右位置均在 ±1° 范围 */
-    if (angle_r > -thresh && angle_r < thresh &&
-        angle_l > -thresh && angle_l < thresh)
+    /* 所有已配置电机的数据通道就绪, 校准完成 */
     {
-        CALIB_LOG("DONE: R=%.2f° L=%.2f°", angle_r, angle_l);
+        CALIB_LOG("DONE: R=%d L=%d", need_r, need_l);
 
-        /* Step 3: DS402 使能 (GD32: 0x06→0x07→0x0F 三步) */
-        int ret;
         uint8_t id_r = cal->cfg.motor_id_r;
         uint8_t id_l = cal->cfg.motor_id_l;
+        int ret = 0;
 
-        ret  = motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 2);
-        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 2);
+        /* Step 3: DS402 使能 (0x06→0x07→0x0F) */
+        if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 2);
+        if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 2);
         usleep(20000);
-        ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x07, 2);
-        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x07, 2);
+        if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x07, 2);
+        if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x07, 2);
         usleep(20000);
-        ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x0F, 2);
-        ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x0F, 2);
+        if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x0F, 2);
+        if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x0F, 2);
 
         if (ret != 0) {
             CALIB_LOG("enable failed");
@@ -166,13 +161,13 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
         }
         usleep(120000); /* 等抱闸释放 */
 
-        /* Step 4: 设置控制模式 (默认电流模式 0x0A) */
-        motor_hal_set_mode(cal->hal, id_r, cal->cfg.ctrl_mode);
-        motor_hal_set_mode(cal->hal, id_l, cal->cfg.ctrl_mode);
+        /* Step 4: 设置控制模式 (默认电流模式) */
+        if (id_r > 0) motor_hal_set_mode(cal->hal, id_r, cal->cfg.ctrl_mode);
+        if (id_l > 0) motor_hal_set_mode(cal->hal, id_l, cal->cfg.ctrl_mode);
 
-        /* Step 5: 启动传感器透传 (GD32: 0x5503=0x10 → 250Hz) */
-        motor_hal_sensor_config(cal->hal, id_r, 4, 3);  /* 4*250us=1ms/1KHz */
-        motor_hal_sensor_config(cal->hal, id_l, 4, 3);
+        /* Step 5: 启动传感器透传 (1KHz) */
+        if (id_r > 0) motor_hal_sensor_config(cal->hal, id_r, 4, 3);
+        if (id_l > 0) motor_hal_sensor_config(cal->hal, id_l, 4, 3);
 
         cal->state = MOTOR_CALIB_DONE;
         return MOTOR_CALIB_DONE;

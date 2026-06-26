@@ -24,6 +24,7 @@ struct ExoNodeContext {
     bool         auto_calib       = false;
     void*        calib_ctx        = nullptr;  /* motor_calib_t* opaque */
     bool         calib_running    = false;
+    bool         calib_requested  = false;   /* 按键或外部触发校准请求 */
 
     /* 传感器透传 */
     uint16_t     sensor_period_ms = 1;        /* ms */

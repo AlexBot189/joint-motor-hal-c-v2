@@ -18,6 +18,7 @@
 
 extern "C" {
 #include "motor_hal.h"
+#include "motor_calib.h"
 }
 
 #include <log_helper/LogHelper.h>
@@ -172,6 +173,10 @@ int main(int argc, char** argv)
     g_node_ctx.sensor_period_ms = g_dispatcher->GetSensorPeriodMs();
     g_node_ctx.sensor_bus_format = g_dispatcher->GetSensorBusFormat();
 
+    /* 从 config.json 读取校准配置 */
+    g_node_ctx.auto_calib       = g_dispatcher->GetCalibAuto();
+    g_node_ctx.calib_timeout_ms = g_dispatcher->GetCalibTimeoutMs();
+
     ECO_INFO_NEW("[main] config: sensor_period={}ms, bus_fmt={}",
                  g_node_ctx.sensor_period_ms, g_node_ctx.sensor_bus_format);
 
@@ -231,11 +236,36 @@ int main(int argc, char** argv)
             }
         }
 
-        /* 自动推进状态: READY → ENABLED → RUNNING */
+        /* 自动推进状态 */
         if (g_rt_worker && shm) {
+            /* 按键触发校准 (预留: 外部设置 g_node_ctx.calib_requested = true) */
+            if (g_node_ctx.calib_requested && g_exo_state == STATE_READY) {
+                g_node_ctx.calib_requested = false;
+                ECO_INFO_NEW("[main] calib requested, entering CALIBRATING");
+                state_transition(STATE_CALIBRATING);
+            }
             if (g_exo_state == STATE_READY) {
-                ECO_INFO_NEW("[main] motors ready → ENABLED");
-                state_transition(STATE_ENABLED);
+                if (g_node_ctx.auto_calib) {
+                    ECO_INFO_NEW("[main] auto-calib enabled, entering CALIBRATING");
+                    state_transition(STATE_CALIBRATING);
+                } else {
+                    ECO_INFO_NEW("[main] motors ready, entering ENABLED");
+                    state_transition(STATE_ENABLED);
+                }
+            }
+            /* 校准轮询 (主循环 100ms 调用一次) */
+            if (g_exo_state == STATE_CALIBRATING && g_node_ctx.calib_ctx) {
+                motor_calib_state_t result = motor_calib_poll(
+                    (motor_calib_t*)g_node_ctx.calib_ctx);
+                if (result == MOTOR_CALIB_DONE) {
+                    ECO_INFO_NEW("[main] calibration DONE, entering READY");
+                    if (shm) shm->calib_state = 2;
+                    state_transition(STATE_READY);
+                } else if (result == MOTOR_CALIB_TIMEOUT) {
+                    ECO_WARN_NEW("[main] calibration TIMEOUT, entering READY (degraded)");
+                    if (shm) shm->calib_state = 3;
+                    state_transition(STATE_READY);
+                }
             }
             /* FAULT 恢复后, handshake 已在 RT 线程完成,
              * 这里补发 ENABLED→RUNNING */

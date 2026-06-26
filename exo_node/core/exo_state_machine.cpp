@@ -6,6 +6,7 @@
  */
 #include "exo_state_machine.h"
 #include "exo_node_context.h"
+#include "motor_calib.h"
 #include <log_helper/LogHelper.h>
 #include <unistd.h>
 
@@ -95,8 +96,38 @@ void enter_ready(void) {
 }
 
 void enter_calibrating(void) {
-    ECO_INFO_NEW("[StateMachine] enter CALIBRATING — not implemented yet");
-    /* TODO: 校准暂不开启, 入口保留供后续实现 */
+    ECO_INFO_NEW("[StateMachine] enter CALIBRATING");
+
+    if (!g_ctx || !g_ctx->hal) {
+        ECO_ERROR_NEW("[StateMachine] CALIBRATING: no context");
+        return;
+    }
+
+    if (!g_ctx->calib_ctx) {
+        g_ctx->calib_ctx = motor_calib_create(g_ctx->hal);
+    }
+    if (!g_ctx->calib_ctx) {
+        ECO_ERROR_NEW("[StateMachine] CALIBRATING: create failed");
+        return;
+    }
+
+    motor_calib_config_t calib_cfg = {0};
+    calib_cfg.motor_id_r  = (g_ctx->motor_count >= 1) ? 1 : 0;
+    calib_cfg.motor_id_l  = (g_ctx->motor_count >= 2) ? 2 : 0;
+    calib_cfg.timeout_ms  = g_ctx->calib_timeout_ms;
+    calib_cfg.angle_threshold_deg = 1.0f;
+    calib_cfg.ctrl_mode   = MOTOR_MODE_CURRENT;
+
+    int ret = motor_calib_start((motor_calib_t*)g_ctx->calib_ctx, &calib_cfg);
+    if (ret != 0) {
+        ECO_ERROR_NEW("[StateMachine] CALIBRATING: start failed");
+        motor_calib_destroy((motor_calib_t*)g_ctx->calib_ctx);
+        g_ctx->calib_ctx = nullptr;
+        return;
+    }
+
+    g_ctx->calib_running = true;
+    if (g_ctx->shm) g_ctx->shm->calib_state = 1;
 }
 
 void enter_enabled(void) {
@@ -118,7 +149,12 @@ void exit_init(void) {}
 void exit_discovery(void) {}
 void exit_ready(void) {}
 void exit_calibrating(void) {
-    /* TODO: 校准暂不开启, 出口保留供后续实现 */
+    if (g_ctx && g_ctx->calib_ctx) {
+        motor_calib_destroy((motor_calib_t*)g_ctx->calib_ctx);
+        g_ctx->calib_ctx = nullptr;
+    }
+    g_ctx->calib_running = false;
+    if (g_ctx && g_ctx->shm) g_ctx->shm->calib_state = 0;
 }
 void exit_enabled(void) {
     ECO_INFO_NEW("[StateMachine] exit ENABLED — stop sensor passthrough");
