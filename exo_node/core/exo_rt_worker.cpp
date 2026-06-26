@@ -145,6 +145,7 @@ void ExoRtWorker::Run()
 
 void ExoRtWorker::ProcessMailbox()
 {
+    if (!m_active.load(std::memory_order_acquire)) return;
     if (!m_shm || !m_hal) return;
 
     uint64_t begin = __atomic_load_n(&m_shm->mailbox.seq_begin, __ATOMIC_ACQUIRE);
@@ -156,7 +157,7 @@ void ExoRtWorker::ProcessMailbox()
     /* 首次收到算法命令 → 设标志, 让主循环调 state_transition */
     if (!m_handshake_done.load(std::memory_order_acquire) && begin > 0) {
         m_handshake_done.store(true, std::memory_order_release);
-        __atomic_store_n(&m_pending_state, (uint32_t)STATE_RUNNING, __ATOMIC_RELEASE);
+        /* 握手完成, 主循环在 READY 状态检测后推进到 RUNNING */
     }
 
     /* 处理双电机命令 */
@@ -273,6 +274,7 @@ void ExoRtWorker::PublishFeedback()
     m_report_divider = m_rt.report_divider;
 
     if (!m_hal || !m_shm) return;
+    if (!m_active.load(std::memory_order_acquire)) return;
 
     uint32_t active    = __atomic_load_n(&m_shm->active_idx, __ATOMIC_ACQUIRE);
     uint32_t write_idx = active ^ 1;
@@ -379,6 +381,7 @@ void ExoRtWorker::PublishFeedback()
 
 void ExoRtWorker::SafetyCheck(uint64_t seq_before_process)
 {
+    if (!m_active.load(std::memory_order_acquire)) return;
     if (!m_shm) return;
 
     struct timespec ts;
@@ -425,13 +428,13 @@ void ExoRtWorker::SafetyCheck(uint64_t seq_before_process)
             if (m_shm->motor_severity == MOTOR_FAULT &&
                 m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
             {
-                /* 算法重连 → 清除 FAULT, 重新握手 */
+                /* 算法重连 → 清除 FAULT, 回到 READY (calib_done 保持) */
                 m_handshake_done.store(false, std::memory_order_release);
                 m_fault_triggered = false;
                 m_shm->motor_severity = MOTOR_OK;
                 m_shm->fault_reason   = FAULT_NONE;
-                __atomic_store_n(&m_pending_state, (uint32_t)STATE_RUNNING, __ATOMIC_RELEASE);
-                RT_LOG("SAFETY RECOVER: algo reconnected");
+                __atomic_store_n(&m_pending_state, (uint32_t)STATE_READY, __ATOMIC_RELEASE);
+                RT_LOG("SAFETY RECOVER: algo reconnected → READY");
             }
             else if (m_shm->motor_severity == MOTOR_WARN &&
                      m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
@@ -539,13 +542,13 @@ uint32_t ExoRtWorker::GetAvgLatencyUs() const
 
 /*
  * GetPendingState() — 主循环读取 RT 线程请求的状态切换
- * atomic exchange: 读当前值并清零为 STATE_INIT
+ * atomic exchange: 读当前值并清零为 STATE_BOOTING
  */
 
 exo_state_t ExoRtWorker::GetPendingState()
 {
     return (exo_state_t)__atomic_exchange_n(
-        &m_pending_state, (uint32_t)STATE_INIT, __ATOMIC_ACQUIRE);
+        &m_pending_state, (uint32_t)STATE_BOOTING, __ATOMIC_ACQUIRE);
 }
 
 }  /* namespace stark_periph_manager_node */

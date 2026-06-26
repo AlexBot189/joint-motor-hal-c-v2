@@ -2,12 +2,17 @@
  * main.cpp — 节点入口
  * Copyright (c) 2026 zhiqiang.yang
  *
- * 启动流程:
+ * 启动流程 (无阻塞):
  *   1. CanDispatcher::InitDispatcher() — CANFD + 电机注册 + recv + SHM
- *   2. wait_bootup_and_startup() — 轮询电机上线
- *   3. ExoRtWorker::Start() — RT 线程 (torque=0, 等算法 cmd)
- *   4. 主循环: process_pending_startups + 状态检测 + ros::spinOnce
- *   5. 退出: PDO estop → recv_stop → destroy
+ *   2. state_transition(STATE_BOOTING)
+ *   3. 主循环:
+ *      a) 电机发现检测 → BOOTING→READY
+ *      b) RT线程启动 (至少1电机在线)
+ *      c) SYNC启动 (至少1电机在线)
+ *      d) READY: 校准+握手 → RUNNING
+ *      e) RUNNING: 不做特殊处理
+ *      f) FAULT: 算法失联降险 → 恢复 READY
+ *   4. 退出: PDO estop → recv_stop → destroy
  */
 #include <signal.h>
 #include <unistd.h>
@@ -49,6 +54,9 @@ ExoNodeContext*          g_ctx = &g_node_ctx;
 /* sensor 透传防重配置标记 */
 static bool g_sensor_configured[EXO_MAX_MOTORS];
 
+/* 校准触发门控 (防止重复进入校准) */
+static bool g_calib_triggered = false;
+
 static void sig_handler(int sig)
 {
     (void)sig;
@@ -73,7 +81,6 @@ static void* log_drain_thread(void*)
         }
         usleep(50000);  /* 50ms drain */
     }
-    /* 最后再 drain 一次, 清空残留 */
     if (g_rt_log) {
         g_rt_log->Drain(rt_log_output_fn);
     }
@@ -96,6 +103,30 @@ static void update_shm_online(motor_hal_t* hal, exo_shm_t* shm, uint8_t motor_co
         }
     }
     shm->motor_online = mask;
+}
+
+/*
+ * all_motors_online — 检查是否所有已注册电机都已上线
+ */
+
+static bool all_motors_online(exo_shm_t* shm, int motor_count)
+{
+    if (!shm) return false;
+    uint8_t expected = (uint8_t)((1 << motor_count) - 1);
+    return (shm->motor_online & expected) == expected;
+}
+
+/*
+ * any_motor_online — 检查是否至少1个电机在线
+ */
+
+static bool any_motor_online(exo_shm_t* shm, int motor_count)
+{
+    if (!shm) return false;
+    for (int i = 0; i < motor_count; i++) {
+        if (shm->motor_online & (1 << i)) return true;
+    }
+    return false;
 }
 
 /* main */
@@ -132,62 +163,50 @@ int main(int argc, char** argv)
 
     motor_hal_t* hal = g_dispatcher->GetHal();
     exo_shm_t*   shm = g_dispatcher->GetShm();
+    int motor_count  = g_dispatcher->GetMotorCount();
 
-    state_transition(STATE_INIT);
-    ECO_INFO_NEW("[main] CANFD ready, INIT done");
+    state_transition(STATE_BOOTING);
+    ECO_INFO_NEW("[main] CANFD ready, BOOTING");
 
-    /* 步骤 2: 启动 RT 工作线程 (IMU 在 CanDispatcher 中已初始化) */
+    /* 步骤 2: 创建 RT 工作线程 (先不 Start, 等电机上线) */
 
-    int motor_count = g_dispatcher->GetMotorCount();
     g_rt_worker = new ExoRtWorker(hal, shm,
                                   g_dispatcher->GetCtrl(),
                                   g_dispatcher->GetImuSensor(),
                                   motor_count);
 
-    /* 注入 config.json 配置 (读失败则保持默认值) */
     g_rt_worker->SetSafetyConfig(g_dispatcher->GetSafetyConfig());
 
     RtConfig rt_cfg = g_dispatcher->GetRtConfig();
     if (!enable_rt) {
-        rt_cfg.enable_rt = false;  /* --no-rt 覆盖 */
+        rt_cfg.enable_rt = false;
     }
     g_rt_worker->SetRtConfig(rt_cfg);
-    g_rt_worker->Start();
 
-    ECO_INFO_NEW("[main] RT worker started (1KHz, {})",
-                 enable_rt ? "SCHED_FIFO 90" : "SCHED_OTHER");
+    ECO_INFO_NEW("[main] RT worker created (not started yet)");
 
     /* 启动日志 drain 线程 */
     pthread_t log_tid;
     pthread_create(&log_tid, nullptr, log_drain_thread, nullptr);
     ECO_INFO_NEW("[main] log drain thread started");
 
-    /* 步骤 3: 状态机驱动 — enter_discovery 阻塞等待电机上线 */
+    /* 步骤 3: 注入全局上下文 */
 
     g_node_ctx.hal          = hal;
     g_node_ctx.shm          = shm;
     g_node_ctx.motor_count  = motor_count;
-    g_node_ctx.startup_timeout_sec = (motor_count == 1) ? 5 : 30;
 
-    /* 从 config.json 读取透传配置 */
+    /* 从 config.json 读取配置 */
     g_node_ctx.sensor_period_ms = g_dispatcher->GetSensorPeriodMs();
     g_node_ctx.sensor_bus_format = g_dispatcher->GetSensorBusFormat();
-
-    /* 从 config.json 读取校准配置 */
     g_node_ctx.auto_calib       = g_dispatcher->GetCalibAuto();
     g_node_ctx.calib_timeout_ms = g_dispatcher->GetCalibTimeoutMs();
 
-    ECO_INFO_NEW("[main] config: sensor_period={}ms, bus_fmt={}",
-                 g_node_ctx.sensor_period_ms, g_node_ctx.sensor_bus_format);
+    ECO_INFO_NEW("[main] config: motor_count={} sensor_period={}ms bus_fmt={} auto_calib={}",
+                 motor_count, g_node_ctx.sensor_period_ms,
+                 g_node_ctx.sensor_bus_format, g_node_ctx.auto_calib);
 
-    /* 启动 SYNC 线程: TPDO 依赖 SYNC 帧触发反馈上报 */
-    if (hal) {
-        int sync_ret = motor_hal_sync_start(hal, 5000);  /* 5ms = 200Hz */
-        ECO_INFO_NEW("[main] SYNC thread {} (ret={})",
-                     sync_ret == 0 ? "started" : "FAILED", sync_ret);
-    }
-
-    state_transition(STATE_DISCOVERY);  /* 阻塞: enter_discovery 做实际探测 */
+    bool sync_started = false;
 
     /* 步骤 4: 初始化 ROS (编译可选) */
 
@@ -201,23 +220,20 @@ int main(int argc, char** argv)
     ECO_INFO_NEW("[main] ROS adapter enabled");
 #endif
 
-    /* 步骤 5: 主循环 */
+    /* 步骤 5: 主循环 (非阻塞) */
 
-    ECO_INFO_NEW("[main] node ready");
-    ECO_INFO_NEW("[main]   state: {}", state_name(g_exo_state));
-    ECO_INFO_NEW("[main]   motors online: 0x{:02X}", shm ? shm->motor_online : 0);
+    ECO_INFO_NEW("[main] entering main loop (non-blocking)");
 
     while (g_running) {
 #ifdef ENABLE_ROS
         ros::spinOnce();
 #endif
 
-        /* 轮询 auto-startup (处理热插拔) + sensor 透传自动配置 */
+        /* --- 轮询 auto-startup + sensor 透传自动配置 --- */
         if (hal) {
             motor_hal_process_pending_startups(hal);
             update_shm_online(hal, shm, g_node_ctx.motor_count);
 
-            /* startup 完成后自动配置 sensor 透传 */
             for (uint8_t id = 1; id <= g_node_ctx.motor_count; id++) {
                 if (!g_sensor_configured[id - 1]) {
                     motor_state_t st = motor_hal_get_state(hal, id);
@@ -236,53 +252,121 @@ int main(int argc, char** argv)
             }
         }
 
-        /* 自动推进状态 */
-        if (g_rt_worker && shm) {
-            /* 按键触发校准 (预留: 外部设置 g_node_ctx.calib_requested = true) */
-            if (g_node_ctx.calib_requested && g_exo_state == STATE_READY) {
+        /* --- a) 电机发现检测: 全部在线 → BOOTING→READY --- */
+        if (g_exo_state == STATE_BOOTING && all_motors_online(shm, motor_count)) {
+            ECO_INFO_NEW("[main] all {} motors online (0x{:02X}) → READY",
+                         motor_count, shm->motor_online);
+            state_transition(STATE_READY);
+        }
+
+        /* --- b) RT 线程启动: 至少1个电机在线后启动 --- */
+        if (g_rt_worker && !g_rt_worker->IsRunning() &&
+            any_motor_online(shm, motor_count)) {
+            g_rt_worker->Start();
+            ECO_INFO_NEW("[main] RT worker started (1KHz, {})",
+                         enable_rt ? "SCHED_FIFO 90" : "SCHED_OTHER");
+        }
+
+        /* --- c) SYNC 启动: 至少1个电机在线后启动 --- */
+        if (!sync_started && any_motor_online(shm, motor_count) && hal) {
+            int sync_ret = motor_hal_sync_start(hal, 5000);
+            ECO_INFO_NEW("[main] SYNC thread {} (ret={})",
+                         sync_ret == 0 ? "started" : "FAILED", sync_ret);
+            sync_started = true;
+        }
+
+        /* --- d) READY 状态处理 --- */
+        if (g_exo_state == STATE_READY) {
+            /* 检查是否需要启动校准 */
+            bool need_calib = !g_node_ctx.calib_done &&
+                              (g_node_ctx.calib_requested || g_node_ctx.auto_calib);
+
+            if (need_calib && !g_calib_triggered && !g_node_ctx.calib_running) {
+                g_calib_triggered = true;
                 g_node_ctx.calib_requested = false;
-                ECO_INFO_NEW("[main] calib requested, entering CALIBRATING");
-                state_transition(STATE_CALIBRATING);
-            }
-            if (g_exo_state == STATE_READY) {
-                if (g_node_ctx.auto_calib) {
-                    ECO_INFO_NEW("[main] auto-calib enabled, entering CALIBRATING");
-                    state_transition(STATE_CALIBRATING);
-                } else {
-                    ECO_INFO_NEW("[main] motors ready, entering ENABLED");
-                    state_transition(STATE_ENABLED);
+
+                ECO_INFO_NEW("[main] starting calibration (auto=%d)", g_node_ctx.auto_calib);
+
+                if (!g_node_ctx.calib_ctx) {
+                    g_node_ctx.calib_ctx = motor_calib_create(hal);
+                }
+
+                if (g_node_ctx.calib_ctx) {
+                    motor_calib_config_t calib_cfg = {};
+                    calib_cfg.motor_id_r = (motor_count >= 1) ? 1 : 0;
+                    calib_cfg.motor_id_l = (motor_count >= 2) ? 2 : 0;
+                    calib_cfg.timeout_ms = g_node_ctx.calib_timeout_ms;
+                    calib_cfg.angle_threshold_deg = 1.0f;
+                    calib_cfg.ctrl_mode = MOTOR_MODE_CURRENT;
+
+                    int ret = motor_calib_start((motor_calib_t*)g_node_ctx.calib_ctx, &calib_cfg);
+                    if (ret == 0) {
+                        g_node_ctx.calib_running = true;
+                        if (shm) shm->calib_state = 1;
+                    } else {
+                        ECO_ERROR_NEW("[main] calib start failed");
+                        motor_calib_destroy((motor_calib_t*)g_node_ctx.calib_ctx);
+                        g_node_ctx.calib_ctx = nullptr;
+                    }
                 }
             }
-            /* 校准轮询 (主循环 100ms 调用一次) */
-            if (g_exo_state == STATE_CALIBRATING && g_node_ctx.calib_ctx) {
+
+            /* --- e) 校准轮询 (READY 状态内) --- */
+            if (g_node_ctx.calib_running && g_node_ctx.calib_ctx) {
                 motor_calib_state_t result = motor_calib_poll(
                     (motor_calib_t*)g_node_ctx.calib_ctx);
+
                 if (result == MOTOR_CALIB_DONE) {
-                    ECO_INFO_NEW("[main] calibration DONE, entering READY");
+                    ECO_INFO_NEW("[main] calibration DONE");
+                    g_node_ctx.calib_done = true;
+                    g_node_ctx.calib_running = false;
                     if (shm) shm->calib_state = 2;
-                    state_transition(STATE_READY);
-                } else if (result == MOTOR_CALIB_TIMEOUT) {
-                    ECO_WARN_NEW("[main] calibration TIMEOUT, entering READY (degraded)");
+                    g_calib_triggered = false;
+
+                    /* 校准完成, 设置 RT worker active, 检查握手 → RUNNING */
+                    if (g_rt_worker) g_rt_worker->SetActive(true);
+                    if (g_rt_worker && g_rt_worker->IsHandshakeDone()) {
+                        ECO_INFO_NEW("[main] algo connected (post-calib) → RUNNING");
+                        state_transition(STATE_RUNNING);
+                    }
+                }
+                else if (result == MOTOR_CALIB_TIMEOUT) {
+                    ECO_WARN_NEW("[main] calibration TIMEOUT, entering RUNNING (degraded)");
+                    g_node_ctx.calib_done = true;
+                    g_node_ctx.calib_running = false;
                     if (shm) shm->calib_state = 3;
-                    state_transition(STATE_READY);
+                    g_calib_triggered = false;
+
+                    if (g_rt_worker) g_rt_worker->SetActive(true);
+                    state_transition(STATE_RUNNING);
                 }
             }
-            /* FAULT 恢复后, handshake 已在 RT 线程完成,
-             * 这里补发 ENABLED→RUNNING */
-            if (g_exo_state == STATE_ENABLED && g_rt_worker->IsHandshakeDone()) {
-                ECO_INFO_NEW("[main] algo connected → RUNNING");
-                state_transition(STATE_RUNNING);
+
+            /* 校准已完成: 检查算法握手 → 直接进 RUNNING (跳过校准) */
+            if (g_node_ctx.calib_done && !g_node_ctx.calib_running) {
+                if (g_rt_worker && !g_rt_worker->IsActive()) {
+                    g_rt_worker->SetActive(true);
+                }
+                if (g_rt_worker && g_rt_worker->IsHandshakeDone()) {
+                    ECO_INFO_NEW("[main] calib done + algo connected → RUNNING");
+                    state_transition(STATE_RUNNING);
+                }
             }
-            /* 处理 RT 线程的状态切换请求 */
+        }
+
+        /* --- f) RUNNING: 不做特殊处理 --- */
+
+        /* --- 处理 RT 线程的状态切换请求 --- */
+        if (g_rt_worker) {
             exo_state_t pending = g_rt_worker->GetPendingState();
-            if (pending == STATE_RUNNING && g_exo_state == STATE_FAULT) {
-                /* 算法重连 → FAULT 自动恢复到 READY */
-                ECO_INFO_NEW("[main] FAULT → READY (algo reconnect)");
+
+            /* 算法重连: FAULT 恢复到 READY, calib_done 保持 */
+            if (pending == STATE_READY && g_exo_state == STATE_FAULT) {
+                ECO_INFO_NEW("[main] FAULT → READY (algo reconnect, calib_done={})",
+                             g_node_ctx.calib_done);
                 state_transition(STATE_READY);
             }
-            else if (pending == STATE_RUNNING && g_exo_state == STATE_ENABLED) {
-                state_transition(STATE_RUNNING);
-            }
+            /* RT 线程触发 FAULT */
             else if (pending == STATE_FAULT && g_exo_state != STATE_FAULT) {
                 state_transition(STATE_FAULT);
 
@@ -301,7 +385,7 @@ int main(int argc, char** argv)
             }
         }
 
-        /* 同步 SHM node_state (主线程权威, RT 线程不碰) */
+        /* 同步 SHM node_state */
         if (shm) {
             shm->node_state = g_exo_state;
         }
@@ -322,6 +406,12 @@ int main(int argc, char** argv)
         g_rt_worker->Stop();
         delete g_rt_worker;
         g_rt_worker = nullptr;
+    }
+
+    /* 清理校准器 */
+    if (g_node_ctx.calib_ctx) {
+        motor_calib_destroy((motor_calib_t*)g_node_ctx.calib_ctx);
+        g_node_ctx.calib_ctx = nullptr;
     }
 
     if (g_dispatcher) {

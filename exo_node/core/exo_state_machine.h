@@ -1,9 +1,9 @@
 /*
- * exo_state_machine.h — 7 状态机
+ * exo_state_machine.h — 4 状态机
  * Copyright (c) 2026 zhiqiang.yang
  *
- * 状态: INIT → DISCOVERY → READY → CALIBRATING → ENABLED → RUNNING
- *       任意状态 → FAULT
+ * 状态: BOOTING → READY → RUNNING
+ *       任意状态 → FAULT, FAULT → READY
  *
  * 使用: state_transition(new_state) 一次调用完成 exit+enter
  */
@@ -22,19 +22,13 @@ extern exo_state_t g_exo_state;
 
 const char* state_name(exo_state_t s);
 
-extern void enter_init(void);
-extern void enter_discovery(void);
+extern void enter_booting(void);
 extern void enter_ready(void);
-extern void enter_calibrating(void);
-extern void enter_enabled(void);
 extern void enter_running(void);
 extern void enter_fault(void);
 
-extern void exit_init(void);
-extern void exit_discovery(void);
+extern void exit_booting(void);
 extern void exit_ready(void);
-extern void exit_calibrating(void);
-extern void exit_enabled(void);
 extern void exit_running(void);
 extern void exit_fault(void);
 

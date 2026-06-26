@@ -94,7 +94,7 @@ bool CanDispatcher::InitDispatcher()
 
     /* 全量清零 SHM — 防止跨进程残留触发假 FAULT */
     memset(m_shm, 0, EXO_SHM_SIZE);
-    m_shm->node_state     = STATE_INIT;
+    m_shm->node_state     = STATE_BOOTING;
 
     m_running = true;
     ECO_INFO_NEW("[CanDispatcher] ready");

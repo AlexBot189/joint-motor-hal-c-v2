@@ -165,18 +165,15 @@ typedef enum {
     FAULT_CALIB_TIMEOUT,        /* 校准超时                                             */
 } fault_reason_t;
 
-/* 节点状态机 */
+/* 节点状态机 — 精简4状态 */
 typedef enum {
-    STATE_INIT        = 0,
-    STATE_DISCOVERY   = 1,
-    STATE_READY       = 2,
-    STATE_CALIBRATING = 3,
-    STATE_ENABLED     = 4,
-    STATE_RUNNING     = 5,
-    STATE_FAULT       = 6,
+    STATE_BOOTING = 0,
+    STATE_READY   = 1,
+    STATE_RUNNING = 2,
+    STATE_FAULT   = 3,
 } exo_state_t;
 
-#define EXO_STATE_COUNT  7
+#define EXO_STATE_COUNT  4
 
 /* 共享内存总结构 (64KB) */
 

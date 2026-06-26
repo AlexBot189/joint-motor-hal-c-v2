@@ -98,8 +98,8 @@ int main()
             static bool initialized = false;
             /* FAULT 后状态恢复 → 重新初始化 */
             if (state == STATE_FAULT) initialized = false;
-            /* ENABLED 状态即可发初始化命令 (ENABLE + SET_MODE), 不等 RUNNING */
-            if ((state >= STATE_ENABLED) && !initialized) {
+            /* READY 状态即可发初始化命令 (ENABLE + SET_MODE), 不等 RUNNING */
+            if ((state >= STATE_READY) && !initialized) {
                 printf("[algo_sim] state=%u → PDO enable + set mode\n", state);
                 cmd_set(shm, 0, 1, EXO_CMD_ENABLE,   0, 0, 0, 0);
                 seq++;

@@ -72,6 +72,10 @@ public:
     /** @brief 获取延迟追踪器 (外部填充 SHM stats) */
     ExoLatencyTracer* GetTracer() { return &m_tracer; }
 
+    /** @brief 激活/去激活 RT 工作线程 (校准完成后由 main.cpp 设 true) */
+    void SetActive(bool active) { m_active.store(active, std::memory_order_release); }
+    bool IsActive() const { return m_active.load(std::memory_order_acquire); }
+
 private:
     void Run();
     void ProcessMailbox();
@@ -121,11 +125,12 @@ private:
     bool     m_imu_notified;
 
     /* RT→主线程 状态切换请求 (atomic, RT 写, 主线程读后清零) */
-    uint32_t m_pending_state = STATE_INIT;
+    uint32_t m_pending_state = STATE_BOOTING;
 
     /* 去重标志 */
     bool     m_fault_triggered = false;
     std::atomic<bool> m_handshake_done{false};   /* 首次算法握手, 解耦 SHM 残留 seq */
+    std::atomic<bool> m_active{false};           /* 校准完成后激活, 控制 ProcessMailbox/SafetyCheck */
 
     /* 延迟追踪 (EXO_LATENCY_TRACE=0 时零开销) */
     ExoLatencyTracer m_tracer;
