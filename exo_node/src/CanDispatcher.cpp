@@ -110,7 +110,7 @@ bool CanDispatcher::DestroyDispatcher()
 
     /* PDO 安全停机: estop + torque=0 */
     if (m_hal) {
-        for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; id++) {
+        for (uint8_t id = 1; id <= (uint8_t)m_motor_count; id++) {
             motor_hal_pdo_estop(m_hal, id);        /* pdo_byte0 enable=0, bus=0 */
             motor_hal_set_torque(m_hal, id, 0);     /* 发 PDO 帧: enable=0, torque=0 */
         }
@@ -183,7 +183,7 @@ void CanDispatcher::_dispatch_command(const std::string& cmd, uint8_t id, int va
     }
     else if (cmd == "stop") {
         if (id == 0) {
-            for (uint8_t i = 1; i <= EXO_MOTOR_COUNT; i++) m_ctrl->AbsStop(i);
+            for (uint8_t i = 1; i <= (uint8_t)m_motor_count; i++) m_ctrl->AbsStop(i);
         } else {
             m_ctrl->AbsStop(id);
         }
@@ -262,6 +262,13 @@ bool CanDispatcher::LoadMotorConfig()
 
         /* 解析 motors */
         if (cfg.contains("motors") && cfg["motors"].is_array()) {
+            m_motor_count = (int)cfg["motors"].size();
+            if (m_motor_count > EXO_MAX_MOTORS) {
+                ECO_WARN_NEW("[CanDispatcher] config has {} motors, clamping to {}",
+                             m_motor_count, EXO_MAX_MOTORS);
+                m_motor_count = EXO_MAX_MOTORS;
+            }
+            ECO_INFO_NEW("[CanDispatcher] motor count from config: {}", m_motor_count);
             for (const auto& m : cfg["motors"]) {
                 motor_config_t mc = {};
                 mc.node_id           = m.value("id", 0);
@@ -371,7 +378,7 @@ bool CanDispatcher::LoadMotorConfig()
     def.bootup_timeout_ms = 5000;
     def.tpdo_sync_count   = 1;
 
-    for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; id++) {
+    for (uint8_t id = 1; id <= (uint8_t)m_motor_count; id++) {
         def.node_id = id;
         int ret = motor_hal_add_motor(m_hal, &def);
         if (ret != 0 && ret != -EEXIST) {
@@ -380,7 +387,7 @@ bool CanDispatcher::LoadMotorConfig()
         }
     }
 
-    ECO_INFO_NEW("[CanDispatcher] registered {} motors (defaults)", EXO_MOTOR_COUNT);
+    ECO_INFO_NEW("[CanDispatcher] registered {} motors (defaults)", m_motor_count);
     return true;
 }
 

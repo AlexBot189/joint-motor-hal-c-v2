@@ -47,7 +47,8 @@ struct RtConfig {
 class ExoRtWorker {
 public:
     ExoRtWorker(motor_hal_t* hal, exo_shm_t* shm,
-                ExoMotorCtrl* ctrl, ImuHALSensor* imu_sensor);
+                ExoMotorCtrl* ctrl, ImuHALSensor* imu_sensor,
+                int motor_count);
     ~ExoRtWorker();
 
     void Start();
@@ -108,12 +109,15 @@ private:
     uint64_t m_cycle_count;
     uint64_t m_overrun_count;
 
+    /* 电机数量 (从 config.json 读取, ≤ EXO_MAX_MOTORS) */
+    int      m_motor_count;
+
     /* 停滞检测 */
-    int16_t  m_last_position[EXO_MOTOR_COUNT];
-    uint64_t m_pos_stall_us[EXO_MOTOR_COUNT];
+    int16_t  m_last_position[EXO_MAX_MOTORS];
+    uint64_t m_pos_stall_us[EXO_MAX_MOTORS];
 
     /* 一次性日志 */
-    bool     m_sensor_notified[EXO_MOTOR_COUNT];
+    bool     m_sensor_notified[EXO_MAX_MOTORS];
     bool     m_imu_notified;
 
     /* RT→主线程 状态切换请求 (atomic, RT 写, 主线程读后清零) */

@@ -16,7 +16,7 @@
 
 #define EXO_SHM_NAME    "/exo_shm"
 #define EXO_SHM_SIZE    (64 * 1024)
-#define EXO_MOTOR_COUNT 2
+#define EXO_MAX_MOTORS  2               /* SHM 数组最大维度, 运行时 motor_count ≤ 此值 */
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,8 +83,8 @@ typedef struct {
 
 /* 反馈帧 — 写入 SHM 双 Buffer */
 typedef struct {
-    motor_data_t      motor[EXO_MOTOR_COUNT];   /* [0]=右髋(ID=1) [1]=左髋(ID=2)       */
-    exo_sensor_data_t sensor[EXO_MOTOR_COUNT];  /* 传感器透传, 与电机一一对应              */
+    motor_data_t      motor[EXO_MAX_MOTORS];   /* [0]=右髋(ID=1) [1]=左髋(ID=2)       */
+    exo_sensor_data_t sensor[EXO_MAX_MOTORS];  /* 传感器透传, 与电机一一对应              */
     imu_data_t        imu;                      /* IMU 姿态数据                          */
     barometer_data_t  baro;                     /* 气压计数据                            */
 
@@ -142,7 +142,7 @@ typedef struct {
 /* Mailbox — 双电机命令 (算法写, motor_node 读) */
 typedef struct {
     uint64_t          seq_begin;   /* 命令传输+握手+心跳 */
-    motor_command_t   cmd[EXO_MOTOR_COUNT];  /* 双电机命令数组                           */
+    motor_command_t   cmd[EXO_MAX_MOTORS];  /* 电机命令数组                             */
     uint64_t          seq_end;     /* 写完置为 seq_begin, reader 对比防撕裂               */
 } exo_mailbox_t;
 

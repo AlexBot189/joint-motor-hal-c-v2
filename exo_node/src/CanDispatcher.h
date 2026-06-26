@@ -61,6 +61,7 @@ public:
     const std::string&  GetCanIface()      { return m_can_iface; }
 
     /* 配置获取 (主线程读取, 设置 g_ctx) */
+    int  GetMotorCount()     const { return m_motor_count; }
     bool GetCalibAuto()      const { return m_calib_auto; }
     int  GetCalibTimeoutMs() const { return m_calib_timeout_ms; }
     uint16_t GetSensorPeriodMs()   const { return m_sensor_period_ms; }
@@ -99,6 +100,9 @@ private:
     std::string  m_imu_gpio_chip  = "gpiochip4";
     unsigned int m_imu_gpio_line  = 6;
     int          m_imu_op_mode    = 5;
+
+    /* 电机数量 (从 config.json motors 数组长度读取) */
+    int          m_motor_count    = 2;
 
     /* 校准/透传配置 (来自 config.json) */
     bool         m_calib_auto       = false;

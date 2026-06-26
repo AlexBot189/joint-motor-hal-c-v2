@@ -188,7 +188,7 @@ int main()
         printf("├─────────────────────────────────────────────┤\n");
 
         /* 电机反馈 */
-        for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
+        for (int i = 0; i < EXO_MAX_MOTORS; i++) {
             printf("│ Motor %d: pos=%6d vel=%4d cur=%4dmA temp=%3d  │\n",
                    i + 1,
                    fb->motor[i].position,

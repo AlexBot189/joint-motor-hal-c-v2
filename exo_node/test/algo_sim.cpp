@@ -238,7 +238,7 @@ int main()
                 static bool fault_checked = false;
                 if (!fault_checked) {
                     printf("[algo_sim] error check demo:\n");
-                    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
+                    for (int i = 0; i < EXO_MAX_MOTORS; i++) {
                         uint8_t err = fb->motor[i].error_code;
                         printf("  motor[%d] error_code=0x%02X", i + 1, err);
                         if (err & ALGO_ERR_OVER_TEMP) {

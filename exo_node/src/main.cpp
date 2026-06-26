@@ -46,7 +46,7 @@ static ExoNodeContext    g_node_ctx;
 ExoNodeContext*          g_ctx = &g_node_ctx;
 
 /* sensor 透传防重配置标记 */
-static bool g_sensor_configured[EXO_MOTOR_COUNT];
+static bool g_sensor_configured[EXO_MAX_MOTORS];
 
 static void sig_handler(int sig)
 {
@@ -137,9 +137,11 @@ int main(int argc, char** argv)
 
     /* 步骤 2: 启动 RT 工作线程 (IMU 在 CanDispatcher 中已初始化) */
 
+    int motor_count = g_dispatcher->GetMotorCount();
     g_rt_worker = new ExoRtWorker(hal, shm,
                                   g_dispatcher->GetCtrl(),
-                                  g_dispatcher->GetImuSensor());
+                                  g_dispatcher->GetImuSensor(),
+                                  motor_count);
 
     /* 注入 config.json 配置 (读失败则保持默认值) */
     g_rt_worker->SetSafetyConfig(g_dispatcher->GetSafetyConfig());
@@ -163,9 +165,8 @@ int main(int argc, char** argv)
 
     g_node_ctx.hal          = hal;
     g_node_ctx.shm          = shm;
-    /* TEMP: 单电机测试 → 推生产前改回 EXO_MOTOR_COUNT + 30 */
-    g_node_ctx.motor_count  = 1;  /* 只测右髋 */
-    g_node_ctx.startup_timeout_sec = 5;  /* 单电机快速超时 */
+    g_node_ctx.motor_count  = motor_count;
+    g_node_ctx.startup_timeout_sec = (motor_count == 1) ? 5 : 30;
 
     /* 从 config.json 读取透传配置 */
     g_node_ctx.sensor_period_ms = g_dispatcher->GetSensorPeriodMs();

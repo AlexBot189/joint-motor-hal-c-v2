@@ -27,11 +27,13 @@ namespace stark_periph_manager_node {
 /* 构造 / 析构 */
 
 ExoRtWorker::ExoRtWorker(motor_hal_t* hal, exo_shm_t* shm,
-                         ExoMotorCtrl* ctrl, ImuHALSensor* imu_sensor)
+                         ExoMotorCtrl* ctrl, ImuHALSensor* imu_sensor,
+                         int motor_count)
     : m_hal(hal)
     , m_shm(shm)
     , m_ctrl(ctrl)
     , m_imu_sensor(imu_sensor)
+    , m_motor_count(motor_count)
     , m_last_seq(0)
     , m_seq_stall_us(0)
     , m_can_last_frame_us(0)
@@ -163,7 +165,7 @@ void ExoRtWorker::ProcessMailbox()
     m_last_seq = begin;
 
     /* 先处理 Byte0 控制命令 (改 pdo_byte0, 不发 target) */
-    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
+    for (int i = 0; i < m_motor_count; i++) {
         motor_command_t c = (i == 0) ? cmd0 : cmd1;
         uint8_t mid = c.motor_id;
         if (mid < 1) continue;
@@ -189,7 +191,7 @@ void ExoRtWorker::ProcessMailbox()
 
     /* 多轴广播: 两个 cmd 都是 MULTI → 打包一帧 64B CANFD 发出 */
     if (cmd0.cmd == EXO_CMD_MULTI && cmd1.cmd == EXO_CMD_MULTI) {
-        multi_axis_cmd_t mcmds[EXO_MOTOR_COUNT] = {};
+        multi_axis_cmd_t mcmds[EXO_MAX_MOTORS] = {};
         int mcount = 0;
         uint8_t b0;
 
@@ -215,10 +217,10 @@ void ExoRtWorker::ProcessMailbox()
         }
         if (mcount > 0) motor_hal_multi_ctrl(m_hal, mcmds, (uint8_t)mcount);
     } else {
-    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
+    for (int i = 0; i < m_motor_count; i++) {
         motor_command_t c = (i == 0) ? cmd0 : cmd1;
         uint8_t mid = c.motor_id;
-        if (mid < 1 || mid > 2) continue;
+        if (mid < 1 || mid > (uint8_t)m_motor_count) continue;
 
         switch (c.cmd) {
         case EXO_CMD_TORQUE:
@@ -284,7 +286,7 @@ void ExoRtWorker::PublishFeedback()
     m_tracer.mark_fb_read_start();
 
     /* 填充电机反馈 (从 HAL 反馈缓存) */
-    for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; ++id) {
+    for (uint8_t id = 1; id <= (uint8_t)m_motor_count; ++id) {
         motor_feedback_t mfb;
         if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
             uint8_t idx = id - 1;
@@ -302,7 +304,7 @@ void ExoRtWorker::PublishFeedback()
     m_tracer.mark_fb_read_done();
 
     /* 填充传感器透传 */
-    for (uint8_t id = 1; id <= EXO_MOTOR_COUNT; ++id) {
+    for (uint8_t id = 1; id <= (uint8_t)m_motor_count; ++id) {
         motor_sensor_t s;
         int ret = motor_hal_get_sensor(m_hal, id, &s);
         if (ret == 0) {
@@ -449,15 +451,15 @@ void ExoRtWorker::_safe_torque_zero_all()
 {
     if (!m_hal) return;
 
-    multi_axis_cmd_t cmds[EXO_MOTOR_COUNT] = {};
-    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
+    multi_axis_cmd_t cmds[EXO_MAX_MOTORS] = {};
+    for (int i = 0; i < m_motor_count; i++) {
         cmds[i].node_id       = (uint8_t)(i + 1);
         cmds[i].mode          = MOTOR_MODE_CURRENT;
         cmds[i].enable        = true;
         cmds[i].release_brake = true;
         cmds[i].target1       = 0;  /* torque=0 */
     }
-    motor_hal_multi_ctrl(m_hal, cmds, EXO_MOTOR_COUNT);
+    motor_hal_multi_ctrl(m_hal, cmds, (uint8_t)m_motor_count);
 }
 
 /* _safe_disable_all — PDO 路径 enable=false + torque=0 */
@@ -470,15 +472,15 @@ void ExoRtWorker::_safe_disable_all()
      * 电机记住此状态直到收到新 PDO.
      * 算法失联时 ProcessMailbox 因 seq 不变直接 return,
      * 不会发新 PDO。算法恢复后通过 EXO_CMD_RECOVER/ENABLE 恢复. */
-    multi_axis_cmd_t cmds[EXO_MOTOR_COUNT] = {};
-    for (int i = 0; i < EXO_MOTOR_COUNT; i++) {
+    multi_axis_cmd_t cmds[EXO_MAX_MOTORS] = {};
+    for (int i = 0; i < m_motor_count; i++) {
         cmds[i].node_id       = (uint8_t)(i + 1);
         cmds[i].mode          = MOTOR_MODE_CURRENT;
         cmds[i].enable        = false;
         cmds[i].release_brake = false;
         cmds[i].target1       = 0;
     }
-    motor_hal_multi_ctrl(m_hal, cmds, EXO_MOTOR_COUNT);
+    motor_hal_multi_ctrl(m_hal, cmds, (uint8_t)m_motor_count);
 }
 
 /* SetThreadRt() — RT 线程属性 */
