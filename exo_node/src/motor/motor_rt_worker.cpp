@@ -190,8 +190,8 @@ void ExoRtWorker::ProcessMailbox()
 
     /* 再处理控制命令 (通过已设好的 pdo_byte0 发控制帧) */
 
-    /* 多轴广播: 两个 cmd 都是 MULTI → 打包一帧 64B CANFD 发出 */
-    if (cmd0.cmd == EXO_CMD_MULTI && cmd1.cmd == EXO_CMD_MULTI) {
+    /* 多轴广播: 任意一个 cmd 是 MULTI 就走广播路径, 单电机也支持 */
+    if (cmd0.cmd == EXO_CMD_MULTI || cmd1.cmd == EXO_CMD_MULTI) {
         multi_axis_cmd_t mcmds[EXO_MAX_MOTORS] = {};
         int mcount = 0;
         uint8_t b0;

@@ -42,6 +42,7 @@ extern stark_periph_manager_node::ExoRtWorker* g_rt_worker;
 /* 本文件内部的静态变量 */
 static bool g_sensor_configured[EXO_MAX_MOTORS];
 static bool g_calib_triggered = false;
+static uint8_t g_prev_online_mask = 0;
 
 /*
  * log_drain_thread — 从 ring buffer drain → ECO_INFO_NEW
@@ -121,6 +122,15 @@ static void poll_common(motor_hal_t* hal, exo_shm_t* shm, uint8_t motor_count)
     motor_hal_process_pending_startups(hal);
     update_shm_online(hal, shm, motor_count);
 
+    /* 检测电机掉线: online位从1变0 → 清零透传标记,下次上线后自动重配 */
+    uint8_t dropped = g_prev_online_mask & ~shm->motor_online;
+    for (uint8_t i = 0; i < motor_count; i++) {
+        if (dropped & (1 << i)) {
+            g_sensor_configured[i] = false;
+        }
+    }
+    g_prev_online_mask = shm->motor_online;
+
     for (uint8_t id = 1; id <= motor_count; id++) {
         if (g_sensor_configured[id - 1]) continue;
 
@@ -167,10 +177,13 @@ static void poll_booting(exo_shm_t* shm, int motor_count,
         motor_hal_t* hal = g_ctx->hal;
         if (hal) {
             int ret = motor_hal_sync_start(hal, 5000);
-            ECO_INFO_NEW("[main] SYNC thread {} (ret={})",
-                         ret == 0 ? "started" : "FAILED", ret);
+            if (ret == 0) {
+                sync_started = true;
+                ECO_INFO_NEW("[main] SYNC thread started");
+            } else {
+                ECO_WARN_NEW("[main] SYNC start failed (ret={}), will retry", ret);
+            }
         }
-        sync_started = true;
     }
 }
 
@@ -226,6 +239,8 @@ static void poll_ready(motor_hal_t* hal, exo_shm_t* shm, int motor_count)
             g_ctx->calib_running = false;
             if (shm) shm->calib_state = 2;
             g_calib_triggered = false;
+            motor_calib_destroy((motor_calib_t*)g_ctx->calib_ctx);
+            g_ctx->calib_ctx = nullptr;
 
             if (g_rt_worker) g_rt_worker->SetActive(true);
             if (g_rt_worker && g_rt_worker->IsHandshakeDone()) {
@@ -238,6 +253,8 @@ static void poll_ready(motor_hal_t* hal, exo_shm_t* shm, int motor_count)
             g_ctx->calib_running = false;
             if (shm) shm->calib_state = 3;
             g_calib_triggered = false;
+            motor_calib_destroy((motor_calib_t*)g_ctx->calib_ctx);
+            g_ctx->calib_ctx = nullptr;
 
             if (g_rt_worker) g_rt_worker->SetActive(true);
             state_transition(STATE_RUNNING);
@@ -279,14 +296,15 @@ static void poll_rt_pending(exo_shm_t* shm)
     if (pending == STATE_FAULT && g_exo_state != STATE_FAULT) {
         state_transition(STATE_FAULT);
 
-        /* 补发 SDO DS402 Shutdown, RT 已通过 PDO 完成降险 */
-        auto* ctrl = g_dispatcher->GetCtrl();
-        if (ctrl) {
-            for (uint8_t id = 1; id <= g_ctx->motor_count; id++) {
-                if (shm->motor_online & (1 << (id - 1))) {
-                    int ret = ctrl->SdoWrite(id, 0x6040, 0, 0x0006, 2);
-                    ECO_INFO_NEW("[main] SDO Shutdown motor {}: {}",
-                                 id, (ret == 0 ? "OK" : "FAIL"));
+        if (g_dispatcher) {
+            auto* ctrl = g_dispatcher->GetCtrl();
+            if (ctrl) {
+                for (uint8_t id = 1; id <= g_ctx->motor_count; id++) {
+                    if (shm->motor_online & (1 << (id - 1))) {
+                        int ret = ctrl->SdoWrite(id, 0x6040, 0, 0x0006, 2);
+                        ECO_INFO_NEW("[main] SDO Shutdown motor {}: {}",
+                                     id, (ret == 0 ? "OK" : "FAIL"));
+                    }
                 }
             }
         }
@@ -339,6 +357,6 @@ void main_loop_run(motor_hal_t* hal, exo_shm_t* shm,
             shm->node_state = g_exo_state;
         }
 
-        usleep(100000);  /* 100ms 轮询 */
+        usleep(50000);  /* 50ms 轮询 */
     }
 }
