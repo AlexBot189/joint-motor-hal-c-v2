@@ -59,7 +59,7 @@ BUILD_DIR="$PROJECT_DIR/motor_hal/build"
 TOOLS_DIR="$PROJECT_DIR/motor_hal/tools/build"
 IMU_DIR="$PROJECT_DIR/imu_hal/build"
 EXO_DIR="$PROJECT_DIR/exo_node/build"
-TEST_DIR="$PROJECT_DIR/exo_node/test/build"
+TEST_DIR="$PROJECT_DIR/exo_node/src/test/build"
 
 echo "=========================================="
 echo "  stark 部署打包"

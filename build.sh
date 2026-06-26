@@ -16,7 +16,7 @@ BUILD_DIR="$PROJECT_DIR/motor_hal/build"
 TOOLS_BUILD_DIR="$PROJECT_DIR/motor_hal/tools/build"
 IMU_BUILD_DIR="$PROJECT_DIR/imu_hal/build"
 EXO_BUILD_DIR="$PROJECT_DIR/exo_node/build"
-TEST_BUILD_DIR="$PROJECT_DIR/exo_node/test/build"
+TEST_BUILD_DIR="$PROJECT_DIR/exo_node/src/test/build"
 
 #==============================================================================
 # 清理函数
@@ -28,7 +28,7 @@ _clean() {
     echo "  ✓ motor_hal/tools/build/   已删除"
     echo "  ✓ imu_hal/build/           已删除"
     echo "  ✓ exo_node/build/          已删除"
-    echo "  ✓ exo_node/test/build/     已删除"
+    echo "  ✓ exo_node/src/test/build/     已删除"
 }
 
 CMD="${1:-shared}"
@@ -128,7 +128,7 @@ echo "  [5/5] 编译测试工具"
 echo "=========================================="
 
 mkdir -p "$TEST_BUILD_DIR"
-$CMAKE -S "$PROJECT_DIR/exo_node/test" -B "$TEST_BUILD_DIR" \
+$CMAKE -S "$PROJECT_DIR/exo_node/src/test" -B "$TEST_BUILD_DIR" \
     -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN"
 
 $CMAKE --build "$TEST_BUILD_DIR" -j"$(nproc)"
@@ -152,7 +152,7 @@ echo "库文件:"
 ls -lh "$LIB_FILE"
 echo ""
 echo "EXO_SHM_HEADER:"
-ls -lh "$PROJECT_DIR/exo_node/exo_shm.h"
+ls -lh "$PROJECT_DIR/exo_node/src/exo_shm.h"
 echo ""
 echo "IMU HAL:"
 ls -lh "$IMU_BUILD_DIR/libimu_hal.so"
