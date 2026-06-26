@@ -12,8 +12,9 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TOOLCHAIN="$PROJECT_DIR/toolchain.cmake"
 CMAKE="/opt/gcc-arm-12.4-x86_64-aarch64-linux-gnu/bin/cmake"
 
-BUILD_DIR="$PROJECT_DIR/build"
-TOOLS_BUILD_DIR="$PROJECT_DIR/tools/build"
+BUILD_DIR="$PROJECT_DIR/motor_hal/build"
+TOOLS_BUILD_DIR="$PROJECT_DIR/motor_hal/tools/build"
+IMU_BUILD_DIR="$PROJECT_DIR/imu_hal/build"
 EXO_BUILD_DIR="$PROJECT_DIR/exo_node/build"
 TEST_BUILD_DIR="$PROJECT_DIR/exo_node/test/build"
 
@@ -22,11 +23,12 @@ TEST_BUILD_DIR="$PROJECT_DIR/exo_node/test/build"
 #==============================================================================
 _clean() {
     echo "清理构建目录..."
-    rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR" "$EXO_BUILD_DIR" "$TEST_BUILD_DIR"
-    echo "  ✓ build/       已删除"
-    echo "  ✓ tools/build/ 已删除"
-    echo "  ✓ exo_node/build/ 已删除"
-    echo "  ✓ exo_node/test/build/ 已删除"
+    rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR" "$IMU_BUILD_DIR" "$EXO_BUILD_DIR" "$TEST_BUILD_DIR"
+    echo "  ✓ motor_hal/build/        已删除"
+    echo "  ✓ motor_hal/tools/build/   已删除"
+    echo "  ✓ imu_hal/build/           已删除"
+    echo "  ✓ exo_node/build/          已删除"
+    echo "  ✓ exo_node/test/build/     已删除"
 }
 
 CMD="${1:-shared}"
@@ -57,14 +59,14 @@ esac
 _clean
 
 #==============================================================================
-# [1/4] 编译 motor_hal 库
+# [1/5] 编译 motor_hal 库
 #==============================================================================
 echo "=========================================="
-echo "  [1/4] 编译 motor_hal ($CMD)"
+echo "  [1/5] 编译 motor_hal ($CMD)"
 echo "=========================================="
 
 mkdir -p "$BUILD_DIR"
-$CMAKE -S "$PROJECT_DIR" -B "$BUILD_DIR" \
+$CMAKE -S "$PROJECT_DIR/motor_hal" -B "$BUILD_DIR" \
     -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
     -DBUILD_EXAMPLES=ON \
     $SHARED_FLAG
@@ -72,26 +74,40 @@ $CMAKE -S "$PROJECT_DIR" -B "$BUILD_DIR" \
 $CMAKE --build "$BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
-# [2/4] 编译 motor_tool 工具
+# [2/5] 编译 motor_tool 工具
 #==============================================================================
 echo ""
 echo "=========================================="
-echo "  [2/4] 编译 motor_tool"
+echo "  [2/5] 编译 motor_tool"
 echo "=========================================="
 
 mkdir -p "$TOOLS_BUILD_DIR"
-$CMAKE -S "$PROJECT_DIR/tools" -B "$TOOLS_BUILD_DIR" \
+$CMAKE -S "$PROJECT_DIR/motor_hal/tools" -B "$TOOLS_BUILD_DIR" \
     -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
     $SHARED_FLAG
 
 $CMAKE --build "$TOOLS_BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
-# [3/4] 编译 stark_periph_manager_node (exo_node)
+# [3/5] 编译 imu_hal
 #==============================================================================
 echo ""
 echo "=========================================="
-echo "  [3/4] 编译 stark_periph_manager_node"
+echo "  [3/5] 编译 imu_hal"
+echo "=========================================="
+
+mkdir -p "$IMU_BUILD_DIR"
+$CMAKE -S "$PROJECT_DIR/imu_hal" -B "$IMU_BUILD_DIR" \
+    -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN"
+
+$CMAKE --build "$IMU_BUILD_DIR" -j"$(nproc)"
+
+#==============================================================================
+# [4/5] 编译 stark_periph_manager_node (exo_node)
+#==============================================================================
+echo ""
+echo "=========================================="
+echo "  [4/5] 编译 stark_periph_manager_node"
 echo "=========================================="
 
 mkdir -p "$EXO_BUILD_DIR"
@@ -104,11 +120,11 @@ $CMAKE -S "$PROJECT_DIR/exo_node" -B "$EXO_BUILD_DIR" \
 $CMAKE --build "$EXO_BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
-# [4/4] 编译测试工具 (algo_sim + perf_test)
+# [5/5] 编译测试工具 (algo_sim + perf_test)
 #==============================================================================
 echo ""
 echo "=========================================="
-echo "  [4/4] 编译测试工具"
+echo "  [5/5] 编译测试工具"
 echo "=========================================="
 
 mkdir -p "$TEST_BUILD_DIR"
@@ -139,10 +155,10 @@ echo "EXO_SHM_HEADER:"
 ls -lh "$PROJECT_DIR/exo_node/exo_shm.h"
 echo ""
 echo "IMU HAL:"
-ls -lh "$EXO_BUILD_DIR/imu_hal/libimu_hal.so" 2>/dev/null || echo "  (内置编译, 已链接到 exo_node)"
+ls -lh "$IMU_BUILD_DIR/libimu_hal.so"
 echo ""
 echo "IMU 示例:"
-ls -lh "$EXO_BUILD_DIR/imu_hal/emd-gaf" "$EXO_BUILD_DIR/imu_hal/read_sensor" 2>/dev/null || true
+ls -lh "$IMU_BUILD_DIR/emd-gaf" "$IMU_BUILD_DIR/read_sensor" 2>/dev/null || true
 echo ""
 echo "工具:"
 ls -lh "$TOOLS_BUILD_DIR/motor_tool"

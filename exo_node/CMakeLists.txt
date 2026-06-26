@@ -7,30 +7,29 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(ENABLE_ROS "Build ROS adapter" OFF)
 option(ENABLE_WEBSERVER "Build WebServer adapter" OFF)
 
-set(MOTOR_HAL_DIR "${CMAKE_SOURCE_DIR}/..")
-
-# 先编译 imu_hal.so (ICM45608 eDMP GAF 9轴融合)
-add_subdirectory(imu_hal)
+set(MOTOR_HAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../motor_hal")
+set(IMU_HAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../imu_hal")
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/interface
-    ${CMAKE_SOURCE_DIR}/main_loop
-    ${CMAKE_SOURCE_DIR}/motor
-    ${CMAKE_SOURCE_DIR}/shm
-    ${CMAKE_SOURCE_DIR}/imu
-    ${CMAKE_SOURCE_DIR}/utils
-    ${CMAKE_SOURCE_DIR}/log_helper
-    ${CMAKE_SOURCE_DIR}/3rd_party
-    ${CMAKE_SOURCE_DIR}/3rd_party/usr/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/interface
+    ${CMAKE_CURRENT_SOURCE_DIR}/main_loop
+    ${CMAKE_CURRENT_SOURCE_DIR}/motor
+    ${CMAKE_CURRENT_SOURCE_DIR}/shm
+    ${CMAKE_CURRENT_SOURCE_DIR}/imu
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/log_helper
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/usr/include
     ${MOTOR_HAL_DIR}/inc
     ${MOTOR_HAL_DIR}/src
-    ${CMAKE_SOURCE_DIR}/imu_hal/inc
+    ${IMU_HAL_DIR}/inc
 )
 
 link_directories(
     ${MOTOR_HAL_DIR}/build
-    ${CMAKE_SOURCE_DIR}/log_helper/build
+    ${IMU_HAL_DIR}/build
+    ${CMAKE_CURRENT_SOURCE_DIR}/log_helper/build
 )
 
 set(SOURCES

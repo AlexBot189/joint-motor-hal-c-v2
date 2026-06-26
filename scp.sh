@@ -1,8 +1,8 @@
 rm img/*
 sync
-cp build/libmotor_hal.so img
-cp build/hal_stress_test img
-cp tools/build/motor_tool img
+cp motor_hal/build/libmotor_hal.so img
+cp motor_hal/build/hal_stress_test img
+cp motor_hal/tools/build/motor_tool img
 cp exo_node/build/stark_periph_manager_node img
 cp exo_node/test/build/algo_sim img
 cp exo_node/test/build/algo_sim_single img

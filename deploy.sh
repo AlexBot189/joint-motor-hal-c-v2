@@ -55,8 +55,9 @@ esac
 _clean
 mkdir -p "$DEPLOY_LIB" "$DEPLOY_BIN"
 
-BUILD_DIR="$PROJECT_DIR/build"
-TOOLS_DIR="$PROJECT_DIR/tools/build"
+BUILD_DIR="$PROJECT_DIR/motor_hal/build"
+TOOLS_DIR="$PROJECT_DIR/motor_hal/tools/build"
+IMU_DIR="$PROJECT_DIR/imu_hal/build"
 EXO_DIR="$PROJECT_DIR/exo_node/build"
 TEST_DIR="$PROJECT_DIR/exo_node/test/build"
 
@@ -98,14 +99,14 @@ _copy_bin() {
 
 echo "库文件 (→ $TARGET_DEVICE/lib/):"
 _copy_lib "$BUILD_DIR/libmotor_hal.so"     "libmotor_hal.so"
-_copy_lib "$EXO_DIR/imu_hal/libimu_hal.so" "libimu_hal.so"
+_copy_lib "$IMU_DIR/libimu_hal.so" "libimu_hal.so"
 
 echo ""
 echo "工具 (→ $TARGET_DEVICE/bin/):"
 _copy_bin "$TOOLS_DIR/motor_tool"                   "motor_tool"
 _copy_bin "$EXO_DIR/stark_periph_manager_node"      "stark_periph_manager_node"
-_copy_bin "$EXO_DIR/imu_hal/emd-gaf"                "emd-gaf"
-_copy_bin "$EXO_DIR/imu_hal/read_sensor"            "read_sensor"
+_copy_bin "$IMU_DIR/emd-gaf"                "emd-gaf"
+_copy_bin "$IMU_DIR/read_sensor"            "read_sensor"
 
 echo ""
 echo "测试工具 (→ $TARGET_DEVICE/bin/):"
