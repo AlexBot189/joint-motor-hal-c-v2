@@ -10,6 +10,9 @@ option(ENABLE_WEBSERVER "Build WebServer adapter" OFF)
 set(MOTOR_HAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../motor_hal")
 set(IMU_HAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../imu_hal")
 
+# 拉入 motor_hal 和 imu_hal 作为构建依赖
+add_subdirectory(${IMU_HAL_DIR} ${CMAKE_BINARY_DIR}/imu_hal)
+
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/interface
