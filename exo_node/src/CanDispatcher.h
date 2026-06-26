@@ -95,6 +95,10 @@ private:
 
     /* IMU HAL */
     std::unique_ptr<ImuHALSensor> m_imu_sensor;
+    std::string  m_imu_i2c_dev    = "/dev/i2c-3";
+    std::string  m_imu_gpio_chip  = "gpiochip4";
+    unsigned int m_imu_gpio_line  = 6;
+    int          m_imu_op_mode    = 5;
 
     /* 校准/透传配置 (来自 config.json) */
     bool         m_calib_auto       = false;

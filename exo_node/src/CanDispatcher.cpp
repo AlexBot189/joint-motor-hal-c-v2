@@ -75,36 +75,11 @@ bool CanDispatcher::InitDispatcher()
     /* 5. 创建 ExoMotorCtrl 封装 */
     m_ctrl = std::make_unique<ExoMotorCtrl>(m_hal);
 
-    /* 6. 初始化 IMU HAL */
-    {
-        const char* imu_i2c  = "/dev/i2c-3";
-        const char* imu_gpio = "gpiochip4";
-        unsigned int imu_line = 6;
-        int imu_mode = 5;
-
-        /* 从 config.json 读 IMU 配置 */
-        {
-            std::ifstream ifs(m_config_path);
-            if (ifs.is_open()) {
-                nlohmann::json cfg;
-                try { ifs >> cfg; }
-                catch (...) {}
-                ifs.close();
-
-                if (cfg.contains("imu")) {
-                    auto& imu = cfg["imu"];
-                    imu_i2c  = imu.value("i2c_dev",  std::string("/dev/i2c-3")).c_str();
-                    imu_gpio = imu.value("gpio_chip", std::string("gpiochip4")).c_str();
-                    imu_line = imu.value("gpio_line", 6u);
-                    imu_mode = imu.value("op_mode",   5);
-                }
-            }
-        }
-
-        m_imu_sensor = std::make_unique<ImuHALSensor>();
-        if (!m_imu_sensor->Init(imu_i2c, imu_gpio, imu_line, imu_mode)) {
-            ECO_WARN_NEW("[CanDispatcher] IMU HAL init failed, running without IMU");
-        }
+    /* 6. 初始化 IMU HAL (配置已在 LoadMotorConfig 中从 config.json 读取) */
+    m_imu_sensor = std::make_unique<ImuHALSensor>();
+    if (!m_imu_sensor->Init(m_imu_i2c_dev.c_str(), m_imu_gpio_chip.c_str(),
+                            m_imu_gpio_line, m_imu_op_mode)) {
+        ECO_WARN_NEW("[CanDispatcher] IMU HAL init failed, running without IMU");
     }
 
     /* 7. 打开共享内存 */
@@ -363,6 +338,15 @@ bool CanDispatcher::LoadMotorConfig()
             auto& s = cfg["sensor"];
             m_sensor_period_ms = s.value("period_ms", 1u);
             m_sensor_bus_format = s.value("bus_format", 3u);  /* CANFD BRS */
+        }
+
+        /* 解析 imu */
+        if (cfg.contains("imu")) {
+            auto& imu_cfg = cfg["imu"];
+            m_imu_i2c_dev   = imu_cfg.value("i2c_dev",   std::string("/dev/i2c-3"));
+            m_imu_gpio_chip = imu_cfg.value("gpio_chip", std::string("gpiochip4"));
+            m_imu_gpio_line = imu_cfg.value("gpio_line", 6u);
+            m_imu_op_mode   = imu_cfg.value("op_mode",   5);
         }
 
         return true;  /* 文件解析完成, 缺失字段用默认值 */
