@@ -10,6 +10,7 @@
 
 #include <cstring>
 #include <cstdio>
+#include <cmath>
 
 extern "C" {
 #include "emd_gaf.h"
@@ -99,6 +100,16 @@ void ImuHALSensor::Read(imu_data_t* out) const
     out->quat_x      = imu.quat_x;
     out->quat_y      = imu.quat_y;
     out->quat_z      = imu.quat_z;
+
+    /* 四元数 → 欧拉角 (ZYX: Yaw-Pitch-Roll, rad → °) */
+    {
+        float qw = imu.quat_w, qx = imu.quat_x, qy = imu.quat_y, qz = imu.quat_z;
+        out->yaw   = atan2f(2.0f*(qw*qz + qx*qy), 1.0f - 2.0f*(qy*qy + qz*qz)) * 57.29578f;
+        float sp    = 2.0f*(qw*qy - qz*qx);
+        if (sp > 1.0f) sp = 1.0f; else if (sp < -1.0f) sp = -1.0f;
+        out->pitch = asinf(sp) * 57.29578f;
+        out->roll  = atan2f(2.0f*(qw*qx + qy*qz), 1.0f - 2.0f*(qx*qx + qy*qy)) * 57.29578f;
+    }
     out->mag_x       = imu.mag_x;
     out->mag_y       = imu.mag_y;
     out->mag_z       = imu.mag_z;
