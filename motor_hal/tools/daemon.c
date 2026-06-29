@@ -245,7 +245,7 @@ int daemon_start(const char *iface)
     cfg.bootup_timeout_ms = 3000;
     cfg.tpdo_sync_count   = 1;    /* 每个 SYNC 上报一次 TPDO */
 
-    int motor_ids[] = {1, 2, 3, 4};
+    int motor_ids[] = {1, 2};
     int motor_count = sizeof(motor_ids) / sizeof(motor_ids[0]);
 
     for (int i = 0; i < motor_count; i++) {
