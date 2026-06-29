@@ -1,6 +1,6 @@
 # stark_periph_manager_node 测试指导
 
-> 版本: feature/exo-node @ 2026-06-09  
+> 版本: feature/stark-node @ 2026-06-09  
 > 目标: RV1126B + CANFD + 2髋关节电机 (巨蟹 ID=1,2)
 
 ---
@@ -204,7 +204,7 @@ cd /data
 | IMU mock | perf_test | imu.roll/pitch/yaw 有值 |
 | 气压计 mock | perf_test | baro.pressure_hpa ~1013 |
 | 延迟追踪 | motor_node 终端每1秒 | `LatencyTrace[1000]` 统计行 |
-| 延迟追踪关闭 | `#define EXO_LATENCY_TRACE 0` 重编译 | 无 LatencyTrace 输出 |
+| 延迟追踪关闭 | `#define STARK_LATENCY_TRACE 0` 重编译 | 无 LatencyTrace 输出 |
 | 安全监控 | 停止 algo_sim 看 motor_node | `SAFETY WARN: algo timeout` 然后 `SAFETY FAULT` |
 
 ---

@@ -15,20 +15,20 @@ CMAKE="/opt/gcc-arm-12.4-x86_64-aarch64-linux-gnu/bin/cmake"
 BUILD_DIR="$PROJECT_DIR/motor_hal/build"
 TOOLS_BUILD_DIR="$PROJECT_DIR/motor_hal/tools/build"
 IMU_BUILD_DIR="$PROJECT_DIR/imu_hal/build"
-EXO_BUILD_DIR="$PROJECT_DIR/exo_node/build"
-TEST_BUILD_DIR="$PROJECT_DIR/exo_node/src/test/build"
+STARK_BUILD_DIR="$PROJECT_DIR/stark_periph_node/build"
+TEST_BUILD_DIR="$PROJECT_DIR/stark_periph_node/src/test/build"
 
 #==============================================================================
 # 清理函数
 #==============================================================================
 _clean() {
     echo "清理构建目录..."
-    rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR" "$IMU_BUILD_DIR" "$EXO_BUILD_DIR" "$TEST_BUILD_DIR"
+    rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR" "$IMU_BUILD_DIR" "$STARK_BUILD_DIR" "$TEST_BUILD_DIR"
     echo "  ✓ motor_hal/build/        已删除"
     echo "  ✓ motor_hal/tools/build/   已删除"
     echo "  ✓ imu_hal/build/           已删除"
-    echo "  ✓ exo_node/build/          已删除"
-    echo "  ✓ exo_node/src/test/build/     已删除"
+    echo "  ✓ stark_periph_node/build/          已删除"
+    echo "  ✓ stark_periph_node/src/test/build/     已删除"
 }
 
 CMD="${1:-shared}"
@@ -103,21 +103,21 @@ $CMAKE -S "$PROJECT_DIR/imu_hal" -B "$IMU_BUILD_DIR" \
 $CMAKE --build "$IMU_BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
-# [4/5] 编译 stark_periph_manager_node (exo_node)
+# [4/5] 编译 stark_periph_manager_node (stark_periph_node)
 #==============================================================================
 echo ""
 echo "=========================================="
 echo "  [4/5] 编译 stark_periph_manager_node"
 echo "=========================================="
 
-mkdir -p "$EXO_BUILD_DIR"
-$CMAKE -S "$PROJECT_DIR/exo_node" -B "$EXO_BUILD_DIR" \
+mkdir -p "$STARK_BUILD_DIR"
+$CMAKE -S "$PROJECT_DIR/stark_periph_node" -B "$STARK_BUILD_DIR" \
     -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
     -DENABLE_ROS=OFF \
     -DENABLE_WEBSERVER=OFF \
     $SHARED_FLAG
 
-$CMAKE --build "$EXO_BUILD_DIR" -j"$(nproc)"
+$CMAKE --build "$STARK_BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
 # [5/5] 编译测试工具 (algo_sim + perf_test)
@@ -128,7 +128,7 @@ echo "  [5/5] 编译测试工具"
 echo "=========================================="
 
 mkdir -p "$TEST_BUILD_DIR"
-$CMAKE -S "$PROJECT_DIR/exo_node/src/test" -B "$TEST_BUILD_DIR" \
+$CMAKE -S "$PROJECT_DIR/stark_periph_node/src/test" -B "$TEST_BUILD_DIR" \
     -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN"
 
 $CMAKE --build "$TEST_BUILD_DIR" -j"$(nproc)"
@@ -151,8 +151,8 @@ fi
 echo "库文件:"
 ls -lh "$LIB_FILE"
 echo ""
-echo "EXO_SHM_HEADER:"
-ls -lh "$PROJECT_DIR/exo_node/src/exo_shm.h"
+echo "STARK_SHM_HEADER:"
+ls -lh "$PROJECT_DIR/stark_periph_node/src/stark_shm.h"
 echo ""
 echo "IMU HAL:"
 ls -lh "$IMU_BUILD_DIR/libimu_hal.so"
@@ -164,8 +164,8 @@ echo "工具:"
 ls -lh "$TOOLS_BUILD_DIR/motor_tool"
 
 echo ""
-echo "exo_node:"
-ls -lh "$EXO_BUILD_DIR/stark_periph_manager_node" 2>/dev/null || true
+echo "stark_periph_node:"
+ls -lh "$STARK_BUILD_DIR/stark_periph_manager_node" 2>/dev/null || true
 
 echo ""
 echo "测试工具:"

@@ -27,7 +27,7 @@
 │  不需要: 知道 CANopen/SDO/PDO/透传                                  │
 │  只需要: include exo_shm.h                                        │
 └──────────────────────────┬───────────────────────────────────────┘
-                           │ /dev/shm/exo_shm  (共享内存)
+                           │ /dev/shm/stark_shm  (共享内存)
                            │ 算法读: fb_active + imu
                            │ 算法写: mailbox.cmd + algo_heartbeat
 ═══════════════════════════╪══════════════════════════════════════════
@@ -89,8 +89,8 @@
 
 #include <stdint.h>
 
-#define EXO_SHM_NAME   "/exo_shm"
-#define EXO_SHM_SIZE   (64 * 1024)
+#define STARK_SHM_NAME   "/stark_shm"
+#define STARK_SHM_SIZE   (64 * 1024)
 
 // ─── 反馈数据: 一帧 = 左右电机 + IMU, Double Buffer保证一致性 ───
 
@@ -130,10 +130,10 @@ typedef struct {
 // ─── 命令: Mailbox 模式 (只存最新值) ───
 
 typedef enum {
-    EXO_CMD_TORQUE  = 1,     // 力矩, value=mA
-    EXO_CMD_SPEED   = 2,     // 速度, value=RPM×100
-    EXO_CMD_POS     = 3,     // 位置, value=°×100
-} ExoCmdType;
+    STARK_CMD_TORQUE  = 1,     // 力矩, value=mA
+    STARK_CMD_SPEED   = 2,     // 速度, value=RPM×100
+    STARK_CMD_POS     = 3,     // 位置, value=°×100
+} StarkCmdType;
 
 typedef struct {
     uint8_t  motor_id;       // 1=右 2=左 0=双电机
@@ -167,11 +167,11 @@ typedef struct {
     uint8_t         motor_fault;     // 故障标志
 
     uint8_t         _pad[4015];      // 对齐64KB
-} ExoShm;
+} StarkShm;
 
 // ─── 工具函数 ───
-ExoShm* exo_shm_open(const char* name, bool create);
-void    exo_shm_close(ExoShm* shm);
+StarkShm* stark_shm_open(const char* name, bool create);
+void    stark_shm_close(StarkShm* shm);
 ```
 
 ---
@@ -210,7 +210,7 @@ motor_node 启动
   ├─ motor_hal_add_motor(cfg_r)              // 注册右电机 (auto_enable=false)
   ├─ motor_hal_add_motor(cfg_l)              // 注册左电机
   ├─ motor_hal_recv_start()                  // 启动接收线程
-  ├─ exo_shm_open(create=true)               // 创建共享内存
+  ├─ stark_shm_open(create=true)               // 创建共享内存
   │
   └─ 状态机线程 → 主动探测
        for (id = 1; id <= 2; id++) {
@@ -314,7 +314,7 @@ RT安全线程 读 shm→algo_heartbeat
 ```cpp
 class CanDispatcher : public IMsgInternalDispatcher {
     motor_hal_t    *m_hal;
-    ExoShm         *m_shm;
+    StarkShm         *m_shm;
 
     std::thread     m_ctrlThread;     // RT prio=90
     std::thread     m_reportThread;   // RT prio=80
@@ -505,7 +505,7 @@ topics (调试用, 非实时):
 #include <time.h>
 
 int main() {
-    ExoShm *shm = exo_shm_open(EXO_SHM_NAME, false);  // 打开已创建的
+    StarkShm *shm = stark_shm_open(STARK_SHM_NAME, false);  // 打开已创建的
     uint32_t last_active = shm->active_idx;
 
     struct timespec ts;
@@ -534,7 +534,7 @@ int main() {
 
         // === 4. 下发指令 (Mailbox覆盖写) ===
         shm->mailbox.cmd.motor_id = 0;           // 双电机
-        shm->mailbox.cmd.cmd      = EXO_CMD_TORQUE;
+        shm->mailbox.cmd.cmd      = STARK_CMD_TORQUE;
         shm->mailbox.cmd.value    = torque_r;    // 系统内部按 left/right 分发
         __sync_fetch_and_add(&shm->mailbox.seq, 1);
 
@@ -553,7 +553,7 @@ int main() {
 ## 11. 目录结构
 
 ```
-exo_periph_manager/
+stark_periph_manager/
 ├── CMakeLists.txt                       # petrobot框架 + motor_hal链接
 ├── src/
 │   ├── main.cpp                         # 入口: Factory → CanDispatcher → spin
@@ -617,11 +617,11 @@ CanDispatcher               新建                    +2个文件
 ```
 交付文件:
   ├── exo_shm.h                  # 接口头文件 (就是文档)
-  └── /dev/shm/exo_shm           # 运行时由 motor_node 自动创建
+  └── /dev/shm/stark_shm           # 运行时由 motor_node 自动创建
 
 算法同事需要:
   1. #include "exo_shm.h"
-  2. exo_shm_open(EXO_SHM_NAME, false);  // 打开
+  2. stark_shm_open(STARK_SHM_NAME, false);  // 打开
   3. while (1) { 读 active_idx; 读 fb_buffer; 步态; 写 mailbox; 写 heartbeat; }
   4. gcc -O2 gait_control.c -lrt
 

@@ -1,11 +1,11 @@
 #!/bin/sh
-# exo_node RT 环境检查和配置
+# stark_periph_node RT 环境检查和配置
 # 适用: RV1126B + PREEMPT_RT 内核
 # 用法: sudo ./setup_rt_env.sh
 
 set -e
 
-echo "=== exo_node RT 环境检查 ==="
+echo "=== stark_periph_node RT 环境检查 ==="
 
 # 1. PREEMPT_RT 内核
 echo -n "[1] PREEMPT_RT kernel: "

@@ -706,7 +706,7 @@ cat /proc/self/maps | grep vdso
 - 每周期 6 次耗时 ~120ns, 占 1ms 预算的 0.012%
 - 统计输出通过 `RT_LOG` → ring buffer → 非 RT drain 线程 → `ECO_INFO_NEW`
 
-关闭 `EXO_LATENCY_TRACE 0` 后: 编译期内联空函数, 零指令, 零开销.
+关闭 `STARK_LATENCY_TRACE 0` 后: 编译期内联空函数, 零指令, 零开销.
 
 ---
 
@@ -719,7 +719,7 @@ cat /proc/self/maps | grep vdso
 
 ### 现象
 
-`CanDispatcher::InitDispatcher()` 中原代码 `memset(m_shm, 0, EXO_SHM_SIZE)` 清空整个 64KB SHM. motor_node crash 重启时, 算法进程仍在读写 SHM, 数据瞬间全零.
+`CanDispatcher::InitDispatcher()` 中原代码 `memset(m_shm, 0, STARK_SHM_SIZE)` 清空整个 64KB SHM. motor_node crash 重启时, 算法进程仍在读写 SHM, 数据瞬间全零.
 
 ### 触发条件
 

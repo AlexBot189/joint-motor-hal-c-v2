@@ -434,7 +434,7 @@ static void *_thread_main(void *arg)
     emd_gaf_t *g = (emd_gaf_t *)arg;
     int rc = 0;
 
-    /* 设置 RT 调度 (SCHED_FIFO 50), 低于 exo RT 线程的 90, 保证可抢占 */
+    /* 设置 RT 调度 (SCHED_FIFO 50), 低于 stark RT 线程的 90, 保证可抢占 */
     {
         struct sched_param param;
         param.sched_priority = 50;
