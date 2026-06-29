@@ -17,10 +17,10 @@
  *   stark_close(&c);
  *
  * 控制模式:
- *   - 力矩控制: stark_torque(c, id, ma)  → ID对应电机, mA
- *   - 速度控制: stark_speed(c, id, rpm)   → RPM
- *   - 位置控制: stark_position(c, id, deg)→ 绝对角度(deg)
- *   - 多轴广播: stark_multi(c, t1,v1,p1, t2,v2,p2) → 一帧CANFD双电机
+ *   - 力矩控制: stark_torque(c, id, ma)   : ID对应电机, mA
+ *   - 速度控制: stark_speed(c, id, rpm)    : RPM
+ *   - 位置控制: stark_position(c, id, deg) : 绝对角度(deg)
+ *   - 多轴广播: stark_multi(c, t1,v1,p1, t2,v2,p2)  : 一帧CANFD双电机
  *   - MIT阻抗:  stark_mit(c,id,pos,vel,kp,kd,tor)
  *
  * 管理命令:
@@ -90,8 +90,7 @@ static inline void stark_close(stark_client_t* c)
 static inline int stark_ready(stark_client_t* c)
 {
     if (!c || !c->shm) return 0;
-    return (__atomic_load_n(&c->shm->node_state, __ATOMIC_ACQUIRE) == 2)
-        && (c->shm->calib_state == 2);
+    return (c->shm->calib_state == 2);
 }
 
 static inline int stark_online(stark_client_t* c, int id)

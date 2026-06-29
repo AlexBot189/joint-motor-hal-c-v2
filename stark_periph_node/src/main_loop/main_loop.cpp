@@ -243,10 +243,8 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
             g_ctx->calib_ctx = nullptr;
 
             if (g_rt_worker) g_rt_worker->SetActive(true);
-            if (g_rt_worker && g_rt_worker->IsHandshakeDone()) {
-                ECO_INFO_NEW("[main] algo connected (post-calib), entering RUNNING");
-                state_transition(STATE_RUNNING);
-            }
+            ECO_INFO_NEW("[main] calibration done, entering RUNNING");
+            state_transition(STATE_RUNNING);
         } else if (result == MOTOR_CALIB_TIMEOUT) {
             ECO_WARN_NEW("[main] calibration TIMEOUT, entering RUNNING (degraded)");
             g_ctx->calib_done = true;
@@ -261,15 +259,13 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
         }
     }
 
-    /* 校准已完成不轮询: 检查算法握手直接进 RUNNING */
+    /* 校准已完成: 激活 RT 线程, 进入 RUNNING */
     if (g_ctx->calib_done && !g_ctx->calib_running) {
         if (g_rt_worker && !g_rt_worker->IsActive()) {
             g_rt_worker->SetActive(true);
         }
-        if (g_rt_worker && g_rt_worker->IsHandshakeDone()) {
-            ECO_INFO_NEW("[main] calib done + algo connected, entering RUNNING");
-            state_transition(STATE_RUNNING);
-        }
+        ECO_INFO_NEW("[main] calib done, entering RUNNING");
+        state_transition(STATE_RUNNING);
     }
 }
 
