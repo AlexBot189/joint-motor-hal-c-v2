@@ -142,7 +142,7 @@ bool CanDispatcher::DestroyDispatcher()
 }
 
 /*
- * Send() — JSON 控制命令 → ExoMotorCtrl (SDO 路径, 非实时)
+ * Send() — JSON 控制命令 ,  ExoMotorCtrl (SDO 路径, 非实时)
  */
 
 void CanDispatcher::Send(const std::string& data)
@@ -359,7 +359,7 @@ bool CanDispatcher::LoadMotorConfig()
         return true;  /* 文件解析完成, 缺失字段用默认值 */
     }
 
-    /* 配置文件不存在 → 全部默认值 */
+    /* 配置文件不存在 ,  全部默认值 */
     ECO_INFO_NEW("[CanDispatcher] config not found, using hardcoded defaults");
 
     /* 校准/透传默认值 */

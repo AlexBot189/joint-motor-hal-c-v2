@@ -84,7 +84,7 @@ void WebServer::Stop()
 }
 
 /* ════════════════════════════════════════════════════════════════════
- * PullLoop() — 200Hz 读 SHM → JSON → WebSocket 推送
+ * PullLoop() — 200Hz 读 SHM ,  JSON ,  WebSocket 推送
  *
  * ## 占位实现
  *
@@ -157,7 +157,7 @@ void WebServer::PullLoop()
 static std::mutex g_ws_mutex;
 static std::unordered_set<crow::websocket::connection*> g_ws_clients;
 
-// ── feedback_frame_t → JSON ──
+// ── feedback_frame_t ,  JSON ──
 static std::string SerializeFrame(const feedback_frame_t* fb)
 {
     nlohmann::json j;

@@ -5,14 +5,14 @@
  * 所有公共 API 的入口, 内部管理电机列表和 CAN 帧分发。
  *
  * 依赖模块:
- *   can_driver      → SocketCAN 驱动
- *   sdo_client      → SDO 读写
- *   pdo_handler     → PDO 发送
- *   feedback_parser → 反馈解析
- *   nmt_master      → NMT 命令
- *   heartbeat       → 心跳管理
- *   motor_hal_startup → 启动流程
- *   utils           → 工具函数
+ *   can_driver      ,  SocketCAN 驱动
+ *   sdo_client      ,  SDO 读写
+ *   pdo_handler     ,  PDO 发送
+ *   feedback_parser ,  反馈解析
+ *   nmt_master      ,  NMT 命令
+ *   heartbeat       ,  心跳管理
+ *   motor_hal_startup ,  启动流程
+ *   utils           ,  工具函数
  */
 
 #include "motor_hal.h"
@@ -228,7 +228,7 @@ void motor_hal_destroy(motor_hal_t *hal)
 {
     if (!hal) return;
 
-    /* ★ 不发 SDO CW_DISABLE_VOLTAGE:
+    /* 不发 SDO CW_DISABLE_VOLTAGE:
      *   该命令会让驱动板进入 Stopped 状态,
      *   之后 NMT Start/Reset 都不响应, 只能断电重启。
      *   直接关 CAN 接口, 驱动板保持当前状态,
@@ -590,16 +590,16 @@ int motor_hal_quick_stop(motor_hal_t *hal, uint8_t node_id)
  *   PDO 不管 SDO: 以下函数只改 pdo_byte0, 不改 m->enabled/state
  *
  *   算法层使用:
- *     startup → pdo_enable + pdo_set_mode → 控制循环(不碰Byte0)
- *     急停    → pdo_estop
- *     恢复    → pdo_recover
- *     清错    → 先读 fb->error_code, 再根据错误类型决定是否 clearcf
- *     切模式  → pdo_set_mode
+ *     startup ,  pdo_enable + pdo_set_mode ,  控制循环(不碰Byte0)
+ *     急停    ,  pdo_estop
+ *     恢复    ,  pdo_recover
+ *     清错    ,  先读 fb->error_code, 再根据错误类型决定是否 clearcf
+ *     切模式  ,  pdo_set_mode
  *
  *   bit5 清错流程 (由算法层决策):
- *     1. 读 motor_hal_get_feedback → fb.error_code
+ *     1. 读 motor_hal_get_feedback ,  fb.error_code
  *     2. 判断: 温度过高? 等降温后清除; 过流? 失能后清除; 其他? 直接清除
- *     3. 调用 motor_hal_pdo_clear_fault → bit5 脉冲, 下一帧自动清0
+ *     3. 调用 motor_hal_pdo_clear_fault ,  bit5 脉冲, 下一帧自动清0
  * ===================================================== */
 
 int motor_hal_pdo_enable(motor_hal_t *hal, uint8_t node_id)
@@ -883,7 +883,7 @@ int32_t motor_hal_get_position(motor_hal_t *hal, uint8_t node_id)
     uint32_t val = 0;
     if (hal && hal->drv)
         sdo_read_simple(hal->drv, node_id, OD_POSITION_ACTUAL, 0x00, &val);
-    /* 0x6064 是 int16 (±32767→±180°), SDO 43 响应 4 字节但驱动板不扩展符号位
+    /* 0x6064 是 int16 (±32767, ±180°), SDO 43 响应 4 字节但驱动板不扩展符号位
      * 必须手动取低 16 位做 int16 符号扩展, 否则负数变成大的正数 (差 65536) */
     return (int32_t)(int16_t)(val & 0xFFFF);
 }
@@ -1104,7 +1104,7 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
     _dump_can_frame("recv", f);
 
     switch (func) {
-    case 0x580: {  /* SDO 响应 → 入队, 等待 sdo_client 消费 */
+    case 0x580: {  /* SDO 响应 ,  入队, 等待 sdo_client 消费 */
         sdo_push_response(f);
         break;
     }
@@ -1115,14 +1115,14 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
             motor_node_t *m = _find_motor(hal, node);
             if (m) {
                 m->bootup_received = true;
-                fprintf(stderr, "  → Bootup node=%d\n", node);
+                fprintf(stderr, "  ,  Bootup node=%d\n", node);
                 /* 自动启动: 只设标志, 由主线程 motor_hal_process_pending_startups() 消费 */
                 /* 不能在 recv 线程里调 motor_startup_full — SDO 阻塞会导致自己收不到响应 */
                 if (m->config.auto_enable && m->state == MOTOR_STATE_NOT_READY) {
                     m->pending_startup = true;
                 }
             } else {
-                fprintf(stderr, "  → WARN: Bootup node=%d not registered\n", node);
+                fprintf(stderr, "  ,  WARN: Bootup node=%d not registered\n", node);
             }
         } else {
             /* 心跳帧: 只在 NMT 状态变化时打印 */
@@ -1132,7 +1132,7 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
             if (m && cur_st != m->last_nmt_state) {
                 m->last_nmt_state = cur_st;
                 const char *st = motor_utils_nmt_state_str(cur_st);
-                fprintf(stderr, "  → Heartbeat node=%d state=%s (0x%02X)\n",
+                fprintf(stderr, "  ,  Heartbeat node=%d state=%s (0x%02X)\n",
                         node, st ? st : "?", cur_st);
             }
         }
@@ -1204,7 +1204,7 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
         m->cached_fb.timestamp_us = motor_utils_now_us();
         /* 从 statusword 推导状态 */
         m->cached_fb.status_byte = (sw & 0x000F) |  /* 低4位=状态 */
-                                    ((sw & 0x1000) ? 0 : 0x80);  /* bit12=0→enabled */
+                                    ((sw & 0x1000) ? 0 : 0x80);  /* bit12=0, enabled */
         pthread_mutex_unlock(&m->fb_lock);
 
         /* 触发反馈回调 */
@@ -1349,16 +1349,16 @@ int motor_hal_process_pending_startups(motor_hal_t *hal)
         pthread_mutex_unlock(&hal->lock);
 
         /* 放锁后调 SDO — recv 线程可以正常收帧 */
-        fprintf(stderr, "  → processing auto-startup node=%d...\n", m->node_id);
+        fprintf(stderr, "  ,  processing auto-startup node=%d...\n", m->node_id);
         int ret = motor_startup_full(hal->drv, &m->config, &m->bootup_received);
         if (ret == 0) {
             pthread_mutex_lock(&hal->lock);
             m->enabled = true;
             _set_state(hal, m, MOTOR_STATE_OP_ENABLED);
             pthread_mutex_unlock(&hal->lock);
-            fprintf(stderr, "  → node=%d OPERATION_ENABLED (auto)\n", m->node_id);
+            fprintf(stderr, "  ,  node=%d OPERATION_ENABLED (auto)\n", m->node_id);
         } else {
-            fprintf(stderr, "  → node=%d auto-startup failed (ret=%d)\n", m->node_id, ret);
+            fprintf(stderr, "  ,  node=%d auto-startup failed (ret=%d)\n", m->node_id, ret);
         }
         started++;
     }
@@ -1527,7 +1527,7 @@ static void _pdo_disable_others(motor_hal_t *hal, uint8_t node_id,
 
     for (uint8_t i = 1; i <= 3; i++) {  /* PDO2/PDO3/PDO4 */
         if (i == keep_idx) continue;
-        /* COB-ID bit31=1 → 停用, 其他位保留原始 COB-ID (任意非零值) */
+        /* COB-ID bit31=1 ,  停用, 其他位保留原始 COB-ID (任意非零值) */
         uint16_t idx = comm_base + (uint16_t)i;
         sdo_write_simple(hal->drv, node_id, idx, 0x01, 0x80000000UL | (uint32_t)(0x80 + (i + 1)), 4);
     }

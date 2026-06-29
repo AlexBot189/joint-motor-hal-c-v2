@@ -5,7 +5,7 @@
  * daemon 流程:
  *   1. 初始化 CANFD (motor_hal_init)
  *   2. 注册电机配置 (ID 1~4, 仅注册, 不启动)
- *   3. 后台化 (fork — ★必须在创建线程之前)
+ *   3. 后台化 (fork — 必须在创建线程之前)
  *   4. 启动接收线程 (在子进程中, 捕获后续 Bootup/SDO/PDO)
  *   5. 信号 + socket + accept 循环
  *   6. 客户端命令: motor_tool startup 按需启停电机
@@ -183,7 +183,7 @@ void daemon_watch_print(const char *line)
 int daemon_get_client_fd(void) { return g_client_fd; }
 
 /* ================================================================
- * 主循环: accept → 读命令 → 执行 → 响应
+ * 主循环: accept ,  读命令 ,  执行 ,  响应
  * ================================================================ */
 
 static void _accept_loop(void)
@@ -254,7 +254,7 @@ int daemon_start(const char *iface)
         tool_register_motor(motor_ids[i]);  /* 工具层也注册, watch/report 依赖此列表 */
     }
 
-    /* 3. 后台化 ★ 必须在创建线程之前 fork, 否则子线程在子进程中丢失 */
+    /* 3. 后台化 必须在创建线程之前 fork, 否则子线程在子进程中丢失 */
     _daemonize();
 
     /* 4. 启动接收线程 — 在子进程中创建, 安全 */
@@ -281,7 +281,7 @@ int daemon_start(const char *iface)
     /* 8. 清理 */
     close(g_listen_fd);
     unlink(MOTOR_TOOL_SOCK_PATH);
-    /* ★ 不发 NMT_STOP: 会让驱动板进入不可恢复的 Stopped 状态 */
+    /* 不发 NMT_STOP: 会让驱动板进入不可恢复的 Stopped 状态 */
     tool_cleanup();
 
     printf("motor_tool daemon stopped.\n");

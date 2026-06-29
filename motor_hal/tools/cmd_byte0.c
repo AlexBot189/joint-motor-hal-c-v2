@@ -76,14 +76,14 @@ int cmd_do_estop(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
     (void)hal; (void)cmd_id; (void)argc;
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
-    return _broadcast_op(atoi(argv[2]), BCAST(motor_hal_pdo_estop), "ESTOP (Byte0→0x00)");
+    return _broadcast_op(atoi(argv[2]), BCAST(motor_hal_pdo_estop), "ESTOP (Byte0, 0x00)");
 }
 
 int cmd_do_recover(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 {
     (void)hal; (void)cmd_id; (void)argc;
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
-    return _broadcast_op(atoi(argv[2]), BCAST(motor_hal_pdo_recover), "recover (Byte0→0xC0)");
+    return _broadcast_op(atoi(argv[2]), BCAST(motor_hal_pdo_recover), "recover (Byte0, 0xC0)");
 }
 
 int cmd_do_clearcf(motor_hal_t *hal, int cmd_id, int argc, char **argv)
@@ -109,7 +109,7 @@ int cmd_do_setmode(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 
     const char *names[] = {"","PP","PV","CSP","CSV","Current","MIT"};
     int ret = motor_hal_pdo_set_mode(g_hal, (uint8_t)id, (motor_mode_t)mode);
-    if (ret == 0) printf("✓ Motor %d: PDO mode → %s\n", id, names[mode]);
+    if (ret == 0) printf("✓ Motor %d: PDO mode ,  %s\n", id, names[mode]);
     else fprintf(stderr, "✗ Motor %d: setmode failed\n", id);
     return ret;
 }
@@ -149,8 +149,8 @@ int cmd_do_byte0(motor_hal_t *hal, int cmd_id, int argc, char **argv)
  * "Now" 命令: 改 Byte0 后立即发 PDO 帧, 不走 SDO
  *
  * disable_now / estop_now 需要先发包再断 enabled:
- *   motor_hal_pdo_set_byte0 → 发包(此时 enabled 还是 true)
- *   → motor_hal_pdo_disable/estop → 设 enabled=false
+ *   motor_hal_pdo_set_byte0 ,  发包(此时 enabled 还是 true)
+ *   ,  motor_hal_pdo_disable/estop ,  设 enabled=false
  * ================================================================ */
 
 static int _now_op(int id,

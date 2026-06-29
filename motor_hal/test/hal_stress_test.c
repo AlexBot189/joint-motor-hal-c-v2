@@ -6,7 +6,7 @@
  *   1. 并发 SDO: 多线程同时读写, 验证 SDO 队列+condvar 无竞态
  *   2. PDO 压力: 高频切换模式+发控制帧, 验证帧构造无内存越界
  *   3. 反馈接收: 持续性验证 recv 线程不丢帧不崩溃
- *   4. TPDO 同步: 配置 SYNC→TPDO 链路验证
+ *   4. TPDO 同步: 配置 SYNC, TPDO 链路验证
  *   5. 多轴广播: 帧格式 on bus 验证 (需 candump 对照)
  *   6. 传感器透传: 配置+接收 验证
  *   7. SDO 重试: 发到离线电机验证 timeout+retry 不卡死
@@ -115,7 +115,7 @@ static int test_init(motor_hal_t **out_hal)
     if (ret < 0) { FAIL("recv_start ret=%d", ret); motor_hal_destroy(hal); return -4; }
     PASS("recv thread started");
 
-    /* 启动电机 1 (等 bootup → SDO 配置 → DS402 使能) */
+    /* 启动电机 1 (等 bootup ,  SDO 配置 ,  DS402 使能) */
     printf("  Starting motor %d...\n", MOTOR_ID_EXISTING);
     usleep(200000);  /* 等 bootup 到达 */
     ret = motor_hal_startup(hal, MOTOR_ID_EXISTING, 3000);
@@ -149,7 +149,7 @@ static int test_sdo_basic(motor_hal_t *hal)
     if (ret == 0) PASS("SDO read 0x100A = 0x%08X", fw);
     else          FAIL("SDO read 0x100A ret=%d", ret);
 
-    /* 写心跳周期 → 回读验证 */
+    /* 写心跳周期 ,  回读验证 */
     ret = motor_hal_sdo_write(hal, MOTOR_ID_EXISTING, 0x1017, 0x00, 2000, 2);
     if (ret == 0) PASS("SDO write 0x1017 = 2000");
     else          FAIL("SDO write 0x1017 ret=%d", ret);
@@ -261,7 +261,7 @@ static int test_ds402_state_machine(motor_hal_t *hal)
         FAIL("not OPERATION_ENABLED (state=%d)", st);
     }
 
-    /* disable → enable × 3 */
+    /* disable ,  enable × 3 */
     for (int loop = 0; loop < 3; loop++) {
         ret = motor_hal_disable(hal, MOTOR_ID_EXISTING);
         if (ret != 0) { FAIL("disable loop %d ret=%d", loop, ret); break; }
@@ -302,7 +302,7 @@ static int test_pdo_byte0(motor_hal_t *hal)
     ret = motor_hal_pdo_bus_off(hal, MOTOR_ID_EXISTING);
     ret == 0 ? PASS("pdo_bus_off OK") : FAIL("pdo_bus_off ret=%d", ret);
 
-    /* estop → recover */
+    /* estop ,  recover */
     ret = motor_hal_pdo_estop(hal, MOTOR_ID_EXISTING);
     ret == 0 ? PASS("estop OK") : FAIL("estop ret=%d", ret);
 
@@ -316,8 +316,8 @@ static int test_pdo_byte0(motor_hal_t *hal)
 
     for (int i = 0; i < 5; i++) {
         ret = motor_hal_pdo_set_mode(hal, MOTOR_ID_EXISTING, modes[i]);
-        if (ret == 0) PASS("set_mode → %s OK", names[i]);
-        else          FAIL("set_mode → %s ret=%d", names[i], ret);
+        if (ret == 0) PASS("set_mode ,  %s OK", names[i]);
+        else          FAIL("set_mode ,  %s ret=%d", names[i], ret);
     }
 
     /* clear fault */
@@ -507,7 +507,7 @@ static int test_sensor(motor_hal_t *hal)
              s.hall_adc0, s.hall_adc1, s.hall_adc2,
              s.force_raw, s.knee_adc, s.hw_sw_pc9, s.data_valid);
     } else {
-        PASS("get_sensor ret=%d (no motor → no real data, OK)", ret);
+        PASS("get_sensor ret=%d (no motor ,  no real data, OK)", ret);
     }
 
     /* 停止透传 */

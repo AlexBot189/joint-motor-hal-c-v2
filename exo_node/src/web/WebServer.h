@@ -9,7 +9,7 @@
  *
  * ## 数据流
  *
- *   motor_node → SHM fb_buffer → PullLoop (200Hz) → JSON → WebSocket → 浏览器
+ *   motor_node ,  SHM fb_buffer ,  PullLoop (200Hz) ,  JSON ,  WebSocket ,  浏览器
  *
  * ## 依赖
  *
@@ -55,11 +55,11 @@ private:
      * @brief 主循环 — 200Hz 从 SHM 读反馈帧, JSON 序列化, push 到 WebSocket
      *
      * 流程:
-     *   1. atomic_load(active_idx, acquire)  →  读活跃 Buffer 索引
-     *   2. memcpy fb_buffer[active]  →  防撕裂快照
-     *   3. 序列化 feedback_frame_t → JSON 字符串
+     *   1. atomic_load(active_idx, acquire)  ,   读活跃 Buffer 索引
+     *   2. memcpy fb_buffer[active]  ,   防撕裂快照
+     *   3. 序列化 feedback_frame_t ,  JSON 字符串
      *   4. 遍历 websocket_clients, push(json)
-     *   5. usleep(5000)  →  200Hz
+     *   5. usleep(5000)  ,   200Hz
      */
     void PullLoop();
 

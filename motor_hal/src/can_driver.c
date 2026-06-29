@@ -123,7 +123,7 @@ int can_driver_send(can_driver_t *drv, const canfd_frame_t *frame)
     memset(&cfd, 0, sizeof(cfd));
     /* 11-bit 标准帧: 不加 CAN_EFF_FLAG */
     cfd.can_id = frame->id & CAN_SFF_MASK;
-    if (frame->is_fd) cfd.flags |= CANFD_BRS;   /* is_fd → CANFD 帧, SDO=false, PDO=true */
+    if (frame->is_fd) cfd.flags |= CANFD_BRS;   /* is_fd ,  CANFD 帧, SDO=false, PDO=true */
     cfd.len = frame->dlc;
     memcpy(cfd.data, frame->data, frame->dlc);
 

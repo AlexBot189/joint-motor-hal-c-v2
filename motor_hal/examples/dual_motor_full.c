@@ -4,7 +4,7 @@
  *
  * 覆盖:
  *   CANFD 初始化 (仲裁1M + 数据5M)
- *   双电机启动 (Bootup检测 → 心跳配置 → 关看门狗 → DS402使能)
+ *   双电机启动 (Bootup检测 ,  心跳配置 ,  关看门狗 ,  DS402使能)
  *   5ms 控制周期 (PDO 自动触发反馈, 不需要 SYNC)
  *   实时控制 (位置/速度/电流, 参数动态传入)
  *   故障处理 (EMCY + 反馈错误码)
@@ -115,7 +115,7 @@ static void on_error(uint8_t id, uint16_t code, void *ctx)
 static void on_state_change(uint8_t id,
                             motor_state_t old, motor_state_t new_state, void *ctx)
 {
-    printf("[Motor %d] State: %s → %s\n",
+    printf("[Motor %d] State: %s ,  %s\n",
            id, motor_state_str(old), motor_state_str(new_state));
 }
 
@@ -208,7 +208,7 @@ static int motor_register(motor_hal_t *hal, uint8_t node_id,
 }
 
 /* ================================================================
- * 启动: 等待 Bootup → 心跳 → 关看门狗 → 使能
+ * 启动: 等待 Bootup ,  心跳 ,  关看门狗 ,  使能
  * ================================================================ */
 
 static int motor_start(motor_hal_t *hal, uint8_t node_id)
@@ -220,7 +220,7 @@ static int motor_start(motor_hal_t *hal, uint8_t node_id)
      *  2. SDO 写 0x1017=2000ms (心跳配置)
      *  3. SDO 写 0x2650=1 (关看门狗)
      *  4. SDO 读 0x100A 固件版本 (通信验证)
-     *  5. DS402: Shutdown(0x06)→SwitchOn(0x07)→EnableOp(0x0F)
+     *  5. DS402: Shutdown(0x06), SwitchOn(0x07), EnableOp(0x0F)
      *  6. 延时 120ms 等待抱闸释放
      */
     ret = motor_hal_startup(hal, node_id, STARTUP_TIMEOUT_MS);
@@ -368,7 +368,7 @@ int main(void)
     while (g_running) {
         /* ── 高频轮询 CAN 帧 (非阻塞) ── */
         for (int i = 0; i < 5; i++) {
-            motor_hal_poll(hal, 0);  /* timeout=0 → 非阻塞 */
+            motor_hal_poll(hal, 0);  /* timeout=0 ,  非阻塞 */
         }
 
         uint64_t now = now_us();
@@ -405,7 +405,7 @@ int main(void)
         }
 
         /* ── 打印反馈 (低频) ── */
-        if (now - last_print >= 200000) {  /* 200ms → 5Hz */
+        if (now - last_print >= 200000) {  /* 200ms ,  5Hz */
             last_print = now;
             float t = (now - t_start) * 1e-6f;
             print_feedback(t);

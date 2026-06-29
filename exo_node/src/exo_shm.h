@@ -2,8 +2,8 @@
  * exo_shm.h — 共享内存布局
  * Copyright (c) 2026 zhiqiang.yang
  *
- * 数据方向: motor_node → fb_buffer → 算法/ROS/Web
- *           算法 → mailbox → motor_node
+ * 数据方向: motor_node ,  fb_buffer ,  算法/ROS/Web
+ *           算法 ,  mailbox ,  motor_node
  *
  * 并发: 单写多读, 无锁.
  *   fb_buffer: 双 Buffer, RT 线程写, 多读者
@@ -24,7 +24,7 @@ extern "C" {
 
 /* 电机反馈 (CAN 反馈帧 0x300, 大端) */
 typedef struct {
-    int16_t  position;          /* 编码器角度, counts [-32768,32767] → [-180°,180°]   */
+    int16_t  position;          /* 编码器角度, counts [-32768,32767] ,  [-180°,180°]   */
     int16_t  velocity;          /* 转速, RPM                                          */
     int16_t  current_iq;        /* Q轴电流, mA                                        */
     int16_t  temperature;       /* 温度, 0.1°C                                       */
@@ -197,10 +197,10 @@ typedef struct {
     /* 反馈路径 */
     uint16_t  fb_read_avg_us;
     uint16_t  fb_read_max_us;
-    uint16_t  fb_total_avg_us;       /* T1→T4 反馈总延迟 */
+    uint16_t  fb_total_avg_us;       /* T1, T4 反馈总延迟 */
     uint16_t  fb_total_max_us;
     /* 控制路径 */
-    uint16_t  ctrl_total_avg_us;     /* T5→T6 控制总延迟 */
+    uint16_t  ctrl_total_avg_us;     /* T5, T6 控制总延迟 */
     uint16_t  ctrl_total_max_us;
     /* 统计 */
     uint32_t  trace_cycle_count;     /* 已采样周期数 */

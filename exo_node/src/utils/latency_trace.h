@@ -6,8 +6,8 @@
  * 关闭:   #define EXO_LATENCY_TRACE  0  (零开销)
  *
  * 追踪节点 (RT线程内):
- *   反馈路径: T1 fb_read_start → T4 shm_write_done
- *   控制路径: T5 mailbox_read → T6 pdo_sent
+ *   反馈路径: T1 fb_read_start ,  T4 shm_write_done
+ *   控制路径: T5 mailbox_read ,  T6 pdo_sent
  *
  * 输出: 每1000周期统计一次 (min/avg/max),
  *       同时写入 SHM 供 perf_test 读取.
@@ -45,12 +45,12 @@ struct latency_stats_t {
     uint32_t shm_write_min;
     uint32_t shm_write_avg;
     uint32_t shm_write_max;
-    uint32_t fb_total_min;        /* T1→T4 */
+    uint32_t fb_total_min;        /* T1, T4 */
     uint32_t fb_total_avg;
     uint32_t fb_total_max;
 
     /* 控制路径 (μs) */
-    uint32_t ctrl_total_min;      /* T5→T6 */
+    uint32_t ctrl_total_min;      /* T5, T6 */
     uint32_t ctrl_total_avg;
     uint32_t ctrl_total_max;
 

@@ -1076,7 +1076,7 @@ static int _init_imu_biases(emd_gaf_t *g)
 }
 
 /*
- * Q30/Q16 → float 格式转换
+ * Q30/Q16 ,  float 格式转换
  */
 
 static void _convert_output(const inv_edmp_gaf_outputs_t *in, uint64_t ts,
@@ -1086,7 +1086,7 @@ static void _convert_output(const inv_edmp_gaf_outputs_t *in, uint64_t ts,
 
     out->timestamp_us = ts;
 
-    /* 9轴四元数 (Q30 → float) */
+    /* 9轴四元数 (Q30 ,  float) */
     if (in->rv_quat_valid) {
         out->quat_w = in->rv_quat_q30[0] / 1073741824.0f;
         out->quat_x = in->rv_quat_q30[1] / 1073741824.0f;
@@ -1097,14 +1097,14 @@ static void _convert_output(const inv_edmp_gaf_outputs_t *in, uint64_t ts,
         out->heading_deg  = heading_rad * 57.29578f;
     }
 
-    /* 校准加速度 (Q16 → g) */
+    /* 校准加速度 (Q16 ,  g) */
     if (in->acc_cal_valid) {
         out->accel_x = in->acc_cal_q16[0] / 65536.0f;
         out->accel_y = in->acc_cal_q16[1] / 65536.0f;
         out->accel_z = in->acc_cal_q16[2] / 65536.0f;
     }
 
-    /* 校准角速度 (Q16 → dps) */
+    /* 校准角速度 (Q16 ,  dps) */
     if (in->gyr_flags_valid) {
         out->gyro_x = in->gyr_cal_q16[0] / 65536.0f;
         out->gyro_y = in->gyr_cal_q16[1] / 65536.0f;
@@ -1113,7 +1113,7 @@ static void _convert_output(const inv_edmp_gaf_outputs_t *in, uint64_t ts,
         out->gyr_accuracy = (int)in->gyr_accuracy_flag;
     }
 
-    /* 校准磁力计 (Q16 → uT) */
+    /* 校准磁力计 (Q16 ,  uT) */
     if (in->mag_bias_valid && in->rmag_valid) {
         out->mag_x = in->mag_cal_q16[0] / 65536.0f;
         out->mag_y = in->mag_cal_q16[1] / 65536.0f;
@@ -1121,7 +1121,7 @@ static void _convert_output(const inv_edmp_gaf_outputs_t *in, uint64_t ts,
         out->mag_accuracy = (int)in->mag_accuracy_flag;
     }
 
-    /* 温度 (Q16 → °C) */
+    /* 温度 (Q16 ,  °C) */
     if (in->temperature_valid) {
         out->temp_c = in->temp_degC_q16 / 65536.0f;
     }

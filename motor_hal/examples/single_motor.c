@@ -75,7 +75,7 @@ int main(void)
         motor_hal_poll(hal, 1);
 
         uint64_t now = _now_us();
-        if (now - last > 100000) {  /* 100ms → 10Hz */
+        if (now - last > 100000) {  /* 100ms ,  10Hz */
             last = now;
             target += dir * 10.0f;
             if (target > 90.0f)  { target = 90.0f;  dir = -1; }

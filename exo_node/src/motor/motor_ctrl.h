@@ -26,7 +26,7 @@ public:
 
     /* 系统命令 (SDO 路径, 非 RT) */
 
-    /** @brief 手动启动电机 (Bootup → NMT → DS402 enable) */
+    /** @brief 手动启动电机 (Bootup ,  NMT ,  DS402 enable) */
     int  Startup(uint8_t id, uint32_t timeout_ms = 5000);
 
     /** @brief DS402 使能 */
@@ -46,25 +46,25 @@ public:
 
     /* SDO 控制命令 (SDO 路径, 非 RT) */
 
-    /** @brief 力矩控制 (使能→切电流模式→写0x6071), mA [-20000,20000] */
+    /** @brief 力矩控制 (使能, 切电流模式, 写0x6071), mA [-20000,20000] */
     int  Torque(uint8_t id, int32_t ma);
 
-    /** @brief 速度控制 (使能→切PV模式→设加减速→写0x60FF), RPM */
+    /** @brief 速度控制 (使能, 切PV模式, 设加减速, 写0x60FF), RPM */
     int  Speed(uint8_t id, int32_t rpm, int32_t acc = 1000, int32_t dec = 1000);
 
-    /** @brief 绝对位置控制 (使能→切PP模式→设参→目标→启动), ° */
+    /** @brief 绝对位置控制 (使能, 切PP模式, 设参, 目标, 启动), ° */
     int  AbsPosition(uint8_t id, float deg);
 
     /** @brief 停止位置运动 (CW=0x0F) */
     void AbsStop(uint8_t id);
 
-    /** @brief 零位标定 (自动失能→写0x2531) */
+    /** @brief 零位标定 (自动失能, 写0x2531) */
     int  SetZero(uint8_t id);
 
-    /** @brief 正限位 (失能→写0x607D/02→save_flash) */
+    /** @brief 正限位 (失能, 写0x607D/02, save_flash) */
     int  SetPosLimit(uint8_t id, float deg);
 
-    /** @brief 负限位 (失能→写0x607D/01→save_flash) */
+    /** @brief 负限位 (失能, 写0x607D/01, save_flash) */
     int  SetNegLimit(uint8_t id, float deg);
 
     /** @brief 读正限位 */

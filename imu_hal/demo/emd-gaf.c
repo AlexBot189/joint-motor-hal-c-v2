@@ -4,7 +4,7 @@
  *
  * 用法: ./emd-gaf -i /dev/i2c-3 -g gpiochip4 -l 2 -m 5
  *
- * 流程: create → init → start → 循环读取输出 → stop → destroy
+ * 流程: create ,  init ,  start ,  循环读取输出 ,  stop ,  destroy
  *
  * Copyright (c) 2026 zhiqiang.yang
  */

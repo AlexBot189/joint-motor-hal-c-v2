@@ -21,7 +21,7 @@
  *   cfg.bootup_timeout_ms = 5000;
  *   motor_hal_add_motor(hal, &cfg);
  *
- *   motor_hal_recv_start(hal);          // ★ 先启动接收线程
+ *   motor_hal_recv_start(hal);          // 先启动接收线程
  *   motor_hal_startup(hal, 1, 5000);    // 再启动电机
  *
  *   while (running) {
@@ -40,7 +40,7 @@
  *   │  接收线程 (框架内部) │     │  控制线程 (你的代码)   │
  *   │                     │     │                     │
  *   │ 阻塞等 CAN 帧       │     │ motor_hal_get_      │
- *   │ 自动更新反馈缓存     │ ──→ │   feedback()  读缓存 │
+ *   │ 自动更新反馈缓存     │ ──,  │   feedback()  读缓存 │
  *   │ 自动触发回调        │     │ motor_hal_set_      │
  *   │                     │     │   position() 发PDO  │
  *   └────────────────────┘     └─────────────────────┘
@@ -50,12 +50,12 @@
  *
  * ## 启动时序 (重要)
  *
- *   motor_hal_init       → 打开 CAN 接口
- *   motor_hal_add_motor   → 注册电机节点
- *   motor_hal_recv_start  → ★ 启动接收线程 (必须在 startup 之前)
- *   motor_hal_startup     → 上电 + 使能
+ *   motor_hal_init       ,  打开 CAN 接口
+ *   motor_hal_add_motor   ,  注册电机节点
+ *   motor_hal_recv_start  ,  启动接收线程 (必须在 startup 之前)
+ *   motor_hal_startup     ,  上电 + 使能
  *   [控制循环]
- *   motor_hal_destroy     → 自动脱使能 + 关 CAN
+ *   motor_hal_destroy     ,  自动脱使能 + 关 CAN
  */
 
 #ifndef MOTOR_HAL_H
@@ -172,7 +172,7 @@ void motor_hal_remove_motor(motor_hal_t *hal, uint8_t node_id);
 
 /* ============================================================================
  * 3. 启动与停用 — 电机上电 / 使能 / 脱使能
- *   ★ motor_hal_recv_start 必须在这类函数之前调用
+ *   motor_hal_recv_start 必须在这类函数之前调用
  * ============================================================================ */
 
 /**
@@ -183,7 +183,7 @@ void motor_hal_remove_motor(motor_hal_t *hal, uint8_t node_id);
  *   2. 通过 SDO 配置心跳周期 (0x1017)
  *   3. 通过 SDO 关闭看门狗 (0x2650=1) — 如果 cfg.disable_watchdog=true
  *   4. 通过 SDO 读取固件版本 (0x100A) — 验证通信链路
- *   5. 走 DS402 状态机: Shutdown → SwitchOn → EnableOp
+ *   5. 走 DS402 状态机: Shutdown ,  SwitchOn ,  EnableOp
  *   6. 延时 120ms 等待抱闸释放
  *
  * @param hal        HAL 实例
@@ -209,9 +209,9 @@ int motor_hal_wait_bootup(motor_hal_t *hal, uint8_t node_id, int timeout_ms);
  * @brief 使能电机 — 走 DS402 状态机进入 Operation Enabled
  *
  * 分三步 (每步间隔 20ms):
- *   Shutdown (CW=0x06) → ReadyToSwitchOn
- *   SwitchOn  (CW=0x07) → SwitchedOn
- *   EnableOp  (CW=0x0F) → OperationEnabled → 等 120ms 抱闸释放
+ *   Shutdown (CW=0x06) ,  ReadyToSwitchOn
+ *   SwitchOn  (CW=0x07) ,  SwitchedOn
+ *   EnableOp  (CW=0x0F) ,  OperationEnabled ,  等 120ms 抱闸释放
  *
  * 只在电机处于 NOT_READY / SWITCH_ON_DISABLED / READY_TO_SWITCH_ON
  * 状态时才能调用。如果电机在 FAULT 状态, 先调用 motor_hal_fault_reset。
@@ -223,7 +223,7 @@ int motor_hal_enable(motor_hal_t *hal, uint8_t node_id);
 /**
  * @brief 脱使能电机 — 发送 Shutdown 命令
  *
- * 电机从 OperationEnabled → ReadyToSwitchOn。
+ * 电机从 OperationEnabled ,  ReadyToSwitchOn。
  * 运动中的电机会先减速停止再脱使能。
  * 脱使能后电机不再响应位置/速度控制命令。
  *
@@ -257,7 +257,7 @@ int motor_hal_fault_reset(motor_hal_t *hal, uint8_t node_id);
  * @brief 位置控制 — 设置电机目标角度
  *
  * 使用 Profile Position (PP) 模式。
- * 内部换算: 角度(°) → 编码器 count 值 → PDO 帧。
+ * 内部换算: 角度(°) ,  编码器 count 值 ,  PDO 帧。
  * 电机按 cfg.profile_accel/velocity 规划梯形速度曲线运动到目标。
  *
  * @param hal       HAL 实例
@@ -394,14 +394,14 @@ int motor_hal_quick_stop(motor_hal_t *hal, uint8_t node_id);
  *   SDO 不碰 PDO, PDO 不碰 SDO。
  *
  *   bit5 清错建议流程 (由上层决策):
- *     1. motor_hal_get_feedback → fb.error_code
- *     2. 判断错误: 过温→等降温; 过流→先失能; 其他→直接清除
- *     3. motor_hal_pdo_clear_fault → bit5 脉冲, 下一帧自动清0
+ *     1. motor_hal_get_feedback ,  fb.error_code
+ *     2. 判断错误: 过温, 等降温; 过流, 先失能; 其他, 直接清除
+ *     3. motor_hal_pdo_clear_fault ,  bit5 脉冲, 下一帧自动清0
  *
  *   推荐用法:
- *     startup → pdo_enable + pdo_set_mode → 控制循环(不碰Byte0)
- *     急停    → pdo_estop
- *     恢复    → pdo_recover
+ *     startup ,  pdo_enable + pdo_set_mode ,  控制循环(不碰Byte0)
+ *     急停    ,  pdo_estop
+ *     恢复    ,  pdo_recover
  * ============================================================================ */
 
 int motor_hal_pdo_enable(motor_hal_t *hal, uint8_t node_id);
@@ -566,10 +566,10 @@ int motor_hal_get_feedback(motor_hal_t *hal, uint8_t node_id, motor_feedback_t *
  *   }
  *
  * 分发规则:
- *   0x580 → SDO 响应 → 入队列 → condvar → sdo_client 等待
- *   0x300 → 反馈帧  → 写缓存 (PI mutex) + 触发反馈回调
- *   0x700 → Bootup/Heartbeat → 设置 bootup_received 标志
- *   0x080 → EMCY 紧急报文 → 触发错误回调
+ *   0x580 ,  SDO 响应 ,  入队列 ,  condvar ,  sdo_client 等待
+ *   0x300 ,  反馈帧  ,  写缓存 (PI mutex) + 触发反馈回调
+ *   0x700 ,  Bootup/Heartbeat ,  设置 bootup_received 标志
+ *   0x080 ,  EMCY 紧急报文 ,  触发错误回调
  *
  * @note 必须在 motor_hal_startup 之前调用 (否则 SDO 无人接收)
  * @note 启动后不要再调 motor_hal_poll (会检测到并直接 return)
@@ -630,8 +630,8 @@ void motor_hal_set_sensor_cb(motor_hal_t *hal, uint8_t node_id,
  * @brief 注册反馈回调 — 每收到一帧反馈就触发
  *
  * 回调在 **接收线程上下文** 中执行, 因此:
- *   ✅ 可以做: 更新全局变量, 填充环形缓冲区, notify 控制线程
- *   ❌ 不要做: SDO 操作 (会死锁), printf (不在 RT 线程), 长时间计算
+ *    可以做: 更新全局变量, 填充环形缓冲区, notify 控制线程
+ *    不要做: SDO 操作 (会死锁), printf (不在 RT 线程), 长时间计算
  *
  * @param node_id 要监听的电机的 CAN 节点 ID
  * @param cb      回调函数, 传 NULL 取消
@@ -879,22 +879,22 @@ int motor_hal_set_canfd_baud(motor_hal_t *hal, uint8_t node_id, uint8_t baud);
  * 12. 工具函数 — 单位换算 (inline, 零开销)
  * ============================================================================ */
 
-/** 编码器 count → 角度 (°)。ENCODER_LOAD_RES=65536 对应 360°。 */
+/** 编码器 count ,  角度 (°)。ENCODER_LOAD_RES=65536 对应 360°。 */
 static inline float motor_counts_to_deg(int16_t counts) {
     return (float)counts * 360.0f / (float)ENCODER_LOAD_RES;
 }
 
-/** 角度 (°) → 编码器 count。超出 -180~180 会被钳位。 */
+/** 角度 (°) ,  编码器 count。超出 -180~180 会被钳位。 */
 static inline int16_t motor_deg_to_counts(float degrees) {
     return (int16_t)(degrees * ENCODER_LOAD_RES / 360.0f);
 }
 
-/** 温度 raw → °C (原始值 × 0.1) */
+/** 温度 raw ,  °C (原始值 × 0.1) */
 static inline float motor_temp_to_c(int16_t raw) {
     return raw * 0.1f;
 }
 
-/** 电流 mA → A */
+/** 电流 mA ,  A */
 static inline float motor_ma_to_a(int16_t ma) {
     return ma * 0.001f;
 }
@@ -904,19 +904,19 @@ static inline float motor_ma_to_a(int16_t ma) {
  * ============================================================================ */
 
 /**
- * @brief SDO Abort Code → 可读字符串 (CiA 301, Table 52)
+ * @brief SDO Abort Code ,  可读字符串 (CiA 301, Table 52)
  * @return 错误描述, 未找到返回 NULL
  */
 const char* motor_utils_sdo_abort_str(uint32_t abort_code);
 
 /**
- * @brief NMT 状态码 → 可读字符串
+ * @brief NMT 状态码 ,  可读字符串
  * @return 状态描述, 未找到返回 NULL
  */
 const char* motor_utils_nmt_state_str(uint8_t state);
 
 /**
- * @brief EMCY 紧急错误码 → 可读字符串
+ * @brief EMCY 紧急错误码 ,  可读字符串
  * @return 错误描述, 未找到返回 NULL
  */
 const char* motor_utils_emcy_str(uint16_t emcy_code);

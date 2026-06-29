@@ -36,14 +36,14 @@ int tool_fault_reset(int id);
 int tool_reboot(int id);
 
 /* ================================================================
- * SDO 电流控制 — 完整时序 (使能→切模式→写目标电流)
+ * SDO 电流控制 — 完整时序 (使能, 切模式, 写目标电流)
  *   torque <id> <mA>  范围 0~20000 mA (0~20A)
  * ================================================================ */
 
 int tool_torque_sdo(int id, int ma);
 
 /* ================================================================
- * SDO 速度控制 — 完整时序 (使能→切模式→设加减速→写目标速度)
+ * SDO 速度控制 — 完整时序 (使能, 切模式, 设加减速, 写目标速度)
  *   speed <id> <rpm> [acc] [dec]
  *   加减速范围 0~10000 RPM/s, 速度无上限
  * ================================================================ */
@@ -51,7 +51,7 @@ int tool_torque_sdo(int id, int ma);
 int tool_speed_sdo(int id, int rpm, int acc, int dec);
 
 /* ================================================================
- * SDO 位置控制 — 完整时序 (使能→切模式→设加减速/轨迹速度→目标→启动)
+ * SDO 位置控制 — 完整时序 (使能, 切模式, 设加减速/轨迹速度, 目标, 启动)
  *   abs <id> <deg>
  *   加减速范围 0~10000 RPM/s (默认2000)
  *   轨迹速度范围 0~30 RPM (默认10)
@@ -71,9 +71,9 @@ int tool_abs_stop(int id);
  * 单控 SDO 命令
  * ================================================================ */
 
-int tool_set_zero_auto(int id);                 /* setzero: 自动失能→写0x2531 */
-int tool_limit_pos_set(int id, float deg);   /* limit_pos: 自动失能→写0x607D/02→save_flash */
-int tool_limit_neg_set(int id, float deg);   /* limit_neg: 自动失能→写0x607D/01→save_flash */
+int tool_set_zero_auto(int id);                 /* setzero: 自动失能, 写0x2531 */
+int tool_limit_pos_set(int id, float deg);   /* limit_pos: 自动失能, 写0x607D/02, save_flash */
+int tool_limit_neg_set(int id, float deg);   /* limit_neg: 自动失能, 写0x607D/01, save_flash */
 int tool_limit_pos_read(int id);                /* 读 0x607D/02 */
 int tool_limit_neg_read(int id);                /* 读 0x607D/01 */
 int tool_save_flash(int id);

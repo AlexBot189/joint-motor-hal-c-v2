@@ -7,9 +7,9 @@
  *   ./feedback_callback               # 运行本示例 (注册回调)
  *
  * 工作原理:
- *   daemon 以 5ms 周期发 SYNC → 电机收到 SYNC 后发 TPDO (0x181)
- *   → recv 线程收到 TPDO → 更新缓存 → 触发回调
- *   → 回调中做算法分析 (如: 外骨骼力矩估算/姿态解算)
+ *   daemon 以 5ms 周期发 SYNC ,  电机收到 SYNC 后发 TPDO (0x181)
+ *   ,  recv 线程收到 TPDO ,  更新缓存 ,  触发回调
+ *   ,  回调中做算法分析 (如: 外骨骼力矩估算/姿态解算)
  */
 
 #include "motor_hal.h"
@@ -27,7 +27,7 @@ static void sig_handler(int sig) { (void)sig; running = 0; }
  *
  * 在这里做:
  *   - 外骨骼关节角度读取
- *   - 力矩估算 (电流 → 力矩)
+ *   - 力矩估算 (电流 ,  力矩)
  *   - 速度/加速度计算
  *   - 数据推送到共享内存/UDP/ROS2
  *

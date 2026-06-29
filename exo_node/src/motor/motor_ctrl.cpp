@@ -71,7 +71,7 @@ int ExoMotorCtrl::Startup(uint8_t id, uint32_t timeout_ms)
         return ret;
     }
 
-    ECO_INFO_NEW("[ExoMotorCtrl] motor {} → OPERATION_ENABLED", id);
+    ECO_INFO_NEW("[ExoMotorCtrl] motor {} ,  OPERATION_ENABLED", id);
     return 0;
 }
 
@@ -322,7 +322,7 @@ int ExoMotorCtrl::SetPid(uint8_t id, uint16_t cp, uint16_t ci,
 {
     motor_pid_t pid = { cp, ci, vp, vi, pp, pi };
     int ret = motor_hal_set_pid(m_hal, id, &pid);
-    ECO_INFO_NEW("[ExoMotorCtrl] motor {} PID set: cp={} ci={} vp={} vi={} pp={} pi={} → {}",
+    ECO_INFO_NEW("[ExoMotorCtrl] motor {} PID set: cp={} ci={} vp={} vi={} pp={} pi={} ,  {}",
                  id, cp, ci, vp, vi, pp, pi, (ret == 0 ? "OK" : "FAIL"));
     return ret;
 }

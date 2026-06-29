@@ -77,7 +77,7 @@ int motor_calib_start(motor_calib_t *cal, const motor_calib_config_t *cfg);
  * @brief 每轮循环调用一次 (非阻塞)
  *
  * 在校准 CHECKING 阶段, 从 feedback 缓存读左右电机位置。
- * 检测到左右位置均在 ±threshold 范围内 → 校准成功。
+ * 检测到左右位置均在 ±threshold 范围内 ,  校准成功。
  *
  * @return 当前校准状态 (MOTOR_CALIB_DONE/TIMEOUT/CHECKING/...)
  */

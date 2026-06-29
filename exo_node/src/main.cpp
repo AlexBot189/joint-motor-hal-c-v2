@@ -6,7 +6,7 @@
  *   1. CanDispatcher::InitDispatcher() — CANFD + 电机注册 + recv + SHM
  *   2. state_transition(STATE_BOOTING)
  *   3. main_loop_run() — 主循环 (状态分发)
- *   4. 退出: sync_stop → RT stop → calib destroy → dispatcher destroy
+ *   4. 退出: sync_stop ,  RT stop ,  calib destroy ,  dispatcher destroy
  */
 #include <signal.h>
 #include <unistd.h>

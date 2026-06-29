@@ -100,10 +100,10 @@ void ExoRtWorker::Run()
         /* 快照: 保存 ProcessMailbox 之前的 seq, 供 SafetyCheck 比较 */
         uint64_t seq_before = m_last_seq;
 
-        /* ① 控制下发: 读 SHM mailbox → multi_ctrl → PDO */
+        /* ① 控制下发: 读 SHM mailbox ,  multi_ctrl ,  PDO */
         ProcessMailbox();
 
-        /* ② 反馈上报: 读 fb_cache → SHM double buffer (200Hz) */
+        /* ② 反馈上报: 读 fb_cache ,  SHM double buffer (200Hz) */
         PublishFeedback();
 
         /* ③ 安全监控 */
@@ -131,16 +131,16 @@ void ExoRtWorker::Run()
 }
 
 /*
- * ProcessMailbox() — 读 SHM mailbox → PDO multi_ctrl 广播
+ * ProcessMailbox() — 读 SHM mailbox ,  PDO multi_ctrl 广播
  *
  * 支持双电机同时控制 (一次 multi_ctrl 发完 ID 1,2)
  *
  * Mailbox 并发协议:
- *   算法写: seq_begin++ → write cmd[0], cmd[1] → seq_end = seq_begin
+ *   算法写: seq_begin++ ,  write cmd[0], cmd[1] ,  seq_end = seq_begin
  *   RT 读:  read seq_begin (acquire)
  *          if begin != end: 正在写, 跳过
  *          if begin == m_last_seq: 无新命令, 返回
- *          else: 读全部 cmd → multi_ctrl → m_last_seq = begin
+ *          else: 读全部 cmd ,  multi_ctrl ,  m_last_seq = begin
  */
 
 void ExoRtWorker::ProcessMailbox()
@@ -154,7 +154,7 @@ void ExoRtWorker::ProcessMailbox()
     if (begin != end)  return;   /* 算法正在写 */
     if (begin == m_last_seq) return;   /* 无新命令 */
 
-    /* 首次收到算法命令 → 设标志, 让主循环调 state_transition */
+    /* 首次收到算法命令 ,  设标志, 让主循环调 state_transition */
     if (!m_handshake_done.load(std::memory_order_acquire) && begin > 0) {
         m_handshake_done.store(true, std::memory_order_release);
         /* 握手完成, 主循环在 READY 状态检测后推进到 RUNNING */
@@ -242,7 +242,7 @@ void ExoRtWorker::ProcessMailbox()
                                (int16_t)c.feedforward);
             break;
         case EXO_CMD_MIT:
-            /* MIT 值转 float (uint16→float→uint16, 经 motor_hal_mit_control 编码) */
+            /* MIT 值转 float (uint16, float, uint16, 经 motor_hal_mit_control 编码) */
             motor_hal_mit_control(m_hal, mid,
                 (float)c.mit_pos * (360.0f / 65535.0f) - 180.0f,
                 (float)((int16_t)(c.mit_vel << 4)) / 16.0f,
@@ -263,7 +263,7 @@ void ExoRtWorker::ProcessMailbox()
 }
 
 /*
- * PublishFeedback() — 读 fb_cache + 组装 feedback_frame_t → SHM
+ * PublishFeedback() — 读 fb_cache + 组装 feedback_frame_t ,  SHM
  *
  * 频率: 每 m_report_divider (5) 个周期 = 200Hz
  */
@@ -372,8 +372,8 @@ void ExoRtWorker::PublishFeedback()
  * 安全动作必须走 PDO, 不在 RT 线程中调 SDO.
  *
  * 检查项:
- *   1. seq_begin 停滞 > 200ms → PDO torque=0, WARN
- *   2. seq_begin 停滞 > 500ms → PDO Shutdown, FAULT
+ *   1. seq_begin 停滞 > 200ms ,  PDO torque=0, WARN
+ *   2. seq_begin 停滞 > 500ms ,  PDO Shutdown, FAULT
  *   3. (TODO) 编码器停滞
  *   4. (TODO) 过温检测
  *   5. (TODO) CAN 断线
@@ -400,7 +400,7 @@ void ExoRtWorker::SafetyCheck(uint64_t seq_before_process)
             uint64_t stall_ms = (now_us - m_seq_stall_us) / 1000ULL;
 
             if (stall_ms > m_safety.algo_shutdown_ms) {
-                /* FAULT: 算法严重失联 → PDO 降险 (只触发一次) */
+                /* FAULT: 算法严重失联 ,  PDO 降险 (只触发一次) */
                 if (!m_fault_triggered) {
                     m_fault_triggered   = true;
                     m_shm->motor_severity = MOTOR_FAULT;
@@ -423,18 +423,18 @@ void ExoRtWorker::SafetyCheck(uint64_t seq_before_process)
             }
         }
         else {
-            /* seq 恢复 → 自动恢复 */
+            /* seq 恢复 ,  自动恢复 */
             m_seq_stall_us = 0;
             if (m_shm->motor_severity == MOTOR_FAULT &&
                 m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
             {
-                /* 算法重连 → 清除 FAULT, 回到 READY (calib_done 保持) */
+                /* 算法重连 ,  清除 FAULT, 回到 READY (calib_done 保持) */
                 m_handshake_done.store(false, std::memory_order_release);
                 m_fault_triggered = false;
                 m_shm->motor_severity = MOTOR_OK;
                 m_shm->fault_reason   = FAULT_NONE;
                 __atomic_store_n(&m_pending_state, (uint32_t)STATE_READY, __ATOMIC_RELEASE);
-                RT_LOG("SAFETY RECOVER: algo reconnected → READY");
+                RT_LOG("SAFETY RECOVER: algo reconnected ,  READY");
             }
             else if (m_shm->motor_severity == MOTOR_WARN &&
                      m_shm->fault_reason == FAULT_ALGO_TIMEOUT)

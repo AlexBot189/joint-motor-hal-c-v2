@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
         /* 非阻塞读取融合输出 */
         if (emd_gaf_get_output(gaf, &out) == 0) {
 
-            /* 四元数 → 欧拉角 (ZYX: Yaw-Pitch-Roll), rad → deg */
+            /* 四元数 ,  欧拉角 (ZYX: Yaw-Pitch-Roll), rad ,  deg */
             float qw = out.quat_w, qx = out.quat_x, qy = out.quat_y, qz = out.quat_z;
             float yaw   = atan2f(2.0f*(qw*qz + qx*qy), 1.0f - 2.0f*(qy*qy + qz*qz)) * 57.29578f;
             float sp    = 2.0f*(qw*qy - qz*qx);

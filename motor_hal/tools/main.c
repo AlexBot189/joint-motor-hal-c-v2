@@ -3,11 +3,11 @@
  * @brief motor_tool — CANFD CANopen 电机控制工具入口
  *
  * 模式:
- *   motor_tool daemon can0   → 启动守护进程
- *   motor_tool stop           → 停止守护进程
- *   motor_tool help           → 显示帮助 (本地)
- *   motor_tool <cmd> [args]  → 通过 socket 向 daemon 发命令
- *   motor_tool                → 显示用法
+ *   motor_tool daemon can0   ,  启动守护进程
+ *   motor_tool stop           ,  停止守护进程
+ *   motor_tool help           ,  显示帮助 (本地)
+ *   motor_tool <cmd> [args]  ,  通过 socket 向 daemon 发命令
+ *   motor_tool                ,  显示用法
  */
 
 #include "daemon.h"
@@ -39,8 +39,8 @@ static void print_help(void)
     printf("  reboot <id>          电机重启\n");
     printf("  probe [id]           主动探测电机在线 (0=全部)\n\n");
 
-    printf("── 校准 & 传感器透传 ★ 控制前必须完成 ★ ──────────\n");
-    printf("  calib start <id_r> <id_l> [t]  校准流程 (设零位→验证)\n");
+    printf("── 校准 & 传感器透传 控制前必须完成 ──────────\n");
+    printf("  calib start <id_r> <id_l> [t]  校准流程 (设零位, 验证)\n");
     printf("  calib status          查看校准进度\n");
     printf("  calib exit            退出校准\n");
     printf("  setzero <id>          设当前位置为零位\n");
@@ -68,8 +68,8 @@ static void print_help(void)
     printf("  mit <id> <pos> <vel> <kp> <kd> <torque>  MIT 阻抗\n\n");
 
     printf("── 配置命令 ──────────────────────────────────────\n");
-    printf("  limit_pos <id> <deg>       正限位 (失能→写→Flash)\n");
-    printf("  limit_neg <id> <deg>       负限位 (失能→写→Flash)\n");
+    printf("  limit_pos <id> <deg>       正限位 (失能, 写, Flash)\n");
+    printf("  limit_neg <id> <deg>       负限位 (失能, 写, Flash)\n");
     printf("  save <id>                  保存参数到 Flash\n");
     printf("  pid <id> <cp> <ci> <vp> <vi> <pp> <pi>  设置PID\n\n");
 
@@ -102,8 +102,8 @@ static void print_help(void)
 
     printf("── 框架工作流 ────────────────────────────────────\n");
     printf("  ① motor_tool daemon can0 &        # 启动守护进程\n");
-    printf("  ② [电机上电 → 发 0x701 bootup]     # 物理操作\n");
-    printf("  ③ # daemon 自动收到 bootup → auto-startup → 使能\n");
+    printf("  ② [电机上电 ,  发 0x701 bootup]     # 物理操作\n");
+    printf("  ③ # daemon 自动收到 bootup ,  auto-startup ,  使能\n");
     printf("  ④ motor_tool calib start 1 2      # 校准\n");
     printf("     motor_tool sensor config 1 250  # 开启透传\n");
     printf("  ⑤ motor_tool torque 1 500         # 控制!\n");
@@ -136,11 +136,11 @@ int main(int argc, char **argv)
         return daemon_stop();
     }
 
-    /* sensor watch → 持续读模式 (长连接, 不断开) */
+    /* sensor watch ,  持续读模式 (长连接, 不断开) */
     if (strcmp(argv[1], "sensor") == 0 && argc >= 4 && strcmp(argv[2], "watch") == 0) {
         return client_sensor_watch(argc, argv);
     }
 
-    /* 其他命令 → 客户端模式 */
+    /* 其他命令 ,  客户端模式 */
     return client_send(argc, argv);
 }

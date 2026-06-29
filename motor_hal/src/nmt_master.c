@@ -47,5 +47,5 @@ void nmt_reset_comm(can_driver_t *drv, uint8_t node)
 
 void nmt_broadcast(can_driver_t *drv, uint8_t cmd)
 {
-    nmt_send(drv, cmd, 0);  /* node=0 → 广播 */
+    nmt_send(drv, cmd, 0);  /* node=0 ,  广播 */
 }

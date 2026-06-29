@@ -29,7 +29,7 @@ static void _dump_hex(const char *dir, const canfd_frame_t *f)
 }
 
 /* =====================================================
- * SDO 响应队列 (全局, 接收线程写 → SDO客户端读)
+ * SDO 响应队列 (全局, 接收线程写 ,  SDO客户端读)
  * ===================================================== */
 
 #define SDO_QUEUE_SIZE 32
@@ -79,7 +79,7 @@ void sdo_push_response(const canfd_frame_t *f)
     pthread_mutex_lock(&g_sdo_queue.mutex);
 
     if (g_sdo_queue.count >= SDO_QUEUE_SIZE) {
-        /* 队列满 → 丢弃最旧的 (不应该发生, 但防御) */
+        /* 队列满 ,  丢弃最旧的 (不应该发生, 但防御) */
         g_sdo_queue.tail = (g_sdo_queue.tail + 1) % SDO_QUEUE_SIZE;
         g_sdo_queue.count--;
     }
@@ -129,12 +129,12 @@ static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
                 found = i;
                 break;
             }
-            /* 索引不匹配 → 跳过, 不删除(可能其他线程在等) */
+            /* 索引不匹配 ,  跳过, 不删除(可能其他线程在等) */
             continue;
         }
 
         if (found >= 0) {
-            /* 找到 → 解析 → 从队列移除 */
+            /* 找到 ,  解析 ,  从队列移除 */
             int idx = (g_sdo_queue.tail + found) % SDO_QUEUE_SIZE;
             canfd_frame_t f = g_sdo_queue.frames[idx];
 
@@ -164,14 +164,14 @@ static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
             return 0;
         }
 
-        /* 没找到 → 条件变量等 */
+        /* 没找到 ,  条件变量等 */
         int ret = pthread_cond_timedwait(&g_sdo_queue.cond,
                                          &g_sdo_queue.mutex, &deadline);
         if (ret == ETIMEDOUT) {
             pthread_mutex_unlock(&g_sdo_queue.mutex);
             return -ETIMEDOUT;
         }
-        /* spurious wakeup → 重新扫描 */
+        /* spurious wakeup ,  重新扫描 */
     }
 }
 

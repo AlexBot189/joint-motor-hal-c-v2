@@ -8,7 +8,7 @@
  *
  * 示例:
  *   motor_tool tpdo_map 1 0x181 1 0x6041 0 16 0x6064 0 32
- *   → TPDO1 node=1, COB=0x181, 每个SYNC发一次, 映射 Statusword(16b)+Position(32b)
+ *   ,  TPDO1 node=1, COB=0x181, 每个SYNC发一次, 映射 Statusword(16b)+Position(32b)
  */
 
 #include "command_registry.h"
@@ -139,7 +139,7 @@ int cmd_do_rpdo_map(motor_hal_t *hal, int cmd_id, int argc, char **argv)
  *   motor_tool rpdo <id> <trans_type> <item1> [item2] ...
  *
  *   TPDO items: cur(pos) / vel / status / temp / err
- *   RPDO items: cw(controlword) / pos / cur / vel (★ 通常只选一个目标参数)
+ *   RPDO items: cw(controlword) / pos / cur / vel (通常只选一个目标参数)
  *
  * 示例:
  *   motor_tool tpdo 1 1 cur pos vel          # TPDO: Current+Position+Velocity
@@ -240,7 +240,7 @@ int cmd_do_rpdo_quick(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (argc < 5) {
         fprintf(stderr, "Usage: motor_tool rpdo <id> <trans_type> <item> [item...]\n");
         fprintf(stderr, "  RPDO items: cw pos cur vel\n");
-        fprintf(stderr, "  ★ 通常只选一个目标参数 (cw + 当前模式对应的目标)\n");
+        fprintf(stderr, "  通常只选一个目标参数 (cw + 当前模式对应的目标)\n");
         fprintf(stderr, "  trans_type: 255=async, 1~240=sync, 0=sync_acyclic\n");
         fprintf(stderr, "Examples:\n");
         fprintf(stderr, "  motor_tool rpdo 1 255 cw pos           # CSP: CW+TargetPosition\n");

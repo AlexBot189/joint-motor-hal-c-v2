@@ -10,7 +10,7 @@
  *   5. 主循环 (事件驱动)
  *
  * 所有 SDO/PDO/OD 控制通过 ExoMotorCtrl 封装.
- * RT 控制走 ExoRtWorker → SHM mailbox.
+ * RT 控制走 ExoRtWorker ,  SHM mailbox.
  */
 #pragma once
 

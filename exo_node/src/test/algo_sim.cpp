@@ -4,13 +4,13 @@
  * v4: Byte0控制 + 多控制模式示例.
  *
  * 控制流程:
- *   1. SDO startup (由 motor_node 完成) → DS402 in OP
- *   2. 算法发 EXO_CMD_ENABLE → pdo_byte0 bit7=1 → 电机开始响应PDO
- *   3. 算法发 EXO_CMD_SET_MODE → 切换控制模式
- *   4. 控制循环发 EXO_CMD_TORQUE/POS/SPEED/MIT → 只传target
+ *   1. SDO startup (由 motor_node 完成) ,  DS402 in OP
+ *   2. 算法发 EXO_CMD_ENABLE ,  pdo_byte0 bit7=1 ,  电机开始响应PDO
+ *   3. 算法发 EXO_CMD_SET_MODE ,  切换控制模式
+ *   4. 控制循环发 EXO_CMD_TORQUE/POS/SPEED/MIT ,  只传target
  *   5. 急停: EXO_CMD_ESTOP
  *   6. 恢复: EXO_CMD_RECOVER
- *   7. 清错: 先读 fb->motor[i].error_code → 判断 → EXO_CMD_CLEAR_FAULT
+ *   7. 清错: 先读 fb->motor[i].error_code ,  判断 ,  EXO_CMD_CLEAR_FAULT
  *
  * Byte0 字段说明:
  *   bit7: PDO使能 (EXO_CMD_ENABLE/DISABLE)
@@ -103,8 +103,8 @@ int main()
     uint64_t t0_us = now_us();
 
     /* ================================================================
-     * Step 1: 等待 motor_node 完成 SDO startup (DS402 → OP)
-     * 然后算法显式发 ENABLE → pdo_byte0 bit7=1
+     * Step 1: 等待 motor_node 完成 SDO startup (DS402 ,  OP)
+     * 然后算法显式发 ENABLE ,  pdo_byte0 bit7=1
      * ================================================================ */
     printf("[algo_sim] waiting for motor startup...\n");
 
@@ -129,7 +129,7 @@ int main()
             /* ── STATE_RUNNING 时首次发送 enable + 模式 ── */
             static bool initialized = false;
             if (state == STATE_RUNNING && !initialized) {
-                printf("[algo_sim] motors ready → PDO enable + set mode\n");
+                printf("[algo_sim] motors ready ,  PDO enable + set mode\n");
                 /* 双电机: PDO使能 + 力矩模式 */
                 cmd_set(shm, 0, 1, EXO_CMD_ENABLE,   0, 0, 0, 0);
                 cmd_set(shm, 1, 2, EXO_CMD_ENABLE,   0, 0, 0, 0);
@@ -242,16 +242,16 @@ int main()
                         uint8_t err = fb->motor[i].error_code;
                         printf("  motor[%d] error_code=0x%02X", i + 1, err);
                         if (err & ALGO_ERR_OVER_TEMP) {
-                            printf(" (over temp: %.1f°C → waiting to cool)\n",
+                            printf(" (over temp: %.1f°C ,  waiting to cool)\n",
                                    (float)fb->motor[i].temperature / 10.0f);
                         } else if (err & ALGO_ERR_STALL) {
-                            printf(" (stall → clearing via PDO bit5)\n");
+                            printf(" (stall ,  clearing via PDO bit5)\n");
                             if (shm->motor_online & (1 << i)) {
                                 cmd_set(shm, i, (uint8_t)(i + 1),
                                         EXO_CMD_CLEAR_FAULT, 0, 0, 0, fb->timestamp_us);
                             }
                         } else if (err != 0) {
-                            printf(" (generic → clearing via PDO bit5)\n");
+                            printf(" (generic ,  clearing via PDO bit5)\n");
                             if (shm->motor_online & (1 << i)) {
                                 cmd_set(shm, i, (uint8_t)(i + 1),
                                         EXO_CMD_CLEAR_FAULT, 0, 0, 0, fb->timestamp_us);

@@ -15,9 +15,9 @@
  * sensor config <id> <period_ms> [bus_fmt]
  *
  * period_div = period_ms * 4  (因为 250us tick)
- *   period_ms=0 → period_div=0 → 关闭
- *   period_ms=1 → period_div=4 → 1KHz
- *   period_ms=10 → period_div=40 → 100Hz
+ *   period_ms=0 ,  period_div=0 ,  关闭
+ *   period_ms=1 ,  period_div=4 ,  1KHz
+ *   period_ms=10 ,  period_div=40 ,  100Hz
  *
  * bus_fmt: 0=Classic CAN, 3=CANFD BRS (默认)
  * ================================================================ */
@@ -39,7 +39,7 @@ int cmd_do_sensor(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (strcmp(sub, "config") == 0 || strcmp(sub, "start") == 0) {
         if (argc < 5) {
             fprintf(stderr, "Usage: motor_tool sensor config <id> <period_ms> [bus_fmt]\n");
-            fprintf(stderr, "  period_ms=0→关闭, 1→1ms/1KHz, 10→10ms/100Hz\n");
+            fprintf(stderr, "  period_ms=0, 关闭, 1, 1ms/1KHz, 10, 10ms/100Hz\n");
             fprintf(stderr, "  bus_fmt: 0=Classic CAN, 3=CANFD BRS (默认)\n");
             return -1;
         }

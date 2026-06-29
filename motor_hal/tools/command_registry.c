@@ -16,23 +16,23 @@ const command_entry_t g_cmd_table[] = {
 
     /* 系统命令 */
     { CMD_INIT,     "init",     "init <can_iface>",              "初始化 CANFD 接口",            2, 2 },
-    { CMD_STARTUP,  "startup",  "startup <id>",                  "上电启动 (Bootup→NMT→DS402)",  2, 2 },
+    { CMD_STARTUP,  "startup",  "startup <id>",                  "上电启动 (Bootup, NMT, DS402)",  2, 2 },
     { CMD_ENABLE,   "enable",   "enable <id>",                   "使能电机",                     2, 2 },
     { CMD_DISABLE,  "disable",  "disable <id>",                  "脱使能电机",                   2, 2 },
     { CMD_RESET,    "reset",    "reset <id>",                    "故障复位",                     2, 2 },
 
     /* SDO 控制 — 完整时序 */
-    { CMD_TORQUE,   "torque",   "torque <id> <mA>",              "SDO电流控制(0~20000mA) 使能→电流模式→写0x6071", 3, 3 },
-    { CMD_SPEED,    "speed",    "speed <id> <rpm*100> [acc*100] [dec*100]", "SDO速度控制 使能→PV→加减速→写0x60FF", 3, 5 },
-    { CMD_ABS,      "abs",      "abs <id> <deg*100>",           "SDO位置控制 使能→PP→设参→目标→启动", 3, 3 },
+    { CMD_TORQUE,   "torque",   "torque <id> <mA>",              "SDO电流控制(0~20000mA) 使能, 电流模式, 写0x6071", 3, 3 },
+    { CMD_SPEED,    "speed",    "speed <id> <rpm*100> [acc*100] [dec*100]", "SDO速度控制 使能, PV, 加减速, 写0x60FF", 3, 5 },
+    { CMD_ABS,      "abs",      "abs <id> <deg*100>",           "SDO位置控制 使能, PP, 设参, 目标, 启动", 3, 3 },
     { CMD_ABS_STOP, "abs_stop", "abs_stop <id>",                "停止位置运动 (CW=0x0F)",       2, 2 },
     { CMD_ABS_ACCEL,"abs_accel","abs_accel <acc*100>",          "位置加减速 RPM/s×100 (默认2000)", 2, 2 },
     { CMD_ABS_SPEED,"abs_speed","abs_speed <rpm*100>",          "位置轨迹速度 RPM×100 输出端(默认10)", 2, 2 },
 
     /* SDO 单控 */
     { CMD_SETZERO,  "setzero",  "setzero <id>",                  "零位标定 (自动失能)",          2, 2 },
-    { CMD_LIMIT_POS,"limit_pos","limit_pos <id> <deg*100>",     "正限位 (失能→写→Flash)",      3, 3 },
-    { CMD_LIMIT_NEG,"limit_neg","limit_neg <id> <deg*100>",     "负限位 (失能→写→Flash)",      3, 3 },
+    { CMD_LIMIT_POS,"limit_pos","limit_pos <id> <deg*100>",     "正限位 (失能, 写, Flash)",      3, 3 },
+    { CMD_LIMIT_NEG,"limit_neg","limit_neg <id> <deg*100>",     "负限位 (失能, 写, Flash)",      3, 3 },
     { CMD_LIMIT_POS_RD,"read_limit_pos","read_limit_pos <id>",  "读正限位 0x607D/02",           2, 2 },
     { CMD_LIMIT_NEG_RD,"read_limit_neg","read_limit_neg <id>",  "读负限位 0x607D/01",           2, 2 },
     { CMD_SAVE,     "save",     "save <id>",                     "保存参数到 Flash",             2, 2 },

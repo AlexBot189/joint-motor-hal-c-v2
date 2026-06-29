@@ -41,9 +41,9 @@ void print_latency_section(const char* title, uint64_t t0, uint64_t t1,
     if (fb) {
         printf("│   T4 (algo read) : %lu us\n", (unsigned long)fb->ts_algo_read);
         printf("│   T5 (algo done) : %lu us\n", (unsigned long)fb->ts_algo_done);
-        printf("│   latency T2→T3  : %ld us\n", (long)(t3 - t2));
+        printf("│   latency T2, T3  : %ld us\n", (long)(t3 - t2));
         if (fb->ts_can_rx > 0) {
-            printf("│   latency T0→T3  : %ld us\n", (long)(t3 - fb->ts_can_rx));
+            printf("│   latency T0, T3  : %ld us\n", (long)(t3 - fb->ts_can_rx));
         }
     }
 }
@@ -173,9 +173,9 @@ int main()
         printf("├─────────────────────────────────────────────┤\n");
         printf("│ 延迟追踪                                   │\n");
         printf("├── 耗时追踪 (EXO_LATENCY_TRACE)                ──┤\n");
-        printf("│  反馈T1→T4 : avg=%uuus  max=%uuus                 │\n",
+        printf("│  反馈T1, T4 : avg=%uuus  max=%uuus                 │\n",
                shm->fb_total_avg_us, shm->fb_total_max_us);
-        printf("│  控制T5→T6 : avg=%uuus  max=%uuus                 │\n",
+        printf("│  控制T5, T6 : avg=%uuus  max=%uuus                 │\n",
                shm->ctrl_total_avg_us, shm->ctrl_total_max_us);
         printf("│  fb_cache读 : avg=%uuus  max=%uuus                  │\n",
                shm->fb_read_avg_us, shm->fb_read_max_us);

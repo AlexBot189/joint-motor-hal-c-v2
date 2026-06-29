@@ -3,14 +3,14 @@
  * @brief 校准状态机实现 — 移植自 GD32 jx_can.c/jx_motor.c
  *
  * GD32 流程:
- *   motor_can_comm==1 → 按键触发
- *   motor_para_calibrate: 0→1(设零位)→2(位置检测±1°成功)→3(失败)
+ *   motor_can_comm==1 ,  按键触发
+ *   motor_para_calibrate: 0, 1(设零位), 2(位置检测±1°成功), 3(失败)
  *   成功后: 使能+电流模式+开透传
  *
  * RV1126B 移植:
- *   - 按键 → API 调用
- *   - SDO 轮询角度 → motor_hal_get_feedback() 读缓存
- *   - tx_re_flag 同步 → motor_hal_c 内部 SDO 队列处理
+ *   - 按键 ,  API 调用
+ *   - SDO 轮询角度 ,  motor_hal_get_feedback() 读缓存
+ *   - tx_re_flag 同步 ,  motor_hal_c 内部 SDO 队列处理
  */
 
 #include "motor_calib.h"
@@ -144,7 +144,7 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
         uint8_t id_l = cal->cfg.motor_id_l;
         int ret = 0;
 
-        /* Step 3: DS402 使能 (0x06→0x07→0x0F) */
+        /* Step 3: DS402 使能 (0x06, 0x07, 0x0F) */
         if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 2);
         if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 2);
         usleep(20000);

@@ -4,15 +4,15 @@
  *
  * 完整启动序列:
  *   1. 快速试探 Bootup (500ms, 不论结果都继续)
- *   2. SDO 同步配置心跳 ★ 真正的电机在线验证
+ *   2. SDO 同步配置心跳 真正的电机在线验证
  *   3. 关看门狗 (推荐)
  *   4. 读固件版本 (best-effort, 失败不阻塞后续)
- *   5. 使能 (DS402 状态机: Shutdown→SwitchOn→EnableOp)
+ *   5. 使能 (DS402 状态机: Shutdown, SwitchOn, EnableOp)
  *   6. 延时 120ms (抱闸释放)
  *
  * 改动:
  *   - 步骤1: bootup 等不到不报错, 继续往下走
- *   - 步骤2: fire-and-forget → 改同步 SDO, 真正的"电机在线"验证
+ *   - 步骤2: fire-and-forget ,  改同步 SDO, 真正的"电机在线"验证
  *   - 步骤4: 固件读失败不阻塞, 打印日志继续
  */
 
@@ -47,17 +47,17 @@ int motor_startup_enable(can_driver_t *drv, uint8_t node_id)
 {
     int ret;
 
-    /* Step A: Shutdown → Ready to Switch On */
+    /* Step A: Shutdown ,  Ready to Switch On */
     ret = sdo_write_simple(drv, node_id, OD_CONTROLWORD, 0x00, CW_SHUTDOWN, 2);
     if (ret != 0) return ret;
     usleep(20000);
 
-    /* Step B: Switch On → Switched On */
+    /* Step B: Switch On ,  Switched On */
     ret = sdo_write_simple(drv, node_id, OD_CONTROLWORD, 0x00, CW_SWITCH_ON, 2);
     if (ret != 0) return ret;
     usleep(20000);
 
-    /* Step C: Enable Operation → Operation Enabled */
+    /* Step C: Enable Operation ,  Operation Enabled */
     ret = sdo_write_simple(drv, node_id, OD_CONTROLWORD, 0x00, CW_ENABLE_OP, 2);
     if (ret != 0) return ret;
 
@@ -83,13 +83,13 @@ int motor_startup_full(can_driver_t *drv, const motor_config_t *cfg,
         canfd_frame_t nmt_f;
         canopen_nmt_build(NMT_CMD_START, cfg->node_id, &nmt_f);
         can_driver_send(drv, &nmt_f);
-        fprintf(stderr, "[startup] motor %d NMT Start → Operational\n", cfg->node_id);
+        fprintf(stderr, "[startup] motor %d NMT Start ,  Operational\n", cfg->node_id);
         usleep(10000);  /* 等驱动板切状态 */
     }
 
-    /* 2. SDO 同步配置心跳 ★ 用同步 SDO 等响应:
-         有响应 → 电机确认在线 + 心跳周期生效
-         超时   → 电机不在线, 返回错误 */
+    /* 2. SDO 同步配置心跳 用同步 SDO 等响应:
+         有响应 ,  电机确认在线 + 心跳周期生效
+         超时   ,  电机不在线, 返回错误 */
     ret = sdo_write_simple(drv, cfg->node_id, OD_HEARTBEAT, 0x00,
                            cfg->heartbeat_ms, 2);
     if (ret != 0) return ret;

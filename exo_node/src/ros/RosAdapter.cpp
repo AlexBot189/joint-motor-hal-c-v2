@@ -58,7 +58,7 @@ void RosAdapter::Stop()
     }
 }
 
-/* PullLoop: 200Hz 从 SHM 读反馈 → publish */
+/* PullLoop: 200Hz 从 SHM 读反馈 ,  publish */
 
 void RosAdapter::PullLoop()
 {
@@ -83,7 +83,7 @@ void RosAdapter::PullLoop()
     }
 }
 
-/* PubFeedback: feedback_frame_t → JSON → /stark/motor/feedback */
+/* PubFeedback: feedback_frame_t ,  JSON ,  /stark/motor/feedback */
 
 void RosAdapter::PubFeedback(const feedback_frame_t& fb)
 {
@@ -149,7 +149,7 @@ void RosAdapter::PubState(exo_state_t state)
     m_statePub.publish(msg);
 }
 
-/* OnMotorCtrl: ROS → dispatcher->Send */
+/* OnMotorCtrl: ROS ,  dispatcher->Send */
 
 void RosAdapter::OnMotorCtrl(const std_msgs::String::ConstPtr& msg)
 {

@@ -99,7 +99,7 @@ bool canopen_sdo_parse_response(const canfd_frame_t *f,
                        | ((uint32_t)f->data[6] << 16) | ((uint32_t)f->data[7] << 24);
             }
             return true;
-        case 0x60:  /* SDO 写确认 (从站→主站) */
+        case 0x60:  /* SDO 写确认 (从站, 主站) */
             return true;
         case SDO_CC_DOWNLOAD_1B:
         case SDO_CC_DOWNLOAD_2B:
@@ -233,16 +233,16 @@ void canopen_mit_pdo_build(uint8_t node, motor_mode_t mode,
     /* 文档大端: [1]=位置高8, [2]=位置低8 */
     f->data[1] = (uint8_t)((position >> 8) & 0xFF);
     f->data[2] = (uint8_t)(position & 0xFF);
-    /* 速度12bit[11:4]→[3], 速度低4bit[3:0]→[4][7:4] */
+    /* 速度12bit[11:4], [3], 速度低4bit[3:0], [4][7:4] */
     f->data[3] = (uint8_t)((velocity >> 4) & 0xFF);
-    /* Kp高4bit[11:8]→[4][3:0], Kp低8bit[7:0]→[5] */
+    /* Kp高4bit[11:8], [4][3:0], Kp低8bit[7:0], [5] */
     f->data[4] = (uint8_t)(((velocity & 0x0F) << 4) | ((kp >> 8) & 0x0F));
     f->data[5] = (uint8_t)(kp & 0xFF);
-    /* Kd高8bit[11:4]→[6] */
+    /* Kd高8bit[11:4], [6] */
     f->data[6] = (uint8_t)((kd >> 4) & 0xFF);
-    /* Kd低4bit[3:0]→[7][7:4], 力矩高4bit[11:8]→[7][3:0] */
+    /* Kd低4bit[3:0], [7][7:4], 力矩高4bit[11:8], [7][3:0] */
     f->data[7] = (uint8_t)(((kd & 0x0F) << 4) | ((torque >> 8) & 0x0F));
-    /* 力矩低8bit[7:0]→[8] */
+    /* 力矩低8bit[7:0], [8] */
     f->data[8] = (uint8_t)(torque & 0xFF);
 }
 

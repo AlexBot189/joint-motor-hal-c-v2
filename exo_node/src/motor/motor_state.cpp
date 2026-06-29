@@ -75,16 +75,16 @@ bool state_transition_allowed(exo_state_t from, exo_state_t to)
     /* 允许 FAULT 从任意状态触发 */
     if (to == STATE_FAULT) return true;
 
-    /* 顺序: BOOTING → READY → RUNNING */
+    /* 顺序: BOOTING ,  READY ,  RUNNING */
     if (from == STATE_BOOTING && to == STATE_READY)   return true;
     if (from == STATE_READY   && to == STATE_RUNNING) return true;
 
-    /* RUNNING → FAULT (已在上面 FAULT 通用规则中覆盖) */
+    /* RUNNING ,  FAULT (已在上面 FAULT 通用规则中覆盖) */
 
-    /* FAULT → READY (恢复) */
+    /* FAULT ,  READY (恢复) */
     if (from == STATE_FAULT && to == STATE_READY) return true;
 
-    /* READY → FAULT (硬件异常) */
+    /* READY ,  FAULT (硬件异常) */
     if (from == STATE_READY && to == STATE_FAULT) return true;
 
     return false;
@@ -97,7 +97,7 @@ bool state_transition(exo_state_t to)
     exo_state_t from = g_exo_state;
 
     if (!state_transition_allowed(from, to)) {
-        ECO_WARN_NEW("[StateMachine] denied: {} → {}",
+        ECO_WARN_NEW("[StateMachine] denied: {} ,  {}",
                      state_name(from), state_name(to));
         return false;
     }
@@ -106,6 +106,6 @@ bool state_transition(exo_state_t to)
     g_exo_state = to;
     if (enter_hooks[to]) enter_hooks[to]();
 
-    ECO_INFO_NEW("[StateMachine] {} → {}", state_name(from), state_name(to));
+    ECO_INFO_NEW("[StateMachine] {} ,  {}", state_name(from), state_name(to));
     return true;
 }

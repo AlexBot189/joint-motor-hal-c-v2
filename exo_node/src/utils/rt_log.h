@@ -48,7 +48,7 @@ public:
         __atomic_store_n(&m_wr, next, __ATOMIC_RELAXED);
     }
 
-    /* 非 RT 日志线程调用: drain → callback */
+    /* 非 RT 日志线程调用: drain ,  callback */
     void Drain(void (*output_fn)(const char* msg))
     {
         uint32_t w = __atomic_load_n(&m_wr, __ATOMIC_RELAXED);

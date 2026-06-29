@@ -101,7 +101,7 @@ void ImuHALSensor::Read(imu_data_t* out) const
     out->quat_y      = imu.quat_y;
     out->quat_z      = imu.quat_z;
 
-    /* 四元数 → 欧拉角 (ZYX: Yaw-Pitch-Roll, rad → °) */
+    /* 四元数 ,  欧拉角 (ZYX: Yaw-Pitch-Roll, rad ,  °) */
     {
         float qw = imu.quat_w, qx = imu.quat_x, qy = imu.quat_y, qz = imu.quat_z;
         out->yaw   = atan2f(2.0f*(qw*qz + qx*qy), 1.0f - 2.0f*(qy*qy + qz*qz)) * 57.29578f;

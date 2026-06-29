@@ -2,8 +2,8 @@
  * exo_state_machine.h — 4 状态机
  * Copyright (c) 2026 zhiqiang.yang
  *
- * 状态: BOOTING → READY → RUNNING
- *       任意状态 → FAULT, FAULT → READY
+ * 状态: BOOTING ,  READY ,  RUNNING
+ *       任意状态 ,  FAULT, FAULT ,  READY
  *
  * 使用: state_transition(new_state) 一次调用完成 exit+enter
  */

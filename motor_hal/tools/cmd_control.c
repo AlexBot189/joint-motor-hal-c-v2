@@ -14,7 +14,7 @@
 #include <string.h>
 
 /* ================================================================
- * torque <id> <mA> — SDO 电流控制 (使能→电流模式→写0x6071)
+ * torque <id> <mA> — SDO 电流控制 (使能, 电流模式, 写0x6071)
  *   范围 0~20000 mA (0~20A)
  * ================================================================ */
 
@@ -44,7 +44,7 @@ int cmd_do_speed(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 }
 
 /* ================================================================
- * abs <id> <deg*100> — SDO 位置控制 (使能→PP→设参数→目标→启动)
+ * abs <id> <deg*100> — SDO 位置控制 (使能, PP, 设参数, 目标, 启动)
  *   加减速默认 2000 RPM/s, 轨迹速度默认 10 RPM, 范围 -180°~180°
  * ================================================================ */
 
@@ -92,7 +92,7 @@ int cmd_do_abs_speed(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 }
 
 /* ================================================================
- * limit_pos <id> <deg*100> — 正限位 (自动失能→写→save_flash)
+ * limit_pos <id> <deg*100> — 正限位 (自动失能, 写, save_flash)
  * ================================================================ */
 
 int cmd_do_limit_pos(motor_hal_t *hal, int cmd_id, int argc, char **argv)
@@ -105,7 +105,7 @@ int cmd_do_limit_pos(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 }
 
 /* ================================================================
- * limit_neg <id> <deg*100> — 负限位 (自动失能→写→save_flash)
+ * limit_neg <id> <deg*100> — 负限位 (自动失能, 写, save_flash)
  * ================================================================ */
 
 int cmd_do_limit_neg(motor_hal_t *hal, int cmd_id, int argc, char **argv)
@@ -118,7 +118,7 @@ int cmd_do_limit_neg(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 }
 
 /* ================================================================
- * setzero <id> — 零位标定 (自动失能→写0x2531)
+ * setzero <id> — 零位标定 (自动失能, 写0x2531)
  * ================================================================ */
 
 int cmd_do_setzero(motor_hal_t *hal, int cmd_id, int argc, char **argv)

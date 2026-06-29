@@ -165,7 +165,7 @@ int cmd_do_multi(motor_hal_t *hal, int cmd_id, int argc, char **argv)
         } else if (strcmp(mode_str, "cur") == 0) {
             cmds[i].target1 = (int16_t)val;
         } else {
-            cmds[i].target1 = motor_deg_to_counts((float)val);  /* csp: 度→counts */
+            cmds[i].target1 = motor_deg_to_counts((float)val);  /* csp: 度, counts */
         }
     }
 

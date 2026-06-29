@@ -62,8 +62,8 @@ typedef struct {
 #define COB_NMT              (0x000)   /* 网络管理 */
 #define COB_SYNC             (0x080)   /* 同步报文 */
 #define COB_EMCY_BASE        (0x080)   /* 紧急报文: 0x080 + node_id */
-#define COB_SDO_TX_BASE      (0x600)   /* SDO 请求 (主→从) */
-#define COB_SDO_RX_BASE      (0x580)   /* SDO 应答 (从→主) */
+#define COB_SDO_TX_BASE      (0x600)   /* SDO 请求 (主, 从) */
+#define COB_SDO_RX_BASE      (0x580)   /* SDO 应答 (从, 主) */
 #define COB_BOOTUP_BASE      (0x700)   /* Bootup / Heartbeat */
 #define COB_TPDO1_BASE       (0x180)   /* 标准 TPDO1 */
 #define COB_RPDO1_BASE       (0x200)   /* 标准 RPDO1 */
@@ -410,8 +410,8 @@ typedef struct {
 
 /* PDO 类型 */
 typedef enum {
-    PDO_TYPE_RPDO = 0,  /* 主站→从站 (控制) */
-    PDO_TYPE_TPDO = 1,  /* 从站→主站 (上报) */
+    PDO_TYPE_RPDO = 0,  /* 主站, 从站 (控制) */
+    PDO_TYPE_TPDO = 1,  /* 从站, 主站 (上报) */
 } pdo_type_t;
 
 /* ============================================================================

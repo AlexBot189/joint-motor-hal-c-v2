@@ -6,9 +6,9 @@
  * 周期 1KHz, SCHED_FIFO prio=90
  *
  * 单周期流程:
- *   ① ProcessMailbox()   → 读 SHM mailbox → PDO multi_ctrl
- *   ② PublishFeedback()  → fb_cache + IMU → SHM double buffer
- *   ③ SafetyCheck()      → seq停滞 / torque归零 (PDO)
+ *   ① ProcessMailbox()   ,  读 SHM mailbox ,  PDO multi_ctrl
+ *   ② PublishFeedback()  ,  fb_cache + IMU ,  SHM double buffer
+ *   ③ SafetyCheck()      ,  seq停滞 / torque归零 (PDO)
  */
 #pragma once
 
@@ -39,7 +39,7 @@ struct SafetyConfig {
 struct RtConfig {
     int      priority         = 90;
     uint32_t period_us        = 1000;
-    int      report_divider   = 5;     /* 5周期 → 200Hz */
+    int      report_divider   = 5;     /* 5周期 ,  200Hz */
     int      cpu_affinity[2]  = {3, -1}; /* 只绑 core 3, core 2 留给算法进程 */
     bool     enable_rt        = true;  /* true=SCHED_FIFO, false=SCHED_OTHER */
 };
@@ -66,7 +66,7 @@ public:
     /** @brief 获取 RT 线程请求的状态切换 (主循环读取后清零, atomic exchange) */
     exo_state_t GetPendingState();
 
-    /** @brief 算法握手是否已完成 (用于 ENABLED→RUNNING 自动推进) */
+    /** @brief 算法握手是否已完成 (用于 ENABLED, RUNNING 自动推进) */
     bool IsHandshakeDone() const { return m_handshake_done.load(std::memory_order_acquire); }
 
     /** @brief 获取延迟追踪器 (外部填充 SHM stats) */
@@ -124,7 +124,7 @@ private:
     bool     m_sensor_notified[EXO_MAX_MOTORS];
     bool     m_imu_notified;
 
-    /* RT→主线程 状态切换请求 (atomic, RT 写, 主线程读后清零) */
+    /* RT, 主线程 状态切换请求 (atomic, RT 写, 主线程读后清零) */
     uint32_t m_pending_state = STATE_BOOTING;
 
     /* 去重标志 */
