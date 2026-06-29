@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
         int ret = emd_gaf_get_output(gaf, &out);
         if (ret == 0) {
             if (is_first || line_cnt % 20 == 0) {
-                printf("%-12s %8s %12s %12s %12s %12s %12s %12s %12s %12s %12s %6s %4s %4s %4s\n",
+                printf("%-12s %8s %12s %12s %12s %12s %12s %12s %12s %12s %12s %6s %4s %4s %4s %4s\n",
                        "Time(s)", "Heading°", "QuatW", "QuatX", "QuatY", "QuatZ",
                        "AccX(g)", "AccY(g)", "AccZ(g)",
                        "GyrX", "GyrY", "GyrZ",
