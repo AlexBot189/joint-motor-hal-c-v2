@@ -59,7 +59,7 @@ BUILD_DIR="$PROJECT_DIR/motor_hal/build"
 TOOLS_DIR="$PROJECT_DIR/motor_hal/tools/build"
 IMU_DIR="$PROJECT_DIR/imu_hal/build"
 STARK_DIR="$PROJECT_DIR/stark_periph_node/build"
-TEST_DIR="$PROJECT_DIR/exo_node/src/test/build"
+TEST_DIR="$PROJECT_DIR/stark_periph_node/src/test/build"
 
 echo "=========================================="
 echo "  stark 部署打包"
@@ -114,15 +114,9 @@ _copy_bin "$TEST_DIR/algo_sim"                      "algo_sim"
 _copy_bin "$TEST_DIR/perf_test"                     "perf_test"
 
 echo ""
-echo "示例 (→ $TARGET_DEVICE/bin/):"
-for f in "$BUILD_DIR"/motor_example_*; do
-    if [ -f "$f" ]; then
-        name="$(basename "$f")"
-        cp "$f" "$DEPLOY_BIN/$name"
-        ls -lh "$f" | awk '{printf "  ✓ bin/%-30s %5s\n", "'"$name"'", $5}'
-        copied=$((copied + 1))
-    fi
-done
+echo "调试/算法工具 (→ $TARGET_DEVICE/bin/):"
+_copy_bin "$TEST_DIR/stark_tool"                    "stark_tool"
+_copy_bin "$TEST_DIR/demo_algo"                     "demo_algo"
 
 echo ""
 echo "=========================================="

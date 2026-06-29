@@ -68,7 +68,7 @@ echo "=========================================="
 mkdir -p "$BUILD_DIR"
 $CMAKE -S "$PROJECT_DIR/motor_hal" -B "$BUILD_DIR" \
     -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
-    -DBUILD_EXAMPLES=ON \
+    -DBUILD_EXAMPLES=OFF \
     $SHARED_FLAG
 
 $CMAKE --build "$BUILD_DIR" -j"$(nproc)"
@@ -172,8 +172,8 @@ echo "测试工具:"
 ls -lh "$TEST_BUILD_DIR/algo_sim" "$TEST_BUILD_DIR/perf_test" 2>/dev/null || true
 
 echo ""
-echo "示例:"
-ls -lh "$BUILD_DIR"/motor_example_* 2>/dev/null
+echo "调试/算法工具:"
+ls -lh "$TEST_BUILD_DIR/stark_tool" "$TEST_BUILD_DIR/demo_algo" 2>/dev/null || true
 
 echo ""
 echo "架构信息:"
