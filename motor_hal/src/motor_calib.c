@@ -5,7 +5,7 @@
  *   motor_para_calibrate: 0, 1(设零位), 2(位置检测±1°成功), 3(失败)
  *   成功后: 使能+电流模式+开透传
  *
- * RV1126B 移植:
+ * RV1126B 实现:
  *   - 按键 ,  API 调用
  *   - SDO 轮询角度 ,  motor_hal_get_feedback() 读缓存
  *   - tx_re_flag 同步 ,  motor_hal_c 内部 SDO 队列处理

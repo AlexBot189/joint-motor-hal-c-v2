@@ -114,10 +114,10 @@ void WebServer::PullLoop()
             (void)snapshot;  /* 占位: 未序列化 */
 
             /* ── 2. (TODO) JSON 序列化 ── */
-            /* 参考: 下方完整实现中的 SerializeFrame() */
+            /* 见下方完整实现中的 SerializeFrame() */
 
             /* ── 3. (TODO) push 到所有 WebSocket 客户端 ── */
-            /* 参考: 下方完整实现中的 BroadcastFrame() */
+            /* 见下方完整实现中的 BroadcastFrame() */
         }
 
         local_count++;

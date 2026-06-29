@@ -1010,7 +1010,7 @@ static void _sensor_event_cb(inv_imu_sensor_event_t *event)
 
     pthread_mutex_unlock(&g->output_mutex);
 
-    /* 清除非 accel/gyro 的标志 (与原始实现保持一致) */
+    /* 清除非 accel/gyro 的标志 (与硬件行为一致) */
     g->edmp_outputs.grv_quat_valid  = 0;
     g->edmp_outputs.gmrv_quat_valid = 0;
     g->edmp_outputs.rv_quat_valid   = 0;
