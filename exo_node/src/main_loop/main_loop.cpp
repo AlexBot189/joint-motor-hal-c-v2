@@ -45,7 +45,7 @@ static bool g_calib_triggered = false;
 static uint8_t g_prev_online_mask = 0;
 
 /*
- * log_drain_thread — 从 ring buffer drain → ECO_INFO_NEW
+ * log_drain_thread — 从 ring buffer drain 到 ECO_INFO_NEW
  * RT 线程写 ring buffer (lock-free, <1μs), 此非 RT 线程负责 drain.
  */
 
@@ -122,7 +122,7 @@ static void poll_common(motor_hal_t* hal, exo_shm_t* shm, uint8_t motor_count)
     motor_hal_process_pending_startups(hal);
     update_shm_online(hal, shm, motor_count);
 
-    /* 检测电机掉线: online位从1变0 → 清零透传标记,下次上线后自动重配 */
+    /* 检测电机掉线: online位从1变0, 清零透传标记, 下次上线后自动重配 */
     uint8_t dropped = g_prev_online_mask & ~shm->motor_online;
     for (uint8_t i = 0; i < motor_count; i++) {
         if (dropped & (1 << i)) {
@@ -151,14 +151,14 @@ static void poll_common(motor_hal_t* hal, exo_shm_t* shm, uint8_t motor_count)
 
 /*
  * poll_booting — BOOTING 状态逻辑
- *   电机全在线 → READY, 懒启动 RT 线程和 SYNC
+ *   电机全在线, 进入 READY, 懒启动 RT 线程和 SYNC
  */
 
 static void poll_booting(exo_shm_t* shm, int motor_count,
                          bool enable_rt, bool& sync_started)
 {
     if (all_motors_online(shm, motor_count)) {
-        ECO_INFO_NEW("[main] all {} motors online (0x{:02X}) → READY",
+        ECO_INFO_NEW("[main] all {} motors online (0x{:02X}), entering READY",
                      motor_count, shm->motor_online);
         state_transition(STATE_READY);
         return;
@@ -189,7 +189,7 @@ static void poll_booting(exo_shm_t* shm, int motor_count,
 
 /*
  * poll_ready — READY 状态逻辑
- *   校准触发 / 校准轮询 / 校准完成+握手 → RUNNING
+ *   校准触发 / 校准轮询 / 校准完成+握手, 进入 RUNNING
  */
 
 static void poll_ready(motor_hal_t* hal, exo_shm_t* shm, int motor_count)
@@ -244,7 +244,7 @@ static void poll_ready(motor_hal_t* hal, exo_shm_t* shm, int motor_count)
 
             if (g_rt_worker) g_rt_worker->SetActive(true);
             if (g_rt_worker && g_rt_worker->IsHandshakeDone()) {
-                ECO_INFO_NEW("[main] algo connected (post-calib) → RUNNING");
+                ECO_INFO_NEW("[main] algo connected (post-calib), entering RUNNING");
                 state_transition(STATE_RUNNING);
             }
         } else if (result == MOTOR_CALIB_TIMEOUT) {
@@ -267,7 +267,7 @@ static void poll_ready(motor_hal_t* hal, exo_shm_t* shm, int motor_count)
             g_rt_worker->SetActive(true);
         }
         if (g_rt_worker && g_rt_worker->IsHandshakeDone()) {
-            ECO_INFO_NEW("[main] calib done + algo connected → RUNNING");
+            ECO_INFO_NEW("[main] calib done + algo connected, entering RUNNING");
             state_transition(STATE_RUNNING);
         }
     }
@@ -284,9 +284,9 @@ static void poll_rt_pending(exo_shm_t* shm)
 
     exo_state_t pending = g_rt_worker->GetPendingState();
 
-    /* 算法重连: FAULT → READY, calib_done 保持 */
+    /* 算法重连: FAULT 回到 READY, calib_done 保持 */
     if (pending == STATE_READY && g_exo_state == STATE_FAULT) {
-        ECO_INFO_NEW("[main] FAULT → READY (algo reconnect, calib_done={})",
+        ECO_INFO_NEW("[main] FAULT back to READY (algo reconnect, calib_done={})",
                      g_ctx->calib_done);
         state_transition(STATE_READY);
         return;
