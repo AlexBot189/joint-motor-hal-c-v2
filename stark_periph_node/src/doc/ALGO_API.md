@@ -56,24 +56,24 @@ typedef struct {
 
 | 命令 | 值 | value | value2 | feedforward | MIT字段 | 说明 |
 |------|---|-------|--------|-------------|---------|------|
-| `EXO_CMD_TORQUE` | 1 | mA | — | — | — | 电流/力矩模式 |
-| `EXO_CMD_SPEED` | 2 | RPM×100 | — | — | — | 轮廓速度 PV |
-| `EXO_CMD_POS` | 3 | °×100 | — | — | — | 循环同步位置 CSP |
-| `EXO_CMD_MIT` | 4 | — | — | — | ✅ | MIT 阻抗控制 |
-| `EXO_CMD_PP` | 5 | °×100 | RPM/s | RPM | — | 轮廓位置 PP |
-| `EXO_CMD_CSV` | 6 | RPM×100 | — | — | — | 循环同步速度 CSV |
-| `EXO_CMD_MULTI` | 7 | 取决于mode | RPM/s | RPM | — | 多轴广播帧 (一帧发完双电机) |
+| `STARK_CMD_TORQUE` | 1 | mA | — | — | — | 电流/力矩模式 |
+| `STARK_CMD_SPEED` | 2 | RPM×100 | — | — | — | 轮廓速度 PV |
+| `STARK_CMD_POS` | 3 | °×100 | — | — | — | 循环同步位置 CSP |
+| `STARK_CMD_MIT` | 4 | — | — | — | ✅ | MIT 阻抗控制 |
+| `STARK_CMD_PP` | 5 | °×100 | RPM/s | RPM | — | 轮廓位置 PP |
+| `STARK_CMD_CSV` | 6 | RPM×100 | — | — | — | 循环同步速度 CSV |
+| `STARK_CMD_MULTI` | 7 | 取决于mode | RPM/s | RPM | — | 多轴广播帧 (一帧发完双电机) |
 
 ### 4.2 Byte0 控制命令（改 PDO 状态，不发 target）
 
 | 命令 | 值 | value | 说明 |
 |------|---|-------|------|
-| `EXO_CMD_ENABLE` | 10 | — | PDO使能 (Byte0 bit7=1) |
-| `EXO_CMD_DISABLE` | 11 | — | PDO失能 (Byte0 bit7=0) |
-| `EXO_CMD_ESTOP` | 12 | — | 急停: enable=0 + bus=OFF |
-| `EXO_CMD_RECOVER` | 13 | — | 恢复: bus=ON + enable=1 |
-| `EXO_CMD_SET_MODE` | 14 | mode值 | 切换PDO控制模式 (1=PP 2=PV 3=CSP 4=CSV 5=电流 6=MIT) |
-| `EXO_CMD_CLEAR_FAULT` | 15 | — | 清错脉冲 (Byte0 bit5, 下一帧自动清除) |
+| `STARK_CMD_ENABLE` | 10 | — | PDO使能 (Byte0 bit7=1) |
+| `STARK_CMD_DISABLE` | 11 | — | PDO失能 (Byte0 bit7=0) |
+| `STARK_CMD_ESTOP` | 12 | — | 急停: enable=0 + bus=OFF |
+| `STARK_CMD_RECOVER` | 13 | — | 恢复: bus=ON + enable=1 |
+| `STARK_CMD_SET_MODE` | 14 | mode值 | 切换PDO控制模式 (1=PP 2=PV 3=CSP 4=CSV 5=电流 6=MIT) |
+| `STARK_CMD_CLEAR_FAULT` | 15 | — | 清错脉冲 (Byte0 bit5, 下一帧自动清除) |
 
 ## 5. 使用示例
 
@@ -86,13 +86,13 @@ typedef struct {
 while (shm->node_state < STATE_ENABLED) { usleep(10000); }
 
 // PDO 使能 + 设模式 (发一次即可)
-cmd_set(shm, 0, 1, EXO_CMD_ENABLE,   0, 0, 0, ts);
-cmd_set(shm, 1, 2, EXO_CMD_ENABLE,   0, 0, 0, ts);
+cmd_set(shm, 0, 1, STARK_CMD_ENABLE,   0, 0, 0, ts);
+cmd_set(shm, 1, 2, STARK_CMD_ENABLE,   0, 0, 0, ts);
 publish(shm);  // seq_begin++ → seq_end
 usleep(5000);
 
-cmd_set(shm, 0, 1, EXO_CMD_SET_MODE, 5, 0, 0, ts);  // 电流模式
-cmd_set(shm, 1, 2, EXO_CMD_SET_MODE, 5, 0, 0, ts);
+cmd_set(shm, 0, 1, STARK_CMD_SET_MODE, 5, 0, 0, ts);  // 电流模式
+cmd_set(shm, 1, 2, STARK_CMD_SET_MODE, 5, 0, 0, ts);
 publish(shm);
 ```
 
@@ -103,8 +103,8 @@ while (running) {
     read_feedback(shm);  // 读 fb_buffer
 
     // 只传 target, Byte0 由 motor_node 内部维护
-    cmd_set(shm, 0, 1, EXO_CMD_TORQUE, 500, 0, 0, ts);  // 电机1: 500mA
-    cmd_set(shm, 1, 2, EXO_CMD_TORQUE, 300, 0, 0, ts);  // 电机2: 300mA
+    cmd_set(shm, 0, 1, STARK_CMD_TORQUE, 500, 0, 0, ts);  // 电机1: 500mA
+    cmd_set(shm, 1, 2, STARK_CMD_TORQUE, 300, 0, 0, ts);  // 电机2: 300mA
     publish(shm);
 
     usleep(1000);  // 1KHz
@@ -115,16 +115,16 @@ while (running) {
 
 ```c
 /* 先切模式 (只发一次) */
-cmd_set(shm, 0, 1, EXO_CMD_SET_MODE, 3, 0, 0, ts);  // CSP mode=3
-cmd_set(shm, 1, 2, EXO_CMD_SET_MODE, 3, 0, 0, ts);
+cmd_set(shm, 0, 1, STARK_CMD_SET_MODE, 3, 0, 0, ts);  // CSP mode=3
+cmd_set(shm, 1, 2, STARK_CMD_SET_MODE, 3, 0, 0, ts);
 publish(shm);
 usleep(5000);
 
 /* 控制循环 */
 while (1) {
     float angle = 15.0f * sinf(t * 2.0f * M_PI);
-    cmd_set(shm, 0, 1, EXO_CMD_POS, (int32_t)(angle * 100), 0, 0, ts);
-    cmd_set(shm, 1, 2, EXO_CMD_POS, (int32_t)(-angle * 100), 0, 0, ts);
+    cmd_set(shm, 0, 1, STARK_CMD_POS, (int32_t)(angle * 100), 0, 0, ts);
+    cmd_set(shm, 1, 2, STARK_CMD_POS, (int32_t)(-angle * 100), 0, 0, ts);
     publish(shm);
     usleep(1000);
 }
@@ -133,13 +133,13 @@ while (1) {
 ### 5.4 MIT 阻抗控制 — 柔顺模式
 
 ```c
-cmd_set(shm, 0, 1, EXO_CMD_SET_MODE, 6, 0, 0, ts);  // MIT mode=6
-cmd_set(shm, 1, 2, EXO_CMD_SET_MODE, 6, 0, 0, ts);
+cmd_set(shm, 0, 1, STARK_CMD_SET_MODE, 6, 0, 0, ts);  // MIT mode=6
+cmd_set(shm, 1, 2, STARK_CMD_SET_MODE, 6, 0, 0, ts);
 publish(shm);
 usleep(5000);
 
 while (1) {
-    shm->mailbox.cmd[0].cmd      = EXO_CMD_MIT;
+    shm->mailbox.cmd[0].cmd      = STARK_CMD_MIT;
     shm->mailbox.cmd[0].mit_pos  = 32768;   // 中间位置
     shm->mailbox.cmd[0].mit_vel  = 0;
     shm->mailbox.cmd[0].mit_kp   = 50;      // 低刚度 (可被人推动)
@@ -154,12 +154,12 @@ while (1) {
 ### 5.5 PP 轮廓位置 — 带加减速
 
 ```c
-cmd_set(shm, 0, 1, EXO_CMD_SET_MODE, 1, 0, 0, ts);  // PP mode=1
+cmd_set(shm, 0, 1, STARK_CMD_SET_MODE, 1, 0, 0, ts);  // PP mode=1
 publish(shm);
 usleep(5000);
 
 // value=45°, value2=2000RPM/s(加减速), feedforward=500RPM(轮廓速度)
-cmd_set(shm, 0, 1, EXO_CMD_PP, 4500, 2000, 500, ts);
+cmd_set(shm, 0, 1, STARK_CMD_PP, 4500, 2000, 500, ts);
 publish(shm);
 ```
 
@@ -167,8 +167,8 @@ publish(shm);
 
 ```c
 /* cmd[0]和cmd[1]都设 MULTI → RT线程自动打包一帧64B CANFD */
-cmd_set(shm, 0, 1, EXO_CMD_MULTI, 500, 0, 0, ts);  // 电机1: 500mA
-cmd_set(shm, 1, 2, EXO_CMD_MULTI, 300, 0, 0, ts);  // 电机2: 300mA
+cmd_set(shm, 0, 1, STARK_CMD_MULTI, 500, 0, 0, ts);  // 电机1: 500mA
+cmd_set(shm, 1, 2, STARK_CMD_MULTI, 300, 0, 0, ts);  // 电机2: 300mA
 publish(shm);
 ```
 
@@ -176,13 +176,13 @@ publish(shm);
 
 ```c
 /* 检测到异常 → 急停 */
-cmd_set(shm, 0, 1, EXO_CMD_ESTOP, 0, 0, 0, ts);
-cmd_set(shm, 1, 2, EXO_CMD_ESTOP, 0, 0, 0, ts);
+cmd_set(shm, 0, 1, STARK_CMD_ESTOP, 0, 0, 0, ts);
+cmd_set(shm, 1, 2, STARK_CMD_ESTOP, 0, 0, 0, ts);
 publish(shm);
 
 /* 恢复 */
-cmd_set(shm, 0, 1, EXO_CMD_RECOVER, 0, 0, 0, ts);
-cmd_set(shm, 1, 2, EXO_CMD_RECOVER, 0, 0, 0, ts);
+cmd_set(shm, 0, 1, STARK_CMD_RECOVER, 0, 0, 0, ts);
+cmd_set(shm, 1, 2, STARK_CMD_RECOVER, 0, 0, 0, ts);
 publish(shm);
 ```
 
@@ -198,13 +198,13 @@ if (err == 0x04) {  // 过温
     // 等降温, 不清除
 } else if (err == 0x08) {  // 堵转
     // 先失能, 再清除
-    cmd_set(shm, 0, 1, EXO_CMD_DISABLE, 0, 0, 0, ts);
+    cmd_set(shm, 0, 1, STARK_CMD_DISABLE, 0, 0, 0, ts);
     publish(shm);
     usleep(10000);
-    cmd_set(shm, 0, 1, EXO_CMD_CLEAR_FAULT, 0, 0, 0, ts);
+    cmd_set(shm, 0, 1, STARK_CMD_CLEAR_FAULT, 0, 0, 0, ts);
     publish(shm);
 } else if (err != 0) {  // 其他错误
-    cmd_set(shm, 0, 1, EXO_CMD_CLEAR_FAULT, 0, 0, 0, ts);
+    cmd_set(shm, 0, 1, STARK_CMD_CLEAR_FAULT, 0, 0, 0, ts);
     publish(shm);
 }
 
