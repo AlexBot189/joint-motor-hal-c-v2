@@ -260,8 +260,8 @@ int daemon_start(const char *iface)
     /* 4. 启动接收线程 — 在子进程中创建, 安全 */
     motor_hal_recv_start(g_hal);
 
-    /* 4.5 SYNC 定时器 — 按需启动 (由 TPDO 用户手动触发) */
-    /* motor_hal_sync_start(g_hal, 5000);  // 不再自动启动 */
+    /* 4.5 启动 SYNC 定时器 (驱动板需要 SYNC 才发送 0x300 反馈帧) */
+    motor_hal_sync_start(g_hal, 5000);
 
     /* 5. 信号处理 */
     signal(SIGINT,  _sig_handler);
