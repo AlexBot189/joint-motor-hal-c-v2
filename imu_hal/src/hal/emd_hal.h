@@ -2,7 +2,7 @@
  * @file emd_hal.h
  * @brief 硬件抽象层 (HAL) 接口
  *
- * 将 MCU 的 system_interface.h 映射到 Linux userspace:
+ * 将 system_interface 映射到 Linux userspace:
  *   - I2C:    /dev/i2c-N (i2c-dev)
  *   - GPIO:   /dev/gpiochipN (libgpiod)
  *   - Timer:  clock_gettime / usleep

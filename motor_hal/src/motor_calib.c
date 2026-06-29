@@ -1,9 +1,7 @@
 /**
  * @file motor_calib.c
- * @brief 校准状态机实现 — 移植自 GD32 jx_can.c/jx_motor.c
+
  *
- * GD32 流程:
- *   motor_can_comm==1 ,  按键触发
  *   motor_para_calibrate: 0, 1(设零位), 2(位置检测±1°成功), 3(失败)
  *   成功后: 使能+电流模式+开透传
  *

@@ -181,7 +181,7 @@ static inline void _stark_mbox_end(stark_client_t* c, uint64_t seq)
     __atomic_store_n(&c->shm->mailbox.seq_end, seq, __ATOMIC_RELEASE);
 }
 
-/* 力矩控制 — 对应 @VG [id][mA] */
+/* 力矩控制 */
 static inline void stark_torque(stark_client_t* c, int id, int32_t ma)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -196,7 +196,7 @@ static inline void stark_torque(stark_client_t* c, int id, int32_t ma)
     _stark_mbox_end(c, seq);
 }
 
-/* 速度控制 — 对应 @CI [id][rpm*100] */
+/* 速度控制 */
 static inline void stark_speed(stark_client_t* c, int id, float rpm)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -211,7 +211,7 @@ static inline void stark_speed(stark_client_t* c, int id, float rpm)
     _stark_mbox_end(c, seq);
 }
 
-/* 循环同步速度 — 对应 @CI (CSV 模式) */
+/* 循环同步速度 (CSV 模式) */
 static inline void stark_csv(stark_client_t* c, int id, float rpm)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -226,7 +226,7 @@ static inline void stark_csv(stark_client_t* c, int id, float rpm)
     _stark_mbox_end(c, seq);
 }
 
-/* 绝对位置控制 — 对应 @CK [id][deg*100] */
+/* 绝对位置控制 (CSP 模式) */
 static inline void stark_position(stark_client_t* c, int id, float deg)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -258,7 +258,7 @@ static inline void stark_rel_position(stark_client_t* c, int id, float delta_deg
     stark_position(c, id, target);
 }
 
-/* 轮廓位置模式 — 对应 @CK (PP 模式, 带加减速) */
+/* 轮廓位置模式 (PP 模式, 带加减速) */
 static inline void stark_pp(stark_client_t* c, int id,
                              float deg, float accel_rpm, float vel_rpm)
 {

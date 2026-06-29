@@ -90,14 +90,14 @@ barometer_data_t stark_baro(&c);
 
 ### 3.4 控制命令 (实时路径, 写 SHM mailbox, PDO 直发)
 
-#### 力矩控制 (对应原 @VG 指令)
+#### 力矩控制
 
 ```c
 void stark_torque(&c, motor_id, ma);
 /* motor_id: 1=右髋 2=左髋, ma: 目标电流, 单位 mA, 范围 ±20000 */
 ```
 
-#### 速度控制 (对应原 @CI 指令)
+#### 速度控制
 
 ```c
 void stark_speed(&c, motor_id, rpm);
@@ -110,7 +110,7 @@ void stark_speed(&c, motor_id, rpm);
 void stark_csv(&c, motor_id, rpm);
 ```
 
-#### 绝对位置控制 (对应原 @CK 指令, CSP 模式)
+#### 绝对位置控制 (CSP 模式)
 
 ```c
 void stark_position(&c, motor_id, deg);
@@ -368,22 +368,6 @@ sudo ./algo
 | CAN 断线 | CAN 接口状态 | `ip -details link show can0` |
 | 周期超限 | RT 负载 | `./stark_tool stat` 看 overruns |
 
-## 8. 与原 @VG/@CI 串口协议对比
-
-| 原协议 | 新 API | 说明 |
-|---|---|---|
-| `@VG [id][mA]` | `stark_torque(&c, id, ma)` | Q轴电流, 从 SDO 改为 PDO |
-| `@VG [id][mA]` ×2 | `stark_multi(&c, ma1,0,0, ma2,0,0)` | 双电机一帧 |
-| `@CI [id][rpm*100]` | `stark_speed(&c, id, rpm)` | 速度控制 |
-| `@CK [id][deg*100]` | `stark_position(&c, id, deg)` | 绝对位置 |
-| `@CL [id][delta_deg*100]` | `stark_rel_position(&c, id, delta)` | 相对位置 |
-| `@VA [id]` | `stark_clear_fault(&c, id)` | 清故障 |
-| `@VF [id]` | `stark_disable(&c, id)` | 失能 |
-| 无 | `stark_mit(&c, id, ...)` | MIT 阻抗, 新功能 |
-| `@CA [ctrl][period]` | 不需要 | SHM 一直有反馈, 不用启停 |
-| `@# [124B binary]` | `stark_fb()/stark_imu()/stark_sensor()` | 反馈, 从帧解包改为结构体直接读 |
-
-## 9. 故障恢复流程
 
 ```
 算法进程检测到 FAULT:

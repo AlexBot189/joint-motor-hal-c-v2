@@ -600,11 +600,11 @@ motor_tool rpdo_send 1 0F00 03E8           # 电流: CW+1000mA
 | 命令 | 数据来源 | 需要配置？ | 原理 |
 |------|---------|:---:|------|
 | `watch 200` | 反馈帧 0x300 缓存 | ❌ 零配置 | motor_tool 轮询 `motor_hal_get_feedback()` 缓存 |
-| `report 5` | 反馈缓存 + 传感器缓存 | 需先 `sensor config` | 类似 GD32 的 @CA, 独立线程周期输出两者 |
+| `report 5` | 反馈缓存 + 传感器缓存 | 需先 `sensor config` |  独立线程周期输出两者 |
 | `sensor watch 1` | 透传帧 0x680 缓存 | 需先 `sensor config` | motor_tool 轮询 `motor_hal_get_sensor()` 缓存 |
 
 - **watch**: 读 PDO 反馈帧 (0x300), 驱动板收到任何 PDO/SYNC 后自动上报, 不需配置
-- **report**: 读 feedback+sensor 两者, 用于类似 GD32 的完整数据上报场景
+- **report**: 读 feedback+sensor 两者, 用于完整数据上报场景
 - **sensor watch**: 读透传帧 (0x680), 必须先 SDO 配 0x5503 开启透传, 驱动板按配置周期上报
 
 反馈数据来自驱动板周期性上报的反馈帧 (0x300+ID, 12字节)，由接收线程自动更新缓存。
@@ -969,7 +969,7 @@ motor_tool read all 0            # 读双电机全部信息
 # 4. 持续监控反馈
 motor_tool watch 200             # 200ms 周期显示
 
-# 5. 数据上报 (每5ms, 类似 GD32 的 @CA)
+# 5. 数据上报 (每5ms,  )
 motor_tool report 5              # 启动上报
 motor_tool report 0              # 停止上报
 

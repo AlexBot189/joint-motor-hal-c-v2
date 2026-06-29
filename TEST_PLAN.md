@@ -315,39 +315,6 @@ sudo ./hal_stress_test
 
 ## <a name="part-c"></a>Part C: 上层完整控制项映射表
 
-对照 GD32 ODS 协议，全部上层控制命令的 HAL API 和 motor_tool CLI 映射。
-
-### C1. 控制类 (SOC→MCU→CAN→电机)
-
-| GD32 | 功能 | HAL API | motor_tool CLI | A1测试 | B测试 |
-|------|------|---------|---------------|:---:|:---:|
-| V-G | Q轴电流 | `motor_hal_set_torque(id, mA)` | `torque <id> <mA>` | ✅ | B1.3 |
-| V-I | 目标速度 | `motor_hal_set_velocity(id, rpm)` | `speed <id> <rpm*100>` | ✅ | B1.5 |
-| V-J | 加速度 | `motor_hal_set_accel_decel(id, a, d)` | `accel <id> <acc*100>` | ✅ | — |
-| V-K | 绝对位置 | `motor_hal_set_position(id, deg)` | `abs <id> <deg*100>` | ✅ | B1.8 |
-| V-L | 相对位置 | **❌ 未实现** | **❌ 未实现** | ❌ | ❌ |
-| V-U | 位置模式最大速度 | `motor_hal_set_profile_velocity(id, rpm)` | `maxv <id> <rpm*100>` | ✅ | — |
-| V-H | 电流斜率 | **❌ 未实现** | **❌ 未实现** | ❌ | ❌ |
-| V-A | 清零故障 | `motor_hal_fault_reset(id)` | `fault_reset <id>` | ✅ | B6.2 |
-| V-F | 失能 | `motor_hal_disable(id)` | `disable <id>` | ✅ | B1.10 |
-| V-E | 系统重启 | `motor_hal_nmt_send(id, RESET)` | `reboot <id>` | ✅ | — |
-| C-I | 速度控制(简化) | `motor_hal_set_velocity(id, rpm)` | `speed <id> <rpm*100>` | ✅ | ✅ |
-| C-J | 加速度(简化) | `motor_hal_set_accel_decel(id, a, d)` | `accel <id> <acc*100>` | ✅ | — |
-| C-K | 绝对位置(简化) | `motor_hal_set_position(id, deg)` | `abs <id> <deg*100>` | ✅ | ✅ |
-| C-L | 相对位置(简化) | **❌ 未实现** | **❌ 未实现** | ❌ | ❌ |
-
-### C2. 系统/校准类
-
-| GD32 | 功能 | HAL API | motor_tool CLI | 状态 |
-|------|------|---------|---------------|:---:|
-| V-B | 返回原点 | **❌** | **❌** | 未实现 |
-| V-C | 设原点 | `motor_hal_set_zero(id)` | `setzero <id>` | ✅ |
-| V-D | 编码器校准 | `motor_calib` 模块 | `calib start <r> <l>` | ✅ |
-| V-M | 传感器校准 | 独立驱动 | — | 未集成 |
-
-### C3. 读取类 (SOC→MCU→CAN→MCU→SOC)
-
-| GD32 | 读什么 | HAL API | motor_tool CLI | 状态 |
 |------|--------|---------|---------------|:---:|
 | V-a | 绝对值角度 | `motor_hal_get_position(id)` | `read angle <id>` | ✅ |
 | V-b | 旋转速度 | `motor_hal_get_velocity(id)` | `read speed <id>` | ✅ |

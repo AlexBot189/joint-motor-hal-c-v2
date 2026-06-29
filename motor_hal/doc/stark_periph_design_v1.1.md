@@ -467,16 +467,16 @@ void RtSafetyLoop() {   // SCHED_FIFO 75, 100Hz
 
 ```yaml
 services:
-  /motor/startup:        # 启动电机 (等效 GD32 V-B/C)
+  /motor/startup:        # 启动电机 
     request:  {motor_id: uint8}
     response: {ok: bool}
-  /motor/enable:         # 使能 (等效 GD32 V-F 反操作)
+  /motor/enable:         # 使能 
     request:  {motor_id: uint8}
     response: {ok: bool}
-  /motor/disable:        # 脱使能 (等效 GD32 V-F)
+  /motor/disable:        # 脱使能 
     request:  {motor_id: uint8}
     response: {ok: bool}
-  /motor/calib:          # 校准 (等效 GD32 V-D)
+  /motor/calib:          # 校准 
     request:  {id_r: uint8, id_l: uint8, timeout_ms: uint16}
     response: {ok: bool, state: uint8}
   /motor/sdo_write:      # 通用SDO写 (调试)

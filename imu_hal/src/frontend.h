@@ -2,7 +2,7 @@
  * @file frontend.h
  * @brief eDMP GAF 前端数据结构 (Q30 格式)
  *
- * 提供与 MCU frontend.h 兼容的:
+ * 提供兼容的:
  *   - INV_MSG 日志宏
  *   - MASK_NOTIFY 标志位
  *   - inv_edmp_gaf_outputs_t (应用层, Q30 定标)

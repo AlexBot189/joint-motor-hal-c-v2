@@ -631,16 +631,6 @@ gcc -DMOTOR_DEBUG_HEX -Iinc my_app.c src/*.c -lpthread -lm -o my_app
 | 编译产物 | libmotor_hal.a | 静态库, ~50KB |
 | CANFD 物理 | 仲裁 1Mbps / 数据 5Mbps | 标准帧 11bit |
 
-### 7.3 与 GD32 方案对比
-
-| 维度 | GD32 | RV1126B + motor_hal_c |
-|------|------|----------------------|
-| 主控 | GD32F503V (MCU) | RV1126B (Linux SoC) |
-| CAN | CAN 1Mbps | CANFD 5Mbps |
-| 协议栈 | 手写 CANopen | motor_hal_c (SDO队列+PDO) |
-| 参数轮询 | 200μs TIMER 12步 SDO | TPDO 同步上报 (无轮询) |
-| 传感器 | CAN 透传到 MCU | CAN 透传到 motor_hal 缓存 |
-| 控制接口 | UART 串口协议 (@/SA) | C API (socket/共享内存) |
 | 同步机制 | tx_re_flag 信号量 | condvar + PI mutex |
 | 调试工具 | 串口助手 | motor_tool CLI |
 | RT 能力 | 裸机 | PREEMPT_RT 内核 |
@@ -671,7 +661,6 @@ motor_hal_c/
 ├── src/
 │   ├── motor_hal.c              # ★ 核心实现 (API + 帧分发 + 接收线程)
 │   ├── motor_hal_startup.c      # 启动流程 (Bootup + DS402)
-│   ├── motor_calib.c/.h         # 校准状态机 (移植 GD32)
 │   ├── can_driver.c             # SocketCAN 驱动封装
 │   ├── can_driver_internal.h    # 内部接口
 │   ├── sdo_client.c             # SDO 客户端 (队列+condvar)

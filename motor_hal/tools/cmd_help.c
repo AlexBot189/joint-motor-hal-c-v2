@@ -13,7 +13,6 @@ int cmd_do_help(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     printf("\n");
     printf("╔══════════════════════════════════════════════════════════╗\n");
     printf("║          motor_tool — CANFD 电机控制工具 v2              ║\n");
-    printf("║          对照 GD32 ODS 协议 (V-prefix/C-prefix)          ║\n");
     printf("╚══════════════════════════════════════════════════════════╝\n\n");
     printf("用法: motor_tool <command> [args...]\n");
     printf("      id=0 ,  广播到全部已注册电机\n\n");

@@ -35,7 +35,6 @@
 
 **状态**: ✅ 已确认不是 bug
 
-**分析**: CANopen 标准规定 SYNC 和 EMCY 共享 function code 0001b。SYNC 通过 node-id=0 区分。`_dispatch_frame` case 0x080 中 `canopen_extract_node(f->id, 0x080)` 对 SYNC 返回 node=0, `_find_motor` 返回 NULL, 安全跳过。GD32 源码中也无 EMCY 处理代码。
 
 ---
 
@@ -339,7 +338,7 @@ uint8_t fault_reason;    // 枚举 — 诊断信息
 | 阶段 | 方案 | 说明 |
 |------|------|------|
 | 当前(开发测试, 2电机髋关节) | RT 工作线程内聚 + 内核 watchdog `/dev/watchdog` | motor_node 周期性 ioctl WDIOC_KEEPALIVE; 进程 crash → 内核重启 → GPIO 复位 → 驱动板硬件停机 |
-| 量产(4电机全下肢, 有人穿戴) | 独立安全 MCU(STM32/GD32) 直连急停 GPIO | MCU 监控 RV1126B 心跳 + 冗余 CAN 读反馈, 不依赖 RV1126B 操作系统 |
+| 量产(4电机全下肢, 有人穿戴) | 独立安全控制器直连急停 GPIO | 安全控制器监控 RV1126B 心跳 + 冗余 CAN 读反馈, 不依赖 RV1126B 操作系统 |
 
 **不拆的核心理由**:
 1. 安全监控需要的所有数据(fb_cache, mailbox, HAL 内部状态)全在 motor_node 内存中。拆到独立进程需要 SHM 桥接, 多一次拷贝和延迟。

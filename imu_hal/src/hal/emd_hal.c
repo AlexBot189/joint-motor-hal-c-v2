@@ -233,8 +233,8 @@ int emd_hal_init(const char *i2c_dev, uint8_t imu_addr,
     }
 
     /* INT1: DTS 配置为 IRQ_TYPE_LEVEL_LOW，ICM45608 INT 引脚脉冲低有效。
-     * MCU 将 INT 引脚配置为 push-pull, active high。
-     * 这里用上升沿触发匹配 MCU 行为。 */
+     * 硬件将 INT 引脚配置为 push-pull, active high。
+     * 这里用上升沿触发。 */
     if (gpiod_line_request_rising_edge_events(g_gpio_line, "emd-gaf") < 0) {
         fprintf(stderr, "EMD_HAL: gpiod request event failed: %s\n",
                 strerror(errno));

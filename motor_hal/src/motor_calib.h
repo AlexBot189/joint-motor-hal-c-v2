@@ -3,7 +3,7 @@
  * @brief 巨蟹关节电机校准状态机
  *
  * motor.c 的校准逻辑。
- * GD32 用按键触发 + SDO 轮询, 这里改为 API 调用 + feedback 缓存读取。
+ * 校准通过 API 调用 + feedback 缓存读取。
  */
 
 #ifndef MOTOR_CALIB_H

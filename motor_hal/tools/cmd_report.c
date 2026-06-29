@@ -2,7 +2,7 @@
  * @file cmd_report.c
  * @brief CA 数据上报: motor_tool report [period_ms]
  *
- * 等效 的 @CA 命令。在 daemon 中启动独立线程，不阻塞主循环。
+ * 等效的数据上报命令。在 daemon 中启动独立线程，不阻塞主循环。
  * motor_tool report 5  ,  每 5ms 输出 feedback+sensor
  * motor_tool report 0  ,  停止
  */

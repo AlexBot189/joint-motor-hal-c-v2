@@ -2,7 +2,7 @@
  * @file system_interface.h
  * @brief eMD SDK ,  Linux HAL 桥接层
  *
- * 将 MCU system_interface.h 的 si_* 函数映射到 emd_hal.h。
+ * 将 system_interface 的 si_* 函数映射到 emd_hal。
  * eMD 驱动通过 si_* 调用，本文件将其转为 HAL 层调用。
  *
  * Copyright (c) 2026 zhiqiang.yang
