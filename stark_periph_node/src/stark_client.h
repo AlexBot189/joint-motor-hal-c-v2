@@ -9,7 +9,7 @@
  *   stark_open(&c);                    // 连接 SHM
  *   while (!stark_ready(&c)) usleep(10000);  // 等校准完成
  *   while (1) {
- *       motor_feedback_t fb = stark_fb(&c, 1);    // 读电机反馈
+ *       motor_data_t fb = stark_fb(&c, 1);         // 读电机反馈
  *       imu_data_t imu = stark_imu(&c);            // 读 IMU
  *       stark_multi(&c, tor1, 0, 0, tor2, 0, 0);   // 写控制命令
  *       usleep(1000);
@@ -128,9 +128,9 @@ static inline int stark_fault_reason(stark_client_t* c)
  * 反馈读取 (零拷贝, 读 active Buffer)
  * ================================================================ */
 
-static inline motor_feedback_t stark_fb(stark_client_t* c, int id)
+static inline motor_data_t stark_fb(stark_client_t* c, int id)
 {
-    motor_feedback_t fb = {0};
+    motor_data_t fb = {0};
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return fb;
 
     uint32_t idx = __atomic_load_n(&c->shm->active_idx, __ATOMIC_ACQUIRE);
@@ -247,7 +247,7 @@ static inline void stark_rel_position(stark_client_t* c, int id, float delta_deg
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
     /* 读当前位置 (角度), 加偏移 */
-    motor_feedback_t fb = stark_fb(c, id);
+    motor_data_t fb = stark_fb(c, id);
     float cur_deg  = (float)fb.position * (360.0f / 65536.0f);
     float target   = cur_deg + delta_deg;
 

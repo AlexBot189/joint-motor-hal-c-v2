@@ -99,7 +99,7 @@ static void print_stat(stark_client_t* c)
     printf("\nMotor: ");
     for (int i = 1; i <= 2; i++) {
         if (stark_online(c, i)) {
-            motor_feedback_t fb = stark_fb(c, i);
+            motor_data_t fb = stark_fb(c, i);
             float deg = (float)fb.position * 360.0f / 65536.0f;
             printf("[%d] pos=%.1f° vel=%dRPM cur=%dmA temp=%.1f°C status=0x%02X  ",
                    i, deg, fb.velocity, fb.current_iq,
@@ -128,8 +128,8 @@ static void cmd_watch(stark_client_t* c, int period_ms)
            "time", "M1pos°", "M1vel", "M1mA", "M2pos°", "M2vel", "M2mA", "St/Calib");
 
     while (g_watch_running) {
-        motor_feedback_t fb1 = stark_fb(c, 1);
-        motor_feedback_t fb2 = stark_fb(c, 2);
+        motor_data_t fb1 = stark_fb(c, 1);
+        motor_data_t fb2 = stark_fb(c, 2);
 
         float deg1 = (float)fb1.position * 360.0f / 65536.0f;
         float deg2 = (float)fb2.position * 360.0f / 65536.0f;
