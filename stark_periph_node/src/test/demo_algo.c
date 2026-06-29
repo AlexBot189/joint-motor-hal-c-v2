@@ -2,10 +2,15 @@
  * demo_algo.c -- 外骨骼算法控制示例
  * Copyright (c) 2026 zhiqiang.yang
  *
- * 演示如何使用 stark_client.h 实现电机控制闭环.
+ * 用法:
+ *   ./demo_algo torque <mA>            电流控制, 正弦波, 振幅=mA
+ *   ./demo_algo speed <rpm>            速度控制, 梯形波, 峰值=rpm
+ *   ./demo_algo pos <deg>              位置控制, 方波, 振幅=deg
+ *   ./demo_algo mit <kp> <kd>          MIT 阻抗控制
+ *   ./demo_algo multi <ma1> <ma2>      多轴广播, 恒电流
+ *   ./demo_algo stat                   只读反馈, 不发控制
+ *
  * 编译: gcc -O2 demo_algo.c -lpthread -lrt -lm -o demo_algo
- * 运行: sudo ./demo_algo [mode]
- *   mode: torque | speed | pos | mit | multi (默认 multi)
  */
 
 #include "../stark_client.h"
@@ -25,7 +30,6 @@ static void sig_handler(int sig)
     g_running = 0;
 }
 
-/* ---- 辅助: 时间戳 (ms) ---- */
 static uint64_t now_ms(void)
 {
     struct timespec ts;
@@ -33,240 +37,266 @@ static uint64_t now_ms(void)
     return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
 }
 
-/* ---- 辅助: 编码器 counts 转角度 ---- */
 static float counts_to_deg(int16_t counts)
 {
     return (float)counts * 360.0f / 65536.0f;
 }
 
-/* ---- 辅助: 编码器 counts 转 RPM (需要速度字段) ---- */
-static float raw_to_rpm(int16_t velocity)
+/* 力矩控制: 正弦波扫描 */
+static void run_torque(stark_client_t* c, int32_t amplitude_ma)
 {
-    return (float)velocity;
-}
-
-/* ---- (1) 力矩控制模式 ---- */
-static void run_torque_control(stark_client_t* c)
-{
-    printf("[torque] 力矩控制模式: 正弦波扫描, 振幅=5000mA, 周期=2s\n");
+    printf("[torque] 正弦波扫描, 振幅=%d mA, 周期=2s\n", amplitude_ma);
 
     uint64_t t0 = now_ms();
-    int32_t ma_prev[3] = {0, 0, 0};
+    int32_t last = 0;
 
     while (g_running) {
         uint64_t t = now_ms() - t0;
         float phase = (float)(t % 2000) / 2000.0f * 2.0f * M_PI;
-        int32_t ma = (int32_t)(5000.0f * sinf(phase));
+        int32_t ma = (int32_t)((float)amplitude_ma * sinf(phase));
 
         stark_multi(c, ma, 0, 0, ma, 0, 0);
 
-        /* 每秒打印一次 */
-        if (ma != ma_prev[1]) {
+        if (ma != last) {
             motor_data_t fb = stark_fb(c, 1);
-            float pos = counts_to_deg(fb.position);
-            printf("[t=%4lus] target=%5d mA  fb_pos=%.1f deg  fb_cur=%d mA  temp=%.1f C\n",
-                   (unsigned long)(t / 1000), ma, pos, fb.current_iq,
-                   (float)fb.temperature * 0.1f);
-            ma_prev[1] = ma;
+            printf("[t=%4lus] target=%5d mA  fb_pos=%.1f deg  fb_cur=%d mA\n",
+                   (unsigned long)(t / 1000), ma, counts_to_deg(fb.position), fb.current_iq);
+            last = ma;
         }
-
         usleep(1000);
     }
 }
 
-/* ---- (2) 速度控制模式 ---- */
-static void run_speed_control(stark_client_t* c)
+/* 速度控制: 梯形波 */
+static void run_speed(stark_client_t* c, float max_rpm)
 {
-    printf("[speed] 速度控制模式: 梯形波, ±50RPM, 加速度50RPM/s\n");
+    printf("[speed] 梯形波, ±%.0f RPM, 每段1s\n", max_rpm);
 
     uint64_t t0 = now_ms();
 
     while (g_running) {
         uint64_t t = now_ms() - t0;
         float rpm;
-
-        /* 梯形波: 匀速扫描, ±50RPM, 每段1s */
         uint64_t phase = t % 4000;
+
         if (phase < 1000) {
-            rpm = 50.0f * (float)phase / 1000.0f;
+            rpm = max_rpm * (float)phase / 1000.0f;
         } else if (phase < 2000) {
-            rpm = 50.0f;
+            rpm = max_rpm;
         } else if (phase < 3000) {
-            rpm = 50.0f - 50.0f * (float)(phase - 2000) / 1000.0f;
+            rpm = max_rpm - max_rpm * (float)(phase - 2000) / 1000.0f;
         } else {
-            rpm = 0.0f - 50.0f * (float)(phase - 3000) / 1000.0f;
+            rpm = 0.0f - max_rpm * (float)(phase - 3000) / 1000.0f;
         }
 
         stark_speed(c, 1, rpm);
         stark_speed(c, 2, rpm);
 
-        motor_data_t fb = stark_fb(c, 1);
         if (t % 200 < 10) {
+            motor_data_t fb = stark_fb(c, 1);
             printf("[t=%3lus] target=%.0f RPM  fb_vel=%d RPM  fb_pos=%.1f deg\n",
-                   (unsigned long)(t / 1000), rpm, fb.velocity,
-                   counts_to_deg(fb.position));
+                   (unsigned long)(t / 1000), rpm, fb.velocity, counts_to_deg(fb.position));
         }
-
-        usleep(5000);  /* 200Hz */
+        usleep(5000);
     }
 }
 
-/* ---- (3) 位置控制模式 ---- */
-static void run_position_control(stark_client_t* c)
+/* 位置控制: 方波 */
+static void run_position(stark_client_t* c, float amplitude_deg)
 {
-    printf("[pos] 位置控制模式: 方波 ±30°, 2s/拍, CSP 模式\n");
+    printf("[pos] 方波, ±%.1f deg, 2s/拍\n", amplitude_deg);
 
     uint64_t t0 = now_ms();
 
     while (g_running) {
         uint64_t t = now_ms() - t0;
-        float target = ((t / 2000) % 2 == 0) ? 30.0f : -30.0f;
+        float target = ((t / 2000) % 2 == 0) ? amplitude_deg : -amplitude_deg;
 
         stark_position(c, 1,  target);
-        stark_position(c, 2, -target);  /* 左髋反向 */
+        stark_position(c, 2, -target);
 
-        motor_data_t fb = stark_fb(c, 1);
         if (t % 500 < 10) {
+            motor_data_t fb = stark_fb(c, 1);
             printf("[t=%3lus] target=%.0f deg  fb_pos=%.1f deg  fb_cur=%d mA\n",
                    (unsigned long)(t / 1000), target,
                    counts_to_deg(fb.position), fb.current_iq);
         }
-
-        usleep(1000);  /* 1KHz */
+        usleep(1000);
     }
 }
 
-/* ---- (4) MIT 阻抗控制 ---- */
-static void run_mit_control(stark_client_t* c)
+/* MIT 阻抗控制 */
+static void run_mit(stark_client_t* c, float kp, float kd)
 {
-    printf("[MIT] MIT 阻抗控制模式: kp=200, kd=50, 零目标位置\n");
+    printf("[MIT] kp=%.0f, kd=%.0f, 零目标位置\n", kp, kd);
 
     while (g_running) {
-        /* 零位置 + 低刚度 + 阻尼 */
-        stark_mit(c, 1, 0.0f, 0.0f, 200.0f, 50.0f, 0.0f);
-        stark_mit(c, 2, 0.0f, 0.0f, 200.0f, 50.0f, 0.0f);
-
-        motor_data_t fb1 = stark_fb(c, 1);
-        motor_data_t fb2 = stark_fb(c, 2);
+        stark_mit(c, 1, 0.0f, 0.0f, kp, kd, 0.0f);
+        stark_mit(c, 2, 0.0f, 0.0f, kp, kd, 0.0f);
 
         static int cnt = 0;
         if (++cnt % 50 == 0) {
-            printf("[MIT] M1: pos=%.1f° cur=%dmA  M2: pos=%.1f° cur=%dmA\n",
+            motor_data_t fb1 = stark_fb(c, 1);
+            motor_data_t fb2 = stark_fb(c, 2);
+            printf("[MIT] M1: pos=%.1f deg cur=%d mA  M2: pos=%.1f deg cur=%d mA\n",
                    counts_to_deg(fb1.position), fb1.current_iq,
                    counts_to_deg(fb2.position), fb2.current_iq);
         }
-
         usleep(1000);
     }
 }
 
-/* ---- (5) 多轴广播 + IMU 反馈 ---- */
-static void run_multi_imu_control(stark_client_t* c)
+/* 多轴广播: 恒定电流 */
+static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
 {
-    printf("[multi+imu] 多轴广播 + IMU 姿态监控\n");
+    printf("[multi] 恒电流: M1=%d mA, M2=%d mA\n", ma1, ma2);
 
     while (g_running) {
-        /* 多轴广播: 双电机电流 0 (保持使能, 不发力) */
-        stark_multi(c, 0, 0, 0, 0, 0, 0);
-
-        motor_data_t fb1 = stark_fb(c, 1);
-        motor_data_t fb2 = stark_fb(c, 2);
-        imu_data_t   imu = stark_imu(c);
+        stark_multi(c, ma1, 0, 0, ma2, 0, 0);
 
         static int cnt = 0;
-        if (++cnt % 100 == 0) {
-            printf("[multi] M1=%.1f° %dmA  M2=%.1f° %dmA  "
-                   "IMU: yaw=%.1f° pitch=%.1f° roll=%.1f° "
-                   "gyro=(%.1f,%.1f,%.1f) acc=(%.3f,%.3f,%.3f)\n",
+        if (++cnt % 200 == 0) {
+            motor_data_t fb1 = stark_fb(c, 1);
+            motor_data_t fb2 = stark_fb(c, 2);
+            imu_data_t imu = stark_imu(c);
+            printf("[multi] M1=%.1f deg %d mA  M2=%.1f deg %d mA  "
+                   "IMU: yaw=%.1f pitch=%.1f roll=%.1f\n",
                    counts_to_deg(fb1.position), fb1.current_iq,
                    counts_to_deg(fb2.position), fb2.current_iq,
-                   imu.yaw, imu.pitch, imu.roll,
-                   imu.gyro_x, imu.gyro_y, imu.gyro_z,
-                   imu.acc_x, imu.acc_y, imu.acc_z);
+                   imu.yaw, imu.pitch, imu.roll);
         }
-
         usleep(1000);
     }
 }
 
-/* ---- 主函数 ---- */
+/* 只读反馈, 不发控制 */
+static void run_stat_loop(stark_client_t* c)
+{
+    printf("[stat] 只读反馈, 不发控制命令\n");
+
+    while (g_running) {
+        motor_data_t fb1 = stark_fb(c, 1);
+        motor_data_t fb2 = stark_fb(c, 2);
+        imu_data_t imu = stark_imu(c);
+
+        printf("[stat] M1: pos=%.1f deg vel=%d RPM cur=%d mA temp=%.1f C  "
+               "M2: pos=%.1f deg vel=%d RPM cur=%d mA  "
+               "IMU: yaw=%.1f pitch=%.1f roll=%.1f\n",
+               counts_to_deg(fb1.position), fb1.velocity, fb1.current_iq, (float)fb1.temperature * 0.1f,
+               counts_to_deg(fb2.position), fb2.velocity, fb2.current_iq,
+               imu.yaw, imu.pitch, imu.roll);
+
+        usleep(200000);  /* 5Hz */
+    }
+}
+
+static void usage(void)
+{
+    printf("用法: ./demo_algo <mode> [args...]\n\n");
+    printf("模式:\n");
+    printf("  torque <mA>           电流控制, 正弦波, 振幅=mA\n");
+    printf("  speed  <rpm>          速度控制, 梯形波, 峰值=rpm\n");
+    printf("  pos    <deg>          位置控制, 方波, 振幅=deg\n");
+    printf("  mit    <kp> <kd>      MIT 阻抗, kp=kd=100 推荐起步\n");
+    printf("  multi  <ma1> <ma2>    多轴广播, M1/M2 恒定电流\n");
+    printf("  stat                  只读反馈, 不发控制\n");
+    printf("\n示例:\n");
+    printf("  ./demo_algo torque 200       # 电流 ±200mA 正弦波\n");
+    printf("  ./demo_algo speed 10         # 速度 ±10RPM\n");
+    printf("  ./demo_algo pos 15           # 位置 ±15度\n");
+    printf("  ./demo_algo mit 100 50       # MIT kp=100 kd=50\n");
+    printf("  ./demo_algo multi 200 200    # 双电机各 200mA\n");
+    printf("  ./demo_algo stat             # 只读反馈\n");
+}
 
 int main(int argc, char** argv)
 {
     signal(SIGINT,  sig_handler);
     signal(SIGTERM, sig_handler);
 
-    const char* mode = (argc >= 2) ? argv[1] : "multi";
+    if (argc < 2) { usage(); return 1; }
 
-    /* (1) 打开 SHM */
+    const char* mode = argv[1];
+
+    /* 连接 SHM */
     stark_client_t c;
     if (stark_open(&c) != 0) {
-        printf("ERR: SHM 打开失败. stark_periph_manager_node 是否在运行?\n");
-        printf("     预期 SHM: %s\n", STARK_SHM_NAME);
+        printf("ERR: SHM 连接失败\n");
         return 1;
     }
-    printf("[init] SHM 已连接: %s\n", STARK_SHM_NAME);
+    printf("[init] SHM 已连接\n");
 
-    /* (2) 等待就绪 (校准完成) */
-    printf("[init] 等待电机就绪 (校准)...\n");
+    /* 等待就绪 */
+    printf("[init] 等待电机就绪...\n");
     while (!stark_ready(&c)) {
-        if (stark_state(&c) == 3) {  /* FAULT */
-            printf("ERR: 节点处于 FAULT 状态, 退出\n");
+        if (stark_state(&c) == 3) {
+            printf("ERR: FAULT 状态, 退出\n");
             stark_close(&c);
             return 1;
         }
-        usleep(100000);  /* 100ms */
+        usleep(100000);
+    }
+    printf("[init] 就绪, 电机在线: %d %d\n", stark_online(&c, 1), stark_online(&c, 2));
+
+    /* stat 模式不需要使能 */
+    if (strcmp(mode, "stat") == 0) {
+        run_stat_loop(&c);
+        stark_close(&c);
+        return 0;
     }
 
-    int online1 = stark_online(&c, 1);
-    int online2 = stark_online(&c, 2);
-    printf("[init] 就绪! 在线电机: %d %s %d %s\n",
-           online1, online1 ? "在线" : "离线",
-           online2, online2 ? "在线" : "离线");
-
-    /* (3) 使能两个电机 */
+    /* 使能双电机 */
     stark_enable(&c, 1);
     stark_enable(&c, 2);
-    usleep(5000);  /* 等 Byte0 生效 */
+    usleep(5000);
 
-    printf("[init] 电机已使能, 开始 %s 模式 (Ctrl+C 停止)\n\n", mode);
-
-    /* (4) 运行控制循环 */
+    /* 分发模式 */
     if (strcmp(mode, "torque") == 0) {
-        stark_set_mode(&c, 1, 5);  /* 电流模式 */
-        stark_set_mode(&c, 2, 5);
+        if (argc < 3) { printf("ERR: 需要指定电流 mA\n"); stark_close(&c); return 1; }
+        int32_t ma = atoi(argv[2]);
+        stark_set_mode(&c, 1, 5); stark_set_mode(&c, 2, 5);
         usleep(5000);
-        run_torque_control(&c);
+        run_torque(&c, ma);
+
     } else if (strcmp(mode, "speed") == 0) {
-        stark_set_mode(&c, 1, 2);  /* PV 模式 */
-        stark_set_mode(&c, 2, 2);
+        if (argc < 3) { printf("ERR: 需要指定速度 rpm\n"); stark_close(&c); return 1; }
+        float rpm = (float)atof(argv[2]);
+        stark_set_mode(&c, 1, 2); stark_set_mode(&c, 2, 2);
         usleep(5000);
-        run_speed_control(&c);
+        run_speed(&c, rpm);
+
     } else if (strcmp(mode, "pos") == 0) {
-        stark_set_mode(&c, 1, 3);  /* CSP 模式 */
-        stark_set_mode(&c, 2, 3);
+        if (argc < 3) { printf("ERR: 需要指定角度 deg\n"); stark_close(&c); return 1; }
+        float deg = (float)atof(argv[3]);
+        stark_set_mode(&c, 1, 3); stark_set_mode(&c, 2, 3);
         usleep(5000);
-        run_position_control(&c);
+        run_position(&c, deg);
+
     } else if (strcmp(mode, "mit") == 0) {
-        stark_set_mode(&c, 1, 6);  /* MIT 模式 */
-        stark_set_mode(&c, 2, 6);
+        if (argc < 4) { printf("ERR: 需要 kp kd\n"); stark_close(&c); return 1; }
+        float kp = (float)atof(argv[2]);
+        float kd = (float)atof(argv[3]);
+        stark_set_mode(&c, 1, 6); stark_set_mode(&c, 2, 6);
         usleep(5000);
-        run_mit_control(&c);
+        run_mit(&c, kp, kd);
+
+    } else if (strcmp(mode, "multi") == 0) {
+        if (argc < 4) { printf("ERR: 需要 ma1 ma2\n"); stark_close(&c); return 1; }
+        int32_t ma1 = atoi(argv[2]);
+        int32_t ma2 = atoi(argv[3]);
+        stark_set_mode(&c, 1, 5); stark_set_mode(&c, 2, 5);
+        usleep(5000);
+        run_multi(&c, ma1, ma2);
+
     } else {
-        /* 默认: multi + 力矩模式 */
-        stark_set_mode(&c, 1, 5);
-        stark_set_mode(&c, 2, 5);
-        usleep(5000);
-        run_multi_imu_control(&c);
+        printf("未知模式: %s\n", mode);
+        usage();
     }
 
-    /* (5) 清理 */
     printf("\n[done] 停止, 失能电机...\n");
     stark_estop(&c, 1);
     stark_estop(&c, 2);
     usleep(10000);
     stark_close(&c);
-    printf("[done] 安全退出\n");
-
     return 0;
 }
