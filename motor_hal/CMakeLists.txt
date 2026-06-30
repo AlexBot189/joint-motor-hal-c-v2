@@ -51,29 +51,31 @@ install(TARGETS motor_hal
 install(DIRECTORY inc/ DESTINATION include/motor_hal)
 
 # ============================================================================
-# 示例
-# ============================================================================
-
-add_executable(motor_example_single   examples/single_motor.c)
-target_link_libraries(motor_example_single motor_hal)
-
-add_executable(motor_example_dual     examples/dual_motor.c)
-target_link_libraries(motor_example_dual motor_hal)
-
-add_executable(motor_example_mit      examples/mit_control.c)
-target_link_libraries(motor_example_mit motor_hal)
-
-add_executable(motor_example_dual_full examples/dual_motor_full.c)
-target_link_libraries(motor_example_dual_full motor_hal m)
-
-add_executable(motor_example_fb_cb    examples/feedback_callback.c)
-target_link_libraries(motor_example_fb_cb motor_hal m)
-
-add_executable(hal_stress_test        test/hal_stress_test.c)
-target_link_libraries(hal_stress_test motor_hal pthread)
-
-# ============================================================================
 # 选项
 # ============================================================================
 
 option(BUILD_EXAMPLES "Build examples" ON)
+
+# ============================================================================
+# 示例 (由 BUILD_EXAMPLES 控制)
+# ============================================================================
+
+if(BUILD_EXAMPLES)
+    add_executable(motor_example_single   examples/single_motor.c)
+    target_link_libraries(motor_example_single motor_hal)
+
+    add_executable(motor_example_dual     examples/dual_motor.c)
+    target_link_libraries(motor_example_dual motor_hal)
+
+    add_executable(motor_example_mit      examples/mit_control.c)
+    target_link_libraries(motor_example_mit motor_hal)
+
+    add_executable(motor_example_dual_full examples/dual_motor_full.c)
+    target_link_libraries(motor_example_dual_full motor_hal m)
+
+    add_executable(motor_example_fb_cb    examples/feedback_callback.c)
+    target_link_libraries(motor_example_fb_cb motor_hal m)
+
+    add_executable(hal_stress_test        test/hal_stress_test.c)
+    target_link_libraries(hal_stress_test motor_hal pthread)
+endif()

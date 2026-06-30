@@ -2,8 +2,8 @@
 #==============================================================================
 # motor_hal 交叉编译脚本
 # 用法: ./build.sh [shared|static|clean]
-#   shared - 编译动态库(.so) + 工具 (默认, 先清理再编译)
-#   static - 编译静态库(.a) + 工具 (先清理再编译)
+#   shared - 编译动态库(.so) + 工具 + examples (默认, 先清理再编译)
+#   static - 编译静态库(.a) + 工具 + examples (先清理再编译)
 #   clean  - 仅清理构建目录, 不编译
 #==============================================================================
 set -e
@@ -14,6 +14,7 @@ CMAKE="/opt/gcc-arm-12.4-x86_64-aarch64-linux-gnu/bin/cmake"
 
 BUILD_DIR="$PROJECT_DIR/motor_hal/build"
 TOOLS_BUILD_DIR="$PROJECT_DIR/motor_hal/tools/build"
+EXAMPLES_BUILD_DIR="$PROJECT_DIR/motor_hal/build"
 IMU_BUILD_DIR="$PROJECT_DIR/imu_hal/build"
 STARK_BUILD_DIR="$PROJECT_DIR/stark_periph_node/build"
 TEST_BUILD_DIR="$PROJECT_DIR/stark_periph_node/src/test/build"
@@ -24,11 +25,11 @@ TEST_BUILD_DIR="$PROJECT_DIR/stark_periph_node/src/test/build"
 _clean() {
     echo "清理构建目录..."
     rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR" "$IMU_BUILD_DIR" "$STARK_BUILD_DIR" "$TEST_BUILD_DIR"
-    echo "  ✓ motor_hal/build/        已删除"
-    echo "  ✓ motor_hal/tools/build/   已删除"
-    echo "  ✓ imu_hal/build/           已删除"
-    echo "  ✓ stark_periph_node/build/          已删除"
-    echo "  ✓ stark_periph_node/src/test/build/     已删除"
+    echo "  motor_hal/build/            已删除"
+    echo "  motor_hal/tools/build/       已删除"
+    echo "  imu_hal/build/               已删除"
+    echo "  stark_periph_node/build/              已删除"
+    echo "  stark_periph_node/src/test/build/     已删除"
 }
 
 CMD="${1:-shared}"
@@ -59,10 +60,10 @@ esac
 _clean
 
 #==============================================================================
-# [1/5] 编译 motor_hal 库
+# [1/6] 编译 motor_hal 库
 #==============================================================================
 echo "=========================================="
-echo "  [1/5] 编译 motor_hal ($CMD)"
+echo "  [1/6] 编译 motor_hal ($CMD)"
 echo "=========================================="
 
 mkdir -p "$BUILD_DIR"
@@ -74,11 +75,32 @@ $CMAKE -S "$PROJECT_DIR/motor_hal" -B "$BUILD_DIR" \
 $CMAKE --build "$BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
-# [2/5] 编译 motor_tool 工具
+# [2/6] 编译 motor_hal examples
 #==============================================================================
 echo ""
 echo "=========================================="
-echo "  [2/5] 编译 motor_tool"
+echo "  [2/6] 编译 motor_hal examples"
+echo "=========================================="
+
+$CMAKE -S "$PROJECT_DIR/motor_hal" -B "$EXAMPLES_BUILD_DIR" \
+    -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
+    -DBUILD_EXAMPLES=ON \
+    $SHARED_FLAG
+
+$CMAKE --build "$EXAMPLES_BUILD_DIR" -j"$(nproc)" \
+    --target motor_example_single \
+    --target motor_example_dual \
+    --target motor_example_mit \
+    --target motor_example_dual_full \
+    --target motor_example_fb_cb \
+    --target hal_stress_test
+
+#==============================================================================
+# [3/6] 编译 motor_tool 工具
+#==============================================================================
+echo ""
+echo "=========================================="
+echo "  [3/6] 编译 motor_tool"
 echo "=========================================="
 
 mkdir -p "$TOOLS_BUILD_DIR"
@@ -89,11 +111,11 @@ $CMAKE -S "$PROJECT_DIR/motor_hal/tools" -B "$TOOLS_BUILD_DIR" \
 $CMAKE --build "$TOOLS_BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
-# [3/5] 编译 imu_hal
+# [4/6] 编译 imu_hal
 #==============================================================================
 echo ""
 echo "=========================================="
-echo "  [3/5] 编译 imu_hal"
+echo "  [4/6] 编译 imu_hal"
 echo "=========================================="
 
 mkdir -p "$IMU_BUILD_DIR"
@@ -103,11 +125,11 @@ $CMAKE -S "$PROJECT_DIR/imu_hal" -B "$IMU_BUILD_DIR" \
 $CMAKE --build "$IMU_BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
-# [4/5] 编译 stark_periph_manager_node (stark_periph_node)
+# [5/6] 编译 stark_periph_manager_node (stark_periph_node)
 #==============================================================================
 echo ""
 echo "=========================================="
-echo "  [4/5] 编译 stark_periph_manager_node"
+echo "  [5/6] 编译 stark_periph_manager_node"
 echo "=========================================="
 
 mkdir -p "$STARK_BUILD_DIR"
@@ -120,11 +142,11 @@ $CMAKE -S "$PROJECT_DIR/stark_periph_node" -B "$STARK_BUILD_DIR" \
 $CMAKE --build "$STARK_BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
-# [5/5] 编译测试工具 (algo_sim + perf_test)
+# [6/6] 编译测试工具 (algo_sim + perf_test)
 #==============================================================================
 echo ""
 echo "=========================================="
-echo "  [5/5] 编译测试工具"
+echo "  [6/6] 编译测试工具"
 echo "=========================================="
 
 mkdir -p "$TEST_BUILD_DIR"
@@ -150,6 +172,16 @@ fi
 
 echo "库文件:"
 ls -lh "$LIB_FILE"
+echo ""
+
+echo "motor_hal examples:"
+ls -lh "$EXAMPLES_BUILD_DIR/motor_example_single" \
+        "$EXAMPLES_BUILD_DIR/motor_example_dual" \
+        "$EXAMPLES_BUILD_DIR/motor_example_mit" \
+        "$EXAMPLES_BUILD_DIR/motor_example_dual_full" \
+        "$EXAMPLES_BUILD_DIR/motor_example_fb_cb" \
+        "$EXAMPLES_BUILD_DIR/hal_stress_test"
+
 echo ""
 echo "STARK_SHM_HEADER:"
 ls -lh "$PROJECT_DIR/stark_periph_node/src/stark_shm.h"
