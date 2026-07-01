@@ -54,6 +54,19 @@ int tool_register_motor(int node_id)
     return 0;
 }
 
+int tool_unregister_motor(int node_id)
+{
+    for (int i = 0; i < g_motor_count; i++) {
+        if (g_motor_ids[i] == node_id) {
+            memmove(&g_motor_ids[i], &g_motor_ids[i + 1],
+                    (g_motor_count - i - 1) * sizeof(int));
+            g_motor_count--;
+            return 0;
+        }
+    }
+    return -1;
+}
+
 int tool_motor_count(void) { return g_motor_count; }
 int tool_motor_id(int index) { return (index >= 0 && index < g_motor_count) ? g_motor_ids[index] : -1; }
 
@@ -73,6 +86,22 @@ static int _parse_ids(int id, int *ids, int *count)
     return 0;
 }
 
+/* 过滤离线电机: 保留有反馈帧记录的, 剔除从未收到过反馈的 */
+int tool_filter_online(int *ids, int n)
+{
+    int online = 0;
+    for (int i = 0; i < n; i++) {
+        motor_feedback_t fb;
+        if (g_hal && motor_hal_get_feedback(g_hal, (uint8_t)ids[i], &fb) == 0
+            && fb.timestamp_us > 0) {
+            ids[online++] = ids[i];
+        } else {
+            fprintf(stderr, "WARN: motor %d offline, skipping\n", ids[i]);
+        }
+    }
+    return online;
+}
+
 /* ================================================================
  * 系统命令
  * ================================================================ */
@@ -81,6 +110,8 @@ int tool_disable(int id)
 {
     int ids[TOOL_MAX_MOTORS], n, errors = 0;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         int ret = motor_hal_disable(g_hal, (uint8_t)ids[i]);
         if (ret < 0) { fprintf(stderr, "✗ Motor %d disable failed\n", ids[i]); errors++; }
@@ -93,6 +124,8 @@ int tool_fault_reset(int id)
 {
     int ids[TOOL_MAX_MOTORS], n, errors = 0;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         printf("Resetting fault motor %d...\n", ids[i]);
         int ret = motor_hal_fault_reset(g_hal, (uint8_t)ids[i]);
@@ -106,6 +139,8 @@ int tool_reboot(int id)
 {
     int ids[TOOL_MAX_MOTORS], n, errors = 0;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         int ret = motor_hal_nmt_send(g_hal, (uint8_t)ids[i], NMT_CMD_RESET_NODE);
         if (ret < 0) { fprintf(stderr, "✗ Motor %d reboot failed\n", ids[i]); errors++; }
@@ -128,6 +163,8 @@ int tool_torque_sdo(int id, int ma)
 
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     int errors = 0;
     for (int i = 0; i < n; i++) {
@@ -157,6 +194,8 @@ int tool_speed_sdo(int id, int rpm, int acc, int dec)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     uint16_t accel = (uint16_t)acc;
     uint16_t decel = (uint16_t)dec;
@@ -221,6 +260,8 @@ int tool_abs_sdo(int id, float deg)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     int32_t counts = motor_deg_to_counts(deg);
 
@@ -262,6 +303,8 @@ int tool_abs_stop(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     int errors = 0;
     for (int i = 0; i < n; i++) {
@@ -280,6 +323,8 @@ int tool_set_zero_auto(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     int errors = 0;
     for (int i = 0; i < n; i++) {
@@ -308,6 +353,8 @@ int tool_limit_pos_set(int id, float deg)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     int32_t counts = (int32_t)(deg * 65536.0f / 360.0f);
 
@@ -339,6 +386,8 @@ int tool_limit_neg_set(int id, float deg)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     int32_t counts = (int32_t)(deg * 65536.0f / 360.0f);
 
@@ -368,6 +417,8 @@ int tool_limit_pos_read(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     for (int i = 0; i < n; i++) {
         uint32_t val = 0;
@@ -386,6 +437,8 @@ int tool_limit_neg_read(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     for (int i = 0; i < n; i++) {
         uint32_t val = 0;
@@ -404,6 +457,8 @@ int tool_save_flash(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     int errors = 0;
     for (int i = 0; i < n; i++) {
@@ -419,6 +474,8 @@ int tool_set_pid(int id, uint16_t cp, uint16_t ci,
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     motor_pid_t pid = { cp, ci, vp, vi, pp, pi };
     int errors = 0;
@@ -435,6 +492,8 @@ int tool_read_pid(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     for (int i = 0; i < n; i++) {
         motor_pid_t pid;
@@ -459,6 +518,8 @@ int tool_sdo_read(int id, uint16_t index, uint8_t subidx)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     for (int i = 0; i < n; i++) {
         uint32_t val = 0;
@@ -475,6 +536,8 @@ int tool_sdo_write(int id, uint16_t index, uint8_t subidx, uint32_t value, uint8
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
 
     int errors = 0;
     for (int i = 0; i < n; i++) {
@@ -493,6 +556,8 @@ int tool_read_angle(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         int32_t pos = motor_hal_get_position(g_hal, (uint8_t)ids[i]);
         float deg = motor_counts_to_deg((int16_t)pos);
@@ -505,6 +570,8 @@ int tool_read_speed(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         int32_t spd = motor_hal_get_velocity(g_hal, (uint8_t)ids[i]);
         printf("[%d] speed = %d (raw value)\n", ids[i], spd);
@@ -516,6 +583,8 @@ int tool_read_current(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         int32_t cur = motor_hal_get_current(g_hal, (uint8_t)ids[i]);
         printf("[%d] current = %d mA\n", ids[i], cur);
@@ -527,6 +596,8 @@ int tool_read_temp(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         int32_t t = 0;
         motor_hal_get_motor_temp(g_hal, (uint8_t)ids[i], &t);
@@ -539,6 +610,8 @@ int tool_read_state(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         uint16_t sw = motor_hal_get_statusword(g_hal, (uint8_t)ids[i]);
         motor_state_t st = motor_hal_get_state(g_hal, (uint8_t)ids[i]);
@@ -551,6 +624,8 @@ int tool_read_error(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         uint16_t err = 0;
         int ret = motor_hal_get_fault_code(g_hal, (uint8_t)ids[i], &err);
@@ -584,6 +659,8 @@ int tool_read_version(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         uint32_t ver = 0;
         int ret = motor_hal_sdo_read_u32(g_hal, (uint8_t)ids[i], 0x100A, 0x00, &ver);
@@ -599,6 +676,8 @@ int tool_read_mode(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         uint32_t mode = 0;
         int ret = motor_hal_sdo_read_u32(g_hal, (uint8_t)ids[i], 0x6061, 0x00, &mode);
@@ -622,6 +701,8 @@ int tool_read_all(int id)
 {
     int ids[TOOL_MAX_MOTORS], n;
     if (_parse_ids(id, ids, &n) < 0) return -1;
+    n = tool_filter_online(ids, n);
+    if (n == 0) return -1;
     for (int i = 0; i < n; i++) {
         uint8_t mid = (uint8_t)ids[i];
         printf("── Motor %d ──\n", mid);

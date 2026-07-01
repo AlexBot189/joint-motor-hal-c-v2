@@ -47,6 +47,7 @@ static int _startup_single(int id)
     ret = motor_hal_startup(g_hal, (uint8_t)id, 5000);
     if (ret != 0) {
         fprintf(stderr, "✗ Motor %d startup failed (ret=%d)\n", id, ret);
+        tool_unregister_motor(id);  /* 启动失败, 从广播列表移除, 避免后续广播SDO超时 */
         return -1;
     }
 
@@ -89,9 +90,15 @@ static int _broadcast_op(int id,
             fprintf(stderr, "No motors registered\n");
             return -1;
         }
+        /* 收集已注册电机 ID, 过滤离线 */
+        int ids[TOOL_MAX_MOTORS];
+        for (int i = 0; i < count; i++) ids[i] = tool_motor_id(i);
+        int n = tool_filter_online(ids, count);
+        if (n == 0) return -1;
+
         int errors = 0;
-        for (int i = 0; i < count; i++) {
-            int mid = tool_motor_id(i);
+        for (int i = 0; i < n; i++) {
+            int mid = ids[i];
             int ret = fn_single(g_hal, (uint8_t)mid);
             if (ret == 0)
                 printf("✓ Motor %d: %s OK\n", mid, action);

@@ -24,8 +24,10 @@ extern motor_hal_t *g_hal;
 int  tool_init(const char *iface);
 void tool_cleanup(void);
 int  tool_register_motor(int node_id);
+int  tool_unregister_motor(int node_id);
 int  tool_motor_count(void);
 int  tool_motor_id(int index);
+int  tool_filter_online(int *ids, int n);  /* 过滤离线电机, 返回在线数量 */
 
 /* ================================================================
  * 系统命令
