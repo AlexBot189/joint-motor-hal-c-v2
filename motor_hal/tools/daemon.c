@@ -34,6 +34,7 @@ static volatile int g_daemon_running = 0;
 static int g_listen_fd = -1;
 static int g_client_fd = -1;
 static volatile int g_sensor_watch_active = 0;  /* 传感器看板期间不关 fd */
+static bool g_sync_started = false;               /* SYNC 是否已启动 */
 
 static void _sig_handler(int sig)
 {
@@ -164,6 +165,14 @@ static void _process_command(int client_fd, char *cmdline)
 
     int ret = cmd_dispatch(g_hal, argc + 1, full_argv);
 
+    /* 手动 startup/enable 成功后, 若 SYNC 未启动则开启 */
+    if (!g_sync_started && ret == 0 &&
+        (strcmp(argv[0], "startup") == 0 || strcmp(argv[0], "enable") == 0)) {
+        motor_hal_sync_start(g_hal, 20000);
+        g_sync_started = true;
+        fprintf(stderr, "  ,  SYNC started (50Hz)\n");
+    }
+
     if (strcmp(argv[0], "watch") != 0) {
         _send_response(client_fd, "ok", "done", ret);
     }
@@ -192,7 +201,15 @@ static void _accept_loop(void)
 
     while (g_daemon_running) {
         /* 处理 auto_enable 触发的待启动电机 (recv 线程收到 bootup 时只设标志) */
-        motor_hal_process_pending_startups(g_hal);
+        int started = motor_hal_process_pending_startups(g_hal);
+
+        /* 第一个电机上线后开启 SYNC 定时器
+         *   触发 TPDO1 反馈 (0x180+node) — 50Hz不阻塞SDO */
+        if (!g_sync_started && started > 0) {
+            motor_hal_sync_start(g_hal, 20000);
+            g_sync_started = true;
+            fprintf(stderr, "  ,  First motor online, SYNC started (50Hz)\n");
+        }
 
         fd_set fds;
         FD_ZERO(&fds);
@@ -243,7 +260,9 @@ int daemon_start(const char *iface)
     cfg.disable_watchdog  = true;
     cfg.auto_enable       = true;
     cfg.bootup_timeout_ms = 3000;
-    cfg.tpdo_sync_count   = 1;    /* 每个 SYNC 上报一次 TPDO */
+    cfg.tpdo_sync_count   = 1;    /* TPDO1 sync — 电机1的0x300路径有硬件问题
+                                * 必须用TPDO1(0x180+node)作为反馈通道
+                                * SYNC 50Hz 延迟启动, 不阻塞SDO */
 
     int motor_ids[] = {1, 2};
     int motor_count = sizeof(motor_ids) / sizeof(motor_ids[0]);
@@ -260,8 +279,10 @@ int daemon_start(const char *iface)
     /* 4. 启动接收线程 — 在子进程中创建, 安全 */
     motor_hal_recv_start(g_hal);
 
-    /* 4.5 启动 SYNC 定时器 (驱动板需要 SYNC 才发送 0x300 反馈帧) */
-    motor_hal_sync_start(g_hal, 5000);
+    /* 4.5 SYNC 延迟启动 — 第一个电机上线后再开
+     *     避免电机上电窗口期内无人ACK导致CAN bus-off
+     *     20ms(50Hz) + tpdo_sync_count=1: 双电机各发TPDO1
+     *     电机1的0x300硬件不通, 必须走TPDO1 */
 
     /* 5. 信号处理 */
     signal(SIGINT,  _sig_handler);

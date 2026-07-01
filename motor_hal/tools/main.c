@@ -40,7 +40,7 @@ static void print_help(void)
     printf("  probe [id]           主动探测电机在线 (0=全部)\n\n");
 
     printf("── 校准 & 传感器透传 控制前必须完成 ──────────\n");
-    printf("  calib start <id_r> <id_l> [t]  校准流程 (设零位, 验证)\n");
+    printf("  calib start <id> [id_l] [t]  单/双电机校准 (0=跳过)\n");
     printf("  calib status          查看校准进度\n");
     printf("  calib exit            退出校准\n");
     printf("  setzero <id>          设当前位置为零位\n");

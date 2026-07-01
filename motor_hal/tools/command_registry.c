@@ -49,7 +49,7 @@ const command_entry_t g_cmd_table[] = {
     { CMD_WATCH,    "watch",    "watch <period_ms>",             "持续轮询反馈",                 2, 2 },
     { CMD_SENSOR,   "sensor",   "sensor <config|stop|read|watch> ...", "传感器透传",        -1, -1 },
     { CMD_REPORT,   "report",   "report [period_ms]",             "数据上报 (0=停止)",           2, 2 },
-    { CMD_CALIB,    "calib",    "calib <start|status|exit> ...", "电机零位校准",                 -1, -1 },
+    { CMD_CALIB,    "calib",    "calib <start|status|exit> [id] [id_l] [t]", "电机零位校准 (单/双电机)", -1, -1 },
     { CMD_TPDO_MAP, "tpdo_map", "tpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...", "TPDO映射", -1, -1 },
     { CMD_RPDO_MAP, "rpdo_map", "rpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...", "RPDO映射", -1, -1 },
     { CMD_RPDO_SEND, "rpdo_send", "rpdo_send <id> <hex_bytes...>", "RPDO发送", 3, -1 },

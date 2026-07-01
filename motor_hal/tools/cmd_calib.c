@@ -58,13 +58,19 @@ int cmd_do_calib(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     }
 
     if (strcmp(sub, "start") == 0) {
-        if (argc < 5) {
-            fprintf(stderr, "Usage: motor_tool calib start <id_r> <id_l> [timeout_ms]\n");
+        /* 单电机: calib start <id> [timeout_ms]
+         *   双电机: calib start <id_r> <id_l> [timeout_ms]
+         *   id=0 表示跳过该电机 */
+        if (argc < 4) {
+            fprintf(stderr, "Usage: motor_tool calib start <id> [id_l] [timeout_ms]\n");
+            fprintf(stderr, "  Single motor: motor_tool calib start 1\n");
+            fprintf(stderr, "  Dual motor:   motor_tool calib start 1 2\n");
+            fprintf(stderr, "  Skip one:     motor_tool calib start 1 0  (skip left)\n");
             return -1;
         }
 
         int id_r = atoi(argv[3]);
-        int id_l = atoi(argv[4]);
+        int id_l = (argc >= 5) ? atoi(argv[4]) : 0;
         int timeout_ms = (argc >= 6) ? atoi(argv[5]) : 10000;
 
         if (g_calib) motor_calib_destroy(g_calib);
@@ -87,7 +93,10 @@ int cmd_do_calib(motor_hal_t *hal, int cmd_id, int argc, char **argv)
             return -1;
         }
 
-        printf("Calib started: R=%d L=%d timeout=%dms\n", id_r, id_l, timeout_ms);
+        if (id_l > 0)
+            printf("Calib started: R=%d L=%d timeout=%dms\n", id_r, id_l, timeout_ms);
+        else
+            printf("Calib started: motor=%d timeout=%dms\n", id_r, timeout_ms);
         printf("Polling... Press Ctrl+C to abort.\n\n");
 
         signal(SIGINT, _sigint_handler);
