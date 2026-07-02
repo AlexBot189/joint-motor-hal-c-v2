@@ -130,7 +130,8 @@ void canopen_sync_build(canfd_frame_t *f)
     memset(f, 0, sizeof(*f));
     f->id    = COB_SYNC;
     f->dlc   = 0;
-    f->is_fd = false;
+    f->is_fd   = true;   /* CANFD, 驱动板据此决定 0x300 数据完整度 */
+    f->use_brs = true;   /* 开启 BRS */
 }
 
 /* =====================================================

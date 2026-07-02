@@ -744,12 +744,12 @@ int motor_hal_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)
 
     /* 巨蟹协议: PDO mode flag 和 SDO 0x6060 是两套编码 */
     static const uint8_t sdo_mode_map[] = {
-        [MOTOR_MODE_PROFILE_POS] = 0x01,  /* PP:      CiA 402 标准值  1 */
-        [MOTOR_MODE_PROFILE_VEL] = 0x03,  /* PV:      PDF 确认值  3 */
-        [MOTOR_MODE_CSP]         = 0x08,  /* CSP:     CiA 402 标准值  8 */
-        [MOTOR_MODE_CSV]         = 0x09,  /* CSV:     CiA 402 标准值  9 */
-        [MOTOR_MODE_CURRENT]     = 0x0A,  /* 电流环:  CiA 402 标准值 10 */
-        [MOTOR_MODE_MIT]         = 0x06,  /* MIT:     厂商自定义        */
+        [MOTOR_MODE_PROFILE_POS] = 0x01,  /* PP:      巨蟹协议 0x01 */
+        [MOTOR_MODE_PROFILE_VEL] = 0x02,  /* PV:      巨蟹协议 0x02 */
+        [MOTOR_MODE_CSP]         = 0x03,  /* CSP:     巨蟹协议 0x03 */
+        [MOTOR_MODE_CSV]         = 0x04,  /* CSV:     巨蟹协议 0x04 */
+        [MOTOR_MODE_CURRENT]     = 0x05,  /* 电流环:  巨蟹快控 0x05 */
+        [MOTOR_MODE_MIT]         = 0x06,  /* MIT:     巨蟹快控 0x06 */
     };
 
     if (mode >= sizeof(sdo_mode_map)) return -EINVAL;
