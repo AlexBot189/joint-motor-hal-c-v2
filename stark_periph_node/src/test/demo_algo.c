@@ -223,7 +223,7 @@ static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
     }
 }
 
-/* 周期上报数据打印 — 全字段 */
+/* 周期上报数据打印 — 全字段 (版本号去重) */
 static void run_report_loop(stark_client_t* c)
 {
     printf("[report] 等待数据流开启...\n");
@@ -232,12 +232,17 @@ static void run_report_loop(stark_client_t* c)
         usleep(100000);
     }
 
+    uint32_t last_ver = 0;
     while (g_running) {
-        uint64_t t0 = now_ms();
+        uint32_t ver = stark_report_version(c);
+        if (ver == last_ver) { usleep(1000); continue; }
+        last_ver = ver;
+
         const PeriodicUploadData* d = stark_report_data(c);
         if (!d) { usleep(1000); continue; }
 
-        printf("=== [%ums] ==========================================\n", d->timestamp_ms);
+        printf("=== [%ums] ver=%u ===============================\n",
+               d->timestamp_ms, ver);
 
         /* IMU */
         printf("IMU  gyro(%.2f %.2f %.2f) dps  quat(%.4f %.4f %.4f %.4f)  "
@@ -280,10 +285,6 @@ static void run_report_loop(stark_client_t* c)
                d->key_landing_left, d->torque_valid_left);
 
         printf("\n");
-
-        /* 每秒打印一次 */
-        uint64_t elapsed = now_ms() - t0;
-        usleep(elapsed < 900 ? (unsigned int)(1000 - elapsed) : 100000);
     }
 }
 

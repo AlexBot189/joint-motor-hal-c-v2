@@ -390,6 +390,13 @@ static inline const PeriodicUploadData* stark_report_data(stark_client_t* c)
     return &c->shm->periodic_data;
 }
 
+/* 读取上报版本号, 对比上次可检测数据更新 */
+static inline uint32_t stark_report_version(stark_client_t* c)
+{
+    if (!c || !c->shm) return 0;
+    return __atomic_load_n(&c->shm->periodic_version, __ATOMIC_ACQUIRE);
+}
+
 #ifdef __cplusplus
 }
 #endif
