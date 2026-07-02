@@ -157,16 +157,9 @@ static void poll_common(motor_hal_t* hal, stark_shm_t* shm, uint8_t motor_count)
 static void poll_booting(stark_shm_t* shm, int motor_count,
                          bool enable_rt, bool& sync_started)
 {
-    if (all_motors_online(shm, motor_count)) {
-        ECO_INFO_NEW("[main] all {} motors online (0x{:02X}), entering READY",
-                     motor_count, shm->motor_online);
-        state_transition(STATE_READY);
-        return;
-    }
-
-    /* 至少1个电机在线后启动 RT 线程和 SYNC */
     if (!any_motor_online(shm, motor_count)) return;
 
+    /* 至少1个电机在线: 启动 RT 线程和 SYNC */
     if (g_rt_worker && !g_rt_worker->IsRunning()) {
         g_rt_worker->Start();
         ECO_INFO_NEW("[main] RT worker started (1KHz, {})",
@@ -185,6 +178,12 @@ static void poll_booting(stark_shm_t* shm, int motor_count,
             }
         }
     }
+
+    if (all_motors_online(shm, motor_count)) {
+        ECO_INFO_NEW("[main] all {} motors online (0x{:02X}), entering READY",
+                     motor_count, shm->motor_online);
+        state_transition(STATE_READY);
+    }
 }
 
 /*
@@ -194,6 +193,13 @@ static void poll_booting(stark_shm_t* shm, int motor_count,
 
 static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
 {
+    /* 未启用自动校准时直接标记完成, 跳过校准流程 */
+    if (!g_ctx->auto_calib && !g_ctx->calib_done) {
+        ECO_INFO_NEW("[main] auto_calib disabled, skipping calibration");
+        g_ctx->calib_done = true;
+        if (shm) shm->calib_state = 2;
+    }
+
     /* 启动校准 */
     bool need_calib = !g_ctx->calib_done &&
                       (g_ctx->calib_requested || g_ctx->auto_calib);
