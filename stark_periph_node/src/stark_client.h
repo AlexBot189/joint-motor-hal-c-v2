@@ -210,6 +210,22 @@ static inline void stark_speed(stark_client_t* c, int id, float rpm)
     _stark_mbox_end(c, seq);
 }
 
+/* 轮廓速度 (PV 模式) */
+static inline void stark_pv(stark_client_t* c, int id, float rpm, float accel)
+{
+    if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
+
+    uint64_t seq = _stark_mbox_begin(c);
+    int idx = id - 1;
+
+    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_PV;
+    c->shm->mailbox.cmd[idx].value    = (int32_t)(rpm * 100.0f);
+    c->shm->mailbox.cmd[idx].value2   = (int32_t)(accel * 100.0f);
+
+    _stark_mbox_end(c, seq);
+}
+
 /* 循环同步速度 (CSV 模式) */
 static inline void stark_csv(stark_client_t* c, int id, float rpm)
 {

@@ -233,6 +233,11 @@ void StarkRtWorker::ProcessMailbox()
         case STARK_CMD_CSV:
             motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f);
             break;
+        case STARK_CMD_PV:
+            motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_PROFILE_VEL,
+                               (int16_t)(c.value / 100),
+                               (uint16_t)(c.value2 / 100), 0);
+            break;
         case STARK_CMD_POS:
             motor_hal_set_position(m_hal, mid, (float)c.value / 100.0f);
             break;

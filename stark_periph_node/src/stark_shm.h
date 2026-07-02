@@ -113,6 +113,7 @@ typedef enum {
     STARK_CMD_CSV      = 6,       /* 循环同步速度 CSV, value=RPM×100                          */
     /* 多轴广播: 两电机 cmd 都为 MULTI 时, 打包一帧 64B CANFD 发出 */
     STARK_CMD_MULTI    = 7,       /* 多轴广播, mode/value/value2/feedforward 字段有效            */
+    STARK_CMD_PV       = 8,       /* 轮廓速度模式 PV, value=RPM×100 value2=accel×100         */
     /* PDO Byte0 位控制 (不发 target) */
     STARK_CMD_ENABLE   = 10,      /* PDO使能 (Byte0 bit7=1)                                */
     STARK_CMD_DISABLE  = 11,      /* PDO失能 (Byte0 bit7=0)                                */

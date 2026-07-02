@@ -146,6 +146,60 @@ static void run_mit(stark_client_t* c, float kp, float kd)
     }
 }
 
+/* 轮廓位置 PP: 方波 */
+static void run_pp(stark_client_t* c, float amplitude_deg, float accel, float vel)
+{
+    printf("[PP] 轮廓位置, ±%.1f deg, accel=%.0fRPM/s vel=%.0fRPM\n", amplitude_deg, accel, vel);
+
+    uint64_t t0 = now_ms();
+    while (g_running) {
+        uint64_t t = now_ms() - t0;
+        float target = ((t / 2000) % 2 == 0) ? amplitude_deg : -amplitude_deg;
+
+        stark_pp(c, 1,  target, accel, vel);
+        stark_pp(c, 2, -target, accel, vel);
+
+        if (t % 500 < 10) {
+            motor_data_t fb = stark_fb(c, 1);
+            printf("[t=%3lus] target=%.0f deg  fb_pos=%.1f deg\n",
+                   (unsigned long)(t / 1000), target, counts_to_deg(fb.position));
+        }
+        usleep(1000);
+    }
+}
+
+/* 轮廓速度 PV: 梯形波 */
+static void run_pv(stark_client_t* c, float max_rpm, float accel)
+{
+    printf("[PV] 轮廓速度, ±%.0f RPM, accel=%.0fRPM/s\n", max_rpm, accel);
+
+    uint64_t t0 = now_ms();
+    while (g_running) {
+        uint64_t t = now_ms() - t0;
+        float rpm;
+        uint64_t phase = t % 4000;
+
+        if (phase < 1000)
+            rpm = max_rpm * (float)phase / 1000.0f;
+        else if (phase < 2000)
+            rpm = max_rpm;
+        else if (phase < 3000)
+            rpm = max_rpm - max_rpm * (float)(phase - 2000) / 1000.0f;
+        else
+            rpm = 0.0f - max_rpm * (float)(phase - 3000) / 1000.0f;
+
+        stark_pv(c, 1,  rpm, accel);
+        stark_pv(c, 2, -rpm, accel);
+
+        if (t % 200 < 10) {
+            motor_data_t fb = stark_fb(c, 1);
+            printf("[t=%3lus] target=%.0f RPM  fb_vel=%d RPM\n",
+                   (unsigned long)(t / 1000), rpm, fb.velocity);
+        }
+        usleep(5000);
+    }
+}
+
 /* 多轴广播: 恒定电流 */
 static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
 {
@@ -194,17 +248,23 @@ static void usage(void)
 {
     printf("用法: ./demo_algo <mode> [args...]\n\n");
     printf("模式:\n");
-    printf("  torque <mA>           电流控制, 正弦波, 振幅=mA\n");
-    printf("  speed  <rpm>          速度控制, 梯形波, 峰值=rpm\n");
-    printf("  pos    <deg>          位置控制, 方波, 振幅=deg\n");
-    printf("  mit    <kp> <kd>      MIT 阻抗, kp=kd=100 推荐起步\n");
-    printf("  multi  <ma1> <ma2>    多轴广播, M1/M2 恒定电流\n");
-    printf("  stat                  只读反馈, 不发控制\n");
+    printf("  torque <mA>           电流环, 正弦波, 振幅=mA\n");
+    printf("  pp     <deg> [acc] [v] 轮廓位置 PP, 方波\n");
+    printf("  pv     <rpm> [acc]      轮廓速度 PV, 梯形波\n");
+    printf("  csp    <deg>           CSP 位置, 方波\n");
+    printf("  csv    <rpm>           CSV 速度, 梯形波\n");
+    printf("  speed  <rpm>           速度控制 (同 csv)\n");
+    printf("  pos    <deg>           位置控制 (同 csp)\n");
+    printf("  mit    <kp> <kd>       MIT 阻抗\n");
+    printf("  multi  <ma1> <ma2>     多轴广播, 恒电流\n");
+    printf("  stat                   只读反馈\n");
     printf("\n示例:\n");
-    printf("  ./demo_algo torque 200       # 电流 ±200mA 正弦波\n");
-    printf("  ./demo_algo speed 10         # 速度 ±10RPM\n");
-    printf("  ./demo_algo pos 15           # 位置 ±15度\n");
-    printf("  ./demo_algo mit 100 50       # MIT kp=100 kd=50\n");
+    printf("  ./demo_algo torque 200        # 电流 ±200mA\n");
+    printf("  ./demo_algo pp 15 2000 10     # PP ±15°, acc=2000RPM/s vel=10RPM\n");
+    printf("  ./demo_algo pv 30 1000        # PV ±30RPM, acc=1000RPM/s\n");
+    printf("  ./demo_algo csp 15            # CSP ±15°\n");
+    printf("  ./demo_algo csv 10            # CSV ±10RPM\n");
+    printf("  ./demo_algo mit 100 50        # MIT kp=100 kd=50\n");
     printf("  ./demo_algo multi 200 200    # 双电机各 200mA\n");
     printf("  ./demo_algo stat             # 只读反馈\n");
 }
@@ -258,19 +318,36 @@ int main(int argc, char** argv)
         usleep(5000);
         run_torque(&c, ma);
 
-    } else if (strcmp(mode, "speed") == 0) {
+    } else if (strcmp(mode, "speed") == 0 || strcmp(mode, "csv") == 0) {
         if (argc < 3) { printf("ERR: 需要指定速度 rpm\n"); stark_close(&c); return 1; }
         float rpm = (float)atof(argv[2]);
-        stark_set_mode(&c, 1, 2); stark_set_mode(&c, 2, 2);
+        stark_set_mode(&c, 1, 4); stark_set_mode(&c, 2, 4);
         usleep(5000);
         run_speed(&c, rpm);
 
-    } else if (strcmp(mode, "pos") == 0) {
+    } else if (strcmp(mode, "pos") == 0 || strcmp(mode, "csp") == 0) {
         if (argc < 3) { printf("ERR: 需要指定角度 deg\n"); stark_close(&c); return 1; }
-        float deg = (float)atof(argv[3]);
+        float deg = (float)atof(argv[2]);
         stark_set_mode(&c, 1, 3); stark_set_mode(&c, 2, 3);
         usleep(5000);
         run_position(&c, deg);
+
+    } else if (strcmp(mode, "pp") == 0) {
+        if (argc < 3) { printf("ERR: 需要指定角度 deg\n"); stark_close(&c); return 1; }
+        float deg   = (float)atof(argv[2]);
+        float acc   = (argc >= 4) ? (float)atof(argv[3]) : 2000.0f;
+        float vel   = (argc >= 5) ? (float)atof(argv[4]) : 10.0f;
+        stark_set_mode(&c, 1, 1); stark_set_mode(&c, 2, 1);
+        usleep(5000);
+        run_pp(&c, deg, acc, vel);
+
+    } else if (strcmp(mode, "pv") == 0) {
+        if (argc < 3) { printf("ERR: 需要指定速度 rpm\n"); stark_close(&c); return 1; }
+        float rpm  = (float)atof(argv[2]);
+        float acc  = (argc >= 4) ? (float)atof(argv[3]) : 1000.0f;
+        stark_set_mode(&c, 1, 2); stark_set_mode(&c, 2, 2);
+        usleep(5000);
+        run_pv(&c, rpm, acc);
 
     } else if (strcmp(mode, "mit") == 0) {
         if (argc < 4) { printf("ERR: 需要 kp kd\n"); stark_close(&c); return 1; }
