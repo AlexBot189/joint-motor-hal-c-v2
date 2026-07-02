@@ -241,8 +241,9 @@ static void run_report_loop(stark_client_t* c)
         const PeriodicUploadData* d = stark_report_data(c);
         if (!d) { usleep(1000); continue; }
 
-        printf("=== [%ums] ver=%u ===\n",
-               d->timestamp_ms, ver);
+        printf("=== [%ums] ver=%u frame=%u m_ts=%u i_ts=%u s_ts=%u ===\n",
+               d->timestamp_ms, ver,
+               d->frame_cycle, d->motor_ts_us, d->imu_ts_us, d->sensor_ts_us);
 
         /* IMU */
         printf("IMU  gyro(x=%.2f y=%.2f z=%.2f)dps  "

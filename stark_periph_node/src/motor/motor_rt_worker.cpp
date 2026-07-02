@@ -325,12 +325,17 @@ void StarkRtWorker::PublishFeedback()
             }
 
             /* 双电机 */
+            uint32_t motor_ts_min = 0xFFFFFFFF;
+            uint32_t sensor_ts_min = 0xFFFFFFFF;
+
             for (uint8_t id = 1; id <= (uint8_t)m_motor_count; ++id) {
                 motor_feedback_t mfb;
                 motor_sensor_t s;
                 bool is_right = (id == 1);
 
                 if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
+                    uint32_t ts = (uint32_t)(mfb.timestamp_us & 0xFFFFFFFF);
+                    if (ts < motor_ts_min) motor_ts_min = ts;
                     int32_t vel_x10  = (int32_t)mfb.velocity * 10;
                     int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
                     int16_t fcode    = (int16_t)mfb.error_code;
@@ -368,6 +373,8 @@ void StarkRtWorker::PublishFeedback()
                 }
 
                 if (motor_hal_get_sensor(m_hal, id, &s) == 0) {
+                    uint32_t sts = (uint32_t)(s.timestamp_us & 0xFFFFFFFF);
+                    if (sts < sensor_ts_min) sensor_ts_min = sts;
                     if (is_right) {
                         d.hall_a_data  = s.hall_adc0;
                         d.hall_b_data  = s.hall_adc1;
@@ -389,9 +396,13 @@ void StarkRtWorker::PublishFeedback()
             }
 
             struct timespec now_ts;
-            clock_gettime(CLOCK_MONOTONIC, &now_ts);
-            d.timestamp_ms = (uint32_t)(now_ts.tv_sec * 1000ULL +
-                                         now_ts.tv_nsec / 1000000ULL);
+            clock_gettime(CLOCK_REALTIME, &now_ts);
+            d.timestamp_ms  = (uint32_t)(now_ts.tv_sec * 1000ULL +
+                                          now_ts.tv_nsec / 1000000ULL);
+            d.frame_cycle   = (uint32_t)m_cycle_count;
+            d.motor_ts_us   = (motor_ts_min != 0xFFFFFFFF) ? motor_ts_min : 0;
+            d.imu_ts_us     = (uint32_t)(imu_buf.timestamp_us & 0xFFFFFFFF);
+            d.sensor_ts_us  = (sensor_ts_min != 0xFFFFFFFF) ? sensor_ts_min : 0;
 
             memcpy(&m_shm->periodic_data, &d, sizeof(d));
             __atomic_add_fetch(&m_shm->periodic_version, 1, __ATOMIC_RELEASE);

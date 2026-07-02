@@ -232,7 +232,13 @@ typedef struct {
     uint8_t  torque_valid_left;
 
     /* 时间戳 */
-    uint32_t timestamp_ms;
+    uint32_t timestamp_ms;      /* CLOCK_REALTIME, ms since epoch */
+
+    /* 帧同步: 同一 RT 周期号下所有数据来源一致 */
+    uint32_t frame_cycle;       /* RT cycle number, monotonic, 1ms/tick */
+    uint32_t motor_ts_us;       /* 0x300 CAN RX timestamp, μs (min of all motors) */
+    uint32_t imu_ts_us;         /* IMU GAF output timestamp, μs */
+    uint32_t sensor_ts_us;      /* 0x680 CAN RX timestamp, μs */
 } PeriodicUploadData;
 
 /* 共享内存总结构 (64KB) */
