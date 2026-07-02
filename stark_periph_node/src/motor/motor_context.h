@@ -30,6 +30,10 @@ struct StarkNodeContext {
     /* 传感器透传 */
     uint16_t     sensor_period_ms = 1;        /* ms */
     uint8_t      sensor_bus_format = 3;       /* 3=CANFD BRS, 0=Classic CAN */
+
+    /* 周期上报 */
+    bool         report_auto_enable = true;   /* 校准后自动开启上报 */
+    uint32_t     report_period_ms   = 5;      /* 上报周期 ms */
 };
 
 }  /* namespace stark_periph_manager_node */

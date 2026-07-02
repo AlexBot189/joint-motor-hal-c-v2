@@ -176,6 +176,65 @@ typedef enum {
 
 #define STARK_STATE_COUNT  4
 
+/* ================================================================
+ * 周期上报数据 — IMU + 双电机 + 传感器透传 统一结构
+ * ================================================================ */
+
+typedef struct {
+    /* IMU 段 */
+    float    gyro_dps_x;       /* 角速度 X, dps                              */
+    float    gyro_dps_y;       /* 角速度 Y, dps                              */
+    float    gyro_dps_z;       /* 角速度 Z, dps                              */
+    float    quat_w;           /* 四元数 W                                   */
+    float    quat_x;           /* 四元数 X                                   */
+    float    quat_y;           /* 四元数 Y                                   */
+    float    quat_z;           /* 四元数 Z                                   */
+    float    gyro_roll;        /* 横滚角, -180~+180                          */
+    float    gyro_pitch;       /* 俯仰角, -90~+90                            */
+    float    gyro_yaw;         /* 偏航角, -180~+180                          */
+    float    acc_x;            /* 加速度 X, g                                */
+    float    acc_y;            /* 加速度 Y, g                                */
+    float    acc_z;            /* 加速度 Z, g                                */
+    float    air_pressure;     /* 气压, hPa (预留)                           */
+
+    /* 右电机 (ID=1) */
+    int32_t  RealtimeVelocity;      /* 实时转速, RPM×10                        */
+    int16_t  motor_abs_angle;       /* 绝对角度, °×10                          */
+    int16_t  cal_Iq_current;        /* Q轴电流, A×100                          */
+    int16_t  cal_bus_current;       /* 母线电流, A×100 (预留, SDO轮询)           */
+    int16_t  temp_data;             /* 占位符                                    */
+    int32_t  motor_temp;            /* 电机温度, °C×100                         */
+    int16_t  fault_code;            /* 故障码                                    */
+    int16_t  motor_state;           /* 电机状态 (status_byte 零扩展)             */
+    uint16_t hall_a_data;           /* 霍尔传感器 A                              */
+    uint16_t hall_b_data;           /* 霍尔传感器 B                              */
+    uint16_t hall_c_data;           /* 霍尔传感器 C                              */
+    uint16_t df181_torque;          /* DF181 力矩                                */
+    int16_t  knee_angle;            /* 膝关节电位器                              */
+    uint8_t  key_landing;           /* 着地开关                                  */
+    uint8_t  torque_valid;          /* 力矩数据有效                              */
+
+    /* 左电机 (ID=2) */
+    int32_t  RealtimeVelocity_left;
+    int16_t  motor_abs_angle_left;
+    int16_t  cal_Iq_current_left;
+    int16_t  cal_bus_current_left;
+    int16_t  temp_data_left;
+    int32_t  motor_temp_left;
+    int16_t  fault_code_left;
+    int16_t  motor_state_left;
+    uint16_t hall_a_data_left;
+    uint16_t hall_b_data_left;
+    uint16_t hall_c_data_left;
+    uint16_t df181_torque_left;
+    int16_t  knee_angle_left;
+    uint8_t  key_landing_left;
+    uint8_t  torque_valid_left;
+
+    /* 时间戳 */
+    uint32_t timestamp_ms;
+} PeriodicUploadData;
+
 /* 共享内存总结构 (64KB) */
 
 typedef struct {
@@ -210,7 +269,15 @@ typedef struct {
     uint8_t   _pad_latency[2];
     uint16_t  _pad2[3];                   /* 对齐                                         */
 
-    uint8_t   _pad[3904];                 /* 对齐 64KB                                    */
+    /* 周期上报区 (motor_node 写, 算法/Web 读) */
+    uint8_t   periodic_enabled;       /* 上报总开关: 0=关 1=开 */
+    uint8_t   _pad_rpt_ctrl[3];
+    uint32_t  periodic_period_ms;     /* 上报周期 ms, 默认 5 */
+    uint32_t  periodic_version;       /* 写入版本号, 递增, 读者对比防撕裂 */
+    PeriodicUploadData periodic_data;  /* 周期上报数据, 约 128B */
+    uint8_t   _pad_rpt[32];           /* 预留扩展 */
+
+    uint8_t   _pad[3728];             /* 对齐 64KB                                    */
 } stark_shm_t;
 
 #ifdef __cplusplus

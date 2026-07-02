@@ -125,6 +125,8 @@ int main(int argc, char** argv)
     g_node_ctx.sensor_bus_format = g_dispatcher->GetSensorBusFormat();
     g_node_ctx.auto_calib       = g_dispatcher->GetCalibAuto();
     g_node_ctx.calib_timeout_ms = g_dispatcher->GetCalibTimeoutMs();
+    g_node_ctx.report_auto_enable = g_dispatcher->GetReportAutoEnable();
+    g_node_ctx.report_period_ms   = g_dispatcher->GetReportPeriodMs();
 
     ECO_INFO_NEW("[main] config: motor_count={} sensor_period={}ms bus_fmt={} auto_calib={}",
                  motor_count, g_node_ctx.sensor_period_ms,

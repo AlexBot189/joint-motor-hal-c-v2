@@ -39,6 +39,9 @@ StarkRtWorker::StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
     , m_can_last_frame_us(0)
     , m_latency_idx(0)
     , m_report_divider(m_rt.report_divider)
+    , m_report_enabled(false)
+    , m_report_period_ms(5)
+    , m_periodic_last_cycle(0)
     , m_cycle_count(0)
     , m_overrun_count(0)
 {
@@ -82,6 +85,20 @@ void StarkRtWorker::SetRtConfig(const RtConfig& cfg)
 {
     m_rt = cfg;
     m_report_divider = cfg.report_divider;  /* 立即生效 */
+}
+
+void StarkRtWorker::SetReportEnabled(bool enabled, uint32_t period_ms)
+{
+    m_report_enabled = enabled;
+    if (period_ms >= 1 && period_ms <= 1000) {
+        m_report_period_ms = period_ms;
+    }
+    /* 首次触发: 从当前 RT 周期开始计时 */
+    m_periodic_last_cycle = m_cycle_count;
+    if (m_shm) {
+        m_shm->periodic_enabled   = enabled ? 1 : 0;
+        m_shm->periodic_period_ms = m_report_period_ms;
+    }
 }
 
 /* Run() — RT 线程主循环 1KHz */
@@ -275,11 +292,113 @@ void StarkRtWorker::ProcessMailbox()
 
 void StarkRtWorker::PublishFeedback()
 {
+    /* 周期上报: 基于 RT 周期计数器, 不嵌套在 feedback_frame_t 分频内 */
+    if (m_report_enabled && m_shm && m_hal) {
+        uint64_t elapsed = m_cycle_count - m_periodic_last_cycle;
+        if (elapsed >= m_report_period_ms) {
+            m_periodic_last_cycle = m_cycle_count;
+
+            PeriodicUploadData d;
+            memset(&d, 0, sizeof(d));
+
+            /* IMU */
+            imu_data_t imu_buf;
+            bool imu_ok = false;
+            if (m_imu_sensor && m_imu_sensor->IsReady()) {
+                m_imu_sensor->Read(&imu_buf);
+                imu_ok = true;
+            }
+            if (imu_ok) {
+                d.gyro_dps_x  = imu_buf.gyro_x;
+                d.gyro_dps_y  = imu_buf.gyro_y;
+                d.gyro_dps_z  = imu_buf.gyro_z;
+                d.quat_w      = imu_buf.quat_w;
+                d.quat_x      = imu_buf.quat_x;
+                d.quat_y      = imu_buf.quat_y;
+                d.quat_z      = imu_buf.quat_z;
+                d.gyro_roll   = imu_buf.roll;
+                d.gyro_pitch  = imu_buf.pitch;
+                d.gyro_yaw    = imu_buf.yaw;
+                d.acc_x       = imu_buf.acc_x;
+                d.acc_y       = imu_buf.acc_y;
+                d.acc_z       = imu_buf.acc_z;
+            }
+
+            /* 双电机 */
+            for (uint8_t id = 1; id <= (uint8_t)m_motor_count; ++id) {
+                motor_feedback_t mfb;
+                motor_sensor_t s;
+                bool is_right = (id == 1);
+
+                if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
+                    int32_t vel_x10  = (int32_t)mfb.velocity * 10;
+                    int16_t ang_x10  = (int16_t)((int32_t)mfb.position * 3600 / 65536);
+                    int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
+                    int32_t tmp_x100 = (int32_t)mfb.temperature * 10;
+                    int16_t fcode    = (int16_t)mfb.error_code;
+                    int16_t mstate   = (int16_t)mfb.status_byte;
+
+                    if (is_right) {
+                        d.RealtimeVelocity = vel_x10;
+                        d.motor_abs_angle  = ang_x10;
+                        d.cal_Iq_current   = iq_x100;
+                        d.motor_temp       = tmp_x100;
+                        d.fault_code       = fcode;
+                        d.motor_state      = mstate;
+                    } else {
+                        d.RealtimeVelocity_left = vel_x10;
+                        d.motor_abs_angle_left  = ang_x10;
+                        d.cal_Iq_current_left   = iq_x100;
+                        d.motor_temp_left       = tmp_x100;
+                        d.fault_code_left       = fcode;
+                        d.motor_state_left      = mstate;
+                    }
+                }
+
+                if (motor_hal_get_sensor(m_hal, id, &s) == 0) {
+                    if (is_right) {
+                        d.hall_a_data  = s.hall_adc0;
+                        d.hall_b_data  = s.hall_adc1;
+                        d.hall_c_data  = s.hall_adc2;
+                        d.df181_torque = s.force_raw;
+                        d.knee_angle   = (int16_t)s.knee_adc;
+                        d.key_landing  = s.hw_sw_pc9;
+                        d.torque_valid = s.data_valid;
+                    } else {
+                        d.hall_a_data_left  = s.hall_adc0;
+                        d.hall_b_data_left  = s.hall_adc1;
+                        d.hall_c_data_left  = s.hall_adc2;
+                        d.df181_torque_left = s.force_raw;
+                        d.knee_angle_left   = (int16_t)s.knee_adc;
+                        d.key_landing_left  = s.hw_sw_pc9;
+                        d.torque_valid_left = s.data_valid;
+                    }
+                }
+            }
+
+            struct timespec now_ts;
+            clock_gettime(CLOCK_MONOTONIC, &now_ts);
+            d.timestamp_ms = (uint32_t)(now_ts.tv_sec * 1000ULL +
+                                         now_ts.tv_nsec / 1000000ULL);
+
+            memcpy(&m_shm->periodic_data, &d, sizeof(d));
+            __atomic_add_fetch(&m_shm->periodic_version, 1, __ATOMIC_RELEASE);
+        }
+    }
+
     if (--m_report_divider > 0) return;
     m_report_divider = m_rt.report_divider;
 
     if (!m_hal || !m_shm) return;
     if (!m_active.load(std::memory_order_acquire)) return;
+
+    /* 读 IMU 一次, feedback_frame_t 和 PeriodicUploadData 共用 */
+    imu_data_t imu_local;
+    bool imu_valid = false;
+    if (m_imu_sensor && m_imu_sensor->IsReady()) {
+        m_imu_sensor->Read(&imu_local);
+        imu_valid = true;
+    }
 
     uint32_t active    = __atomic_load_n(&m_shm->active_idx, __ATOMIC_ACQUIRE);
     uint32_t write_idx = active ^ 1;
@@ -330,8 +449,8 @@ void StarkRtWorker::PublishFeedback()
     }
 
     /* 填充 IMU 融合数据 (非阻塞, 硬件未就绪时全零) */
-    if (m_imu_sensor && m_imu_sensor->IsReady()) {
-        m_imu_sensor->Read(&fb->imu);
+    if (imu_valid) {
+        fb->imu = imu_local;
     } else {
         memset(&fb->imu, 0, sizeof(fb->imu));
     }

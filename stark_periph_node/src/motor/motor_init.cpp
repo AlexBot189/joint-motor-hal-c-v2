@@ -356,6 +356,13 @@ bool CanDispatcher::LoadMotorConfig()
             m_imu_op_mode   = imu_cfg.value("op_mode",   5);
         }
 
+        /* 解析 report */
+        if (cfg.contains("report")) {
+            auto& rpt = cfg["report"];
+            m_report_auto_enable = rpt.value("auto_enable", true);
+            m_report_period_ms   = rpt.value("period_ms",   5u);
+        }
+
         return true;  /* 文件解析完成, 缺失字段用默认值 */
     }
 

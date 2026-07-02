@@ -249,6 +249,12 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
             g_ctx->calib_ctx = nullptr;
 
             if (g_rt_worker) g_rt_worker->SetActive(true);
+            /* 校准完成后根据配置自动开启周期上报 */
+            if (g_rt_worker && g_ctx->report_auto_enable) {
+                g_rt_worker->SetReportEnabled(true, g_ctx->report_period_ms);
+                ECO_INFO_NEW("[main] periodic report enabled, period={}ms",
+                             g_ctx->report_period_ms);
+            }
             ECO_INFO_NEW("[main] calibration done, entering RUNNING");
             state_transition(STATE_RUNNING);
         } else if (result == MOTOR_CALIB_TIMEOUT) {
@@ -261,6 +267,11 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
             g_ctx->calib_ctx = nullptr;
 
             if (g_rt_worker) g_rt_worker->SetActive(true);
+            if (g_rt_worker && g_ctx->report_auto_enable) {
+                g_rt_worker->SetReportEnabled(true, g_ctx->report_period_ms);
+                ECO_INFO_NEW("[main] periodic report enabled, period={}ms",
+                             g_ctx->report_period_ms);
+            }
             state_transition(STATE_RUNNING);
         }
     }
@@ -269,6 +280,11 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
     if (g_ctx->calib_done && !g_ctx->calib_running) {
         if (g_rt_worker && !g_rt_worker->IsActive()) {
             g_rt_worker->SetActive(true);
+        }
+        if (g_rt_worker && g_ctx->report_auto_enable) {
+            g_rt_worker->SetReportEnabled(true, g_ctx->report_period_ms);
+            ECO_INFO_NEW("[main] periodic report enabled, period={}ms",
+                         g_ctx->report_period_ms);
         }
         ECO_INFO_NEW("[main] calib done, entering RUNNING");
         state_transition(STATE_RUNNING);

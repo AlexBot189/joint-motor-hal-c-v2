@@ -76,7 +76,8 @@ public:
     void SetActive(bool active) { m_active.store(active, std::memory_order_release); }
     bool IsActive() const { return m_active.load(std::memory_order_acquire); }
 
-private:
+    /** @brief 周期上报开关 + 周期配置 */
+    void SetReportEnabled(bool enabled, uint32_t period_ms);
     void Run();
     void ProcessMailbox();
     void PublishFeedback();
@@ -110,6 +111,9 @@ private:
 
     /* 周期控制 */
     int      m_report_divider;
+    bool     m_report_enabled = false;     /* 周期上报总开关 */
+    uint32_t m_report_period_ms = 5;       /* 周期上报间隔 ms */
+    uint64_t m_periodic_last_cycle = 0;    /* 上次上报的 RT 周期号 */
     uint64_t m_cycle_count;
     uint64_t m_overrun_count;
 

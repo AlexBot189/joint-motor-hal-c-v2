@@ -223,6 +223,70 @@ static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
     }
 }
 
+/* 周期上报数据打印 — 全字段 */
+static void run_report_loop(stark_client_t* c)
+{
+    printf("[report] 等待数据流开启...\n");
+
+    while (!stark_report_data(c)) {
+        usleep(100000);
+    }
+
+    while (g_running) {
+        uint64_t t0 = now_ms();
+        const PeriodicUploadData* d = stark_report_data(c);
+        if (!d) { usleep(1000); continue; }
+
+        printf("=== [%ums] ==========================================\n", d->timestamp_ms);
+
+        /* IMU */
+        printf("IMU  gyro(%.2f %.2f %.2f) dps  quat(%.4f %.4f %.4f %.4f)  "
+               "euler(%.1f %.1f %.1f)°  acc(%.3f %.3f %.3f)g  press(%.1f)hPa\n",
+               d->gyro_dps_x, d->gyro_dps_y, d->gyro_dps_z,
+               d->quat_w, d->quat_x, d->quat_y, d->quat_z,
+               d->gyro_roll, d->gyro_pitch, d->gyro_yaw,
+               d->acc_x, d->acc_y, d->acc_z, d->air_pressure);
+
+        /* M1 */
+        printf("M1    vel=%6.1fRPM  ang=%6.1f°  Iq=%6.2fA  busI=%5.2fA  "
+               "temp=%5.2f°C  fault=0x%04X  state=0x%02X\n",
+               d->RealtimeVelocity / 10.0f,
+               d->motor_abs_angle / 10.0f,
+               d->cal_Iq_current / 100.0f,
+               d->cal_bus_current / 100.0f,
+               d->motor_temp / 100.0f,
+               d->fault_code, d->motor_state);
+
+        /* M2 */
+        printf("M2    vel=%6.1fRPM  ang=%6.1f°  Iq=%6.2fA  busI=%5.2fA  "
+               "temp=%5.2f°C  fault=0x%04X  state=0x%02X\n",
+               d->RealtimeVelocity_left / 10.0f,
+               d->motor_abs_angle_left / 10.0f,
+               d->cal_Iq_current_left / 100.0f,
+               d->cal_bus_current_left / 100.0f,
+               d->motor_temp_left / 100.0f,
+               d->fault_code_left, d->motor_state_left);
+
+        /* S1 */
+        printf("S1    Hall(%u %u %u)  torque=%u  knee=%d  land=%u  valid=%u\n",
+               d->hall_a_data, d->hall_b_data, d->hall_c_data,
+               d->df181_torque, d->knee_angle,
+               d->key_landing, d->torque_valid);
+
+        /* S2 */
+        printf("S2    Hall(%u %u %u)  torque=%u  knee=%d  land=%u  valid=%u\n",
+               d->hall_a_data_left, d->hall_b_data_left, d->hall_c_data_left,
+               d->df181_torque_left, d->knee_angle_left,
+               d->key_landing_left, d->torque_valid_left);
+
+        printf("\n");
+
+        /* 每秒打印一次 */
+        uint64_t elapsed = now_ms() - t0;
+        usleep(elapsed < 900 ? (unsigned int)(1000 - elapsed) : 100000);
+    }
+}
+
 /* 只读反馈, 不发控制 */
 static void run_stat_loop(stark_client_t* c)
 {
@@ -258,6 +322,7 @@ static void usage(void)
     printf("  mit    <kp> <kd>       MIT 阻抗\n");
     printf("  multi  <ma1> <ma2>     多轴广播, 恒电流\n");
     printf("  stat                   只读反馈\n");
+    printf("  report                 周期上报数据打印\n");
     printf("\n示例:\n");
     printf("  ./demo_algo torque 200        # 电流 ±200mA\n");
     printf("  ./demo_algo pp 15 2000 10     # PP ±15°, acc=2000RPM/s vel=10RPM\n");
@@ -298,9 +363,14 @@ int main(int argc, char** argv)
     }
     printf("[init] 就绪, 电机在线: %d %d\n", stark_online(&c, 1), stark_online(&c, 2));
 
-    /* stat 模式不需要使能 */
+    /* stat/report 模式不需要使能 */
     if (strcmp(mode, "stat") == 0) {
         run_stat_loop(&c);
+        stark_close(&c);
+        return 0;
+    }
+    if (strcmp(mode, "report") == 0) {
+        run_report_loop(&c);
         stark_close(&c);
         return 0;
     }

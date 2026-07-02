@@ -49,6 +49,10 @@
     "gpio_line": 6,
     "op_mode": 5
   },
+  "report": {
+    "auto_enable": true,
+    "period_ms": 5
+  },
   "ros": {
     "enabled": false,
     "feedback_topic": "/stark/motor/feedback",

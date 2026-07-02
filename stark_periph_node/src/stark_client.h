@@ -379,6 +379,17 @@ static inline void stark_set_mode(stark_client_t* c, int id, int mode)
     _stark_mbox_end(c, seq);
 }
 
+/* ================================================================
+ * 周期上报数据读取 (零拷贝, 指向 SHM)
+ * ================================================================ */
+
+/* 读取 PeriodicUploadData, 未开启时返回 NULL */
+static inline const PeriodicUploadData* stark_report_data(stark_client_t* c)
+{
+    if (!c || !c->shm || !c->shm->periodic_enabled) return NULL;
+    return &c->shm->periodic_data;
+}
+
 #ifdef __cplusplus
 }
 #endif
