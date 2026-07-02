@@ -223,10 +223,10 @@ static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
     }
 }
 
-/* 周期上报数据打印 — 全字段 (版本号去重) */
+/* PeriodicUploadData display -- version-gated, one print per update */
 static void run_report_loop(stark_client_t* c)
 {
-    printf("[report] 等待数据流开启...\n");
+    printf("[report] waiting for data stream...\n");
 
     while (!stark_report_data(c)) {
         usleep(100000);
@@ -241,45 +241,47 @@ static void run_report_loop(stark_client_t* c)
         const PeriodicUploadData* d = stark_report_data(c);
         if (!d) { usleep(1000); continue; }
 
-        printf("=== [%ums] ver=%u ===============================\n",
+        printf("=== [%ums] ver=%u ===\n",
                d->timestamp_ms, ver);
 
         /* IMU */
-        printf("IMU  gyro(%.2f %.2f %.2f) dps  quat(%.4f %.4f %.4f %.4f)  "
-               "euler(%.1f %.1f %.1f)°  acc(%.3f %.3f %.3f)g  press(%.1f)hPa\n",
+        printf("IMU  gyro(x=%.2f y=%.2f z=%.2f)dps  "
+               "quat(w=%.4f x=%.4f y=%.4f z=%.4f)  "
+               "euler(roll=%.1f pitch=%.1f yaw=%.1f)deg  "
+               "acc(x=%.3f y=%.3f z=%.3f)g  press=%.1fhPa\n",
                d->gyro_dps_x, d->gyro_dps_y, d->gyro_dps_z,
                d->quat_w, d->quat_x, d->quat_y, d->quat_z,
                d->gyro_roll, d->gyro_pitch, d->gyro_yaw,
                d->acc_x, d->acc_y, d->acc_z, d->air_pressure);
 
         /* M1 */
-        printf("M1    vel=%6.1fRPM  ang=%6.1f°  Iq=%6.2fA  busI=%5.2fA  "
-               "temp=%5.2f°C  fault=0x%04X  state=0x%02X\n",
+        printf("M1   vel=%7.1fRPM  ang=%6.1fdeg  Iq=%5dmA  "
+               "busI=%4dmA  temp=%6.2fC  fault=0x%04X  state=0x%02X\n",
                d->RealtimeVelocity / 10.0f,
                d->motor_abs_angle / 10.0f,
-               d->cal_Iq_current / 100.0f,
-               d->cal_bus_current / 100.0f,
+               d->cal_Iq_current * 10,
+               d->cal_bus_current * 10,
                d->motor_temp / 100.0f,
                d->fault_code, d->motor_state);
 
         /* M2 */
-        printf("M2    vel=%6.1fRPM  ang=%6.1f°  Iq=%6.2fA  busI=%5.2fA  "
-               "temp=%5.2f°C  fault=0x%04X  state=0x%02X\n",
+        printf("M2   vel=%7.1fRPM  ang=%6.1fdeg  Iq=%5dmA  "
+               "busI=%4dmA  temp=%6.2fC  fault=0x%04X  state=0x%02X\n",
                d->RealtimeVelocity_left / 10.0f,
                d->motor_abs_angle_left / 10.0f,
-               d->cal_Iq_current_left / 100.0f,
-               d->cal_bus_current_left / 100.0f,
+               d->cal_Iq_current_left * 10,
+               d->cal_bus_current_left * 10,
                d->motor_temp_left / 100.0f,
                d->fault_code_left, d->motor_state_left);
 
         /* S1 */
-        printf("S1    Hall(%u %u %u)  torque=%u  knee=%d  land=%u  valid=%u\n",
+        printf("S1   hall(a=%u b=%u c=%u)  torque=%u  knee=%d  land=%u  valid=%u\n",
                d->hall_a_data, d->hall_b_data, d->hall_c_data,
                d->df181_torque, d->knee_angle,
                d->key_landing, d->torque_valid);
 
         /* S2 */
-        printf("S2    Hall(%u %u %u)  torque=%u  knee=%d  land=%u  valid=%u\n",
+        printf("S2   hall(a=%u b=%u c=%u)  torque=%u  knee=%d  land=%u  valid=%u\n\n",
                d->hall_a_data_left, d->hall_b_data_left, d->hall_c_data_left,
                d->df181_torque_left, d->knee_angle_left,
                d->key_landing_left, d->torque_valid_left);

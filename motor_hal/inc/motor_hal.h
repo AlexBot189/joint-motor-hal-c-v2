@@ -859,6 +859,16 @@ int motor_hal_get_mos_temp(motor_hal_t *hal, uint8_t node_id, int32_t *temp);
 /** @brief 读取电机线圈温度 (OD 0x2663), 单位 0.1°C */
 int motor_hal_get_motor_temp(motor_hal_t *hal, uint8_t node_id, int32_t *temp);
 
+/** @brief SDO telemetry: start background polling thread (~5ms per motor).
+ *  Polls temperature (0x2663) and position (0x6064) for all registered motors. */
+int motor_hal_sdo_telemetry_start(motor_hal_t *hal);
+/** @brief SDO telemetry: stop background polling thread. */
+int motor_hal_sdo_telemetry_stop(motor_hal_t *hal);
+/** @brief Get cached SDO temperature, 0.1°C. Returns -EAGAIN if not polled yet. */
+int motor_hal_get_sdo_temperature(motor_hal_t *hal, uint8_t node_id, int32_t *temp);
+/** @brief Get cached SDO position, counts. */
+int motor_hal_get_sdo_position(motor_hal_t *hal, uint8_t node_id, int32_t *pos);
+
 /** @brief 读取最大电流限制 (OD 0x2538), 单位 mA */
 int motor_hal_get_max_current(motor_hal_t *hal, uint8_t node_id, uint32_t *ma);
 

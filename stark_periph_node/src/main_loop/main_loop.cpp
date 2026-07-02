@@ -42,6 +42,7 @@ extern stark_periph_manager_node::StarkRtWorker* g_rt_worker;
 /* 本文件内部的静态变量 */
 static bool g_sensor_configured[STARK_MAX_MOTORS];
 static bool g_calib_triggered = false;
+static bool g_sdo_telemetry_started = false;
 static uint8_t g_prev_online_mask = 0;
 
 /*
@@ -172,6 +173,11 @@ static void poll_booting(stark_shm_t* shm, int motor_count,
             int ret = motor_hal_sync_start(hal, 5000);
             if (ret == 0) {
                 sync_started = true;
+                if (!g_sdo_telemetry_started) {
+                    motor_hal_sdo_telemetry_start(hal);
+                    g_sdo_telemetry_started = true;
+                    ECO_INFO_NEW("[main] SDO telemetry thread started (temp+pos @5ms)");
+                }
                 ECO_INFO_NEW("[main] SYNC thread started");
             } else {
                 ECO_WARN_NEW("[main] SYNC start failed (ret={}), will retry", ret);

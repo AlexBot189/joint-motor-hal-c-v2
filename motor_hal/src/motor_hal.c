@@ -124,6 +124,10 @@ typedef struct {
     motor_sensor_t   cached_sensor;
     uint64_t         last_sensor_us;
 
+    /* SDO telemetry cache (0x300 frame: only Iq valid on RV1126B, temp/pos from SDO) */
+    int32_t  sdo_temp_01c;      /* 0x2663 temperature, 0.1°C, -1=not yet polled */
+    int32_t  sdo_position;      /* 0x6064 position, counts, valid when sdo_temp_01c >= 0 */
+
     /* PDO Byte0 — 仅由 PDO API 管理, SDO 不碰 */
     uint8_t  pdo_byte0;         /* Byte0 持久值, 默认 0x00 */
     bool     clr_err_pending;   /* bit5 脉冲标志 */
@@ -131,6 +135,10 @@ typedef struct {
     /* heartbeat 状态缓存 — 只在变化时打印 */
     uint8_t  last_nmt_state;    /* 上次心跳 NMT 状态 */
 } motor_node_t;
+
+/* SDO telemetry polling thread state */
+static pthread_t sdo_telemetry_thread;
+static bool      sdo_telemetry_running = false;
 
 /* =====================================================
  * HAL 主结构
@@ -306,6 +314,8 @@ int motor_hal_add_motor(motor_hal_t *hal, const motor_config_t *cfg)
     m->pending_startup = false;
     m->pdo_byte0       = 0x00;  /* 默认全关, 算法显式调 pdo_enable 才开启 */
     m->clr_err_pending = false;
+    m->sdo_temp_01c    = -1;     /* 尚未 SDO 轮询 */
+    m->sdo_position    = 0;
     memcpy(&m->config, cfg, sizeof(motor_config_t));
 
     hal->motor_count++;
@@ -1662,4 +1672,92 @@ int motor_hal_get_sensor(motor_hal_t *hal, uint8_t node_id, motor_sensor_t *s)
     pthread_mutex_unlock(&m->sensor_lock);
 
     return 0;
+}
+
+/* =====================================================
+ * SDO telemetry: temperature (0x2663) + position (0x6064)
+ * 0x300 feedback frame only has valid Iq on RV1126B.
+ * Temp/pos polled via dedicated non-RT thread at ~5ms per motor.
+ * ===================================================== */
+
+static int motor_hal_poll_sdo_telemetry(motor_hal_t *hal, uint8_t node_id);
+
+static void* _sdo_telemetry_thread_fn(void *arg)
+{
+    motor_hal_t *hal = (motor_hal_t*)arg;
+
+    while (sdo_telemetry_running) {
+        for (uint8_t id = 1; id <= hal->motor_count && sdo_telemetry_running; id++) {
+            motor_hal_poll_sdo_telemetry(hal, id);
+        }
+        usleep(5000);
+    }
+    return NULL;
+}
+
+int motor_hal_sdo_telemetry_start(motor_hal_t *hal)
+{
+    if (!hal || sdo_telemetry_running) return -EBUSY;
+    sdo_telemetry_running = true;
+    if (pthread_create(&sdo_telemetry_thread, NULL, _sdo_telemetry_thread_fn, hal) != 0) {
+        sdo_telemetry_running = false;
+        return -1;
+    }
+    return 0;
+}
+
+int motor_hal_sdo_telemetry_stop(motor_hal_t *hal)
+{
+    (void)hal;
+    if (!sdo_telemetry_running) return 0;
+    sdo_telemetry_running = false;
+    pthread_join(sdo_telemetry_thread, NULL);
+    return 0;
+}
+
+int motor_hal_poll_sdo_telemetry(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+
+    uint32_t val = 0;
+    int32_t temp = -1, pos = 0;
+
+    /* 0x2663 motor coil temperature, 0.1°C */
+    if (sdo_read_simple(hal->drv, node_id, 0x2663, 0x00, &val) == 0)
+        temp = (int32_t)val;
+
+    /* 0x6064 actual position, counts */
+    if (sdo_read_simple(hal->drv, node_id, 0x6064, 0x00, &val) == 0)
+        pos = (int32_t)val;
+
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (m) { m->sdo_temp_01c = temp; m->sdo_position = pos; }
+    pthread_mutex_unlock(&hal->lock);
+
+    return 0;
+}
+
+int motor_hal_get_sdo_temperature(motor_hal_t *hal, uint8_t node_id, int32_t *temp)
+{
+    if (!hal || !temp) return -EINVAL;
+
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (m) *temp = m->sdo_temp_01c;
+    pthread_mutex_unlock(&hal->lock);
+
+    return (m && *temp >= 0) ? 0 : -EAGAIN;
+}
+
+int motor_hal_get_sdo_position(motor_hal_t *hal, uint8_t node_id, int32_t *pos)
+{
+    if (!hal || !pos) return -EINVAL;
+
+    pthread_mutex_lock(&hal->lock);
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (m) *pos = m->sdo_position;
+    pthread_mutex_unlock(&hal->lock);
+
+    return m ? 0 : -ENOENT;
 }

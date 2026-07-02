@@ -332,11 +332,23 @@ void StarkRtWorker::PublishFeedback()
 
                 if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
                     int32_t vel_x10  = (int32_t)mfb.velocity * 10;
-                    int16_t ang_x10  = (int16_t)((int32_t)mfb.position * 3600 / 65536);
                     int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
-                    int32_t tmp_x100 = (int32_t)mfb.temperature * 10;
                     int16_t fcode    = (int16_t)mfb.error_code;
                     int16_t mstate   = (int16_t)mfb.status_byte;
+
+                    /* SDO telemetry: 0x300 frame has only Iq valid on RV1126B */
+                    int32_t sdo_val = 0;
+                    int32_t tmp_x100;
+                    if (motor_hal_get_sdo_temperature(m_hal, id, &sdo_val) == 0)
+                        tmp_x100 = sdo_val * 10;  /* 0.1°C -> °C×100 */
+                    else
+                        tmp_x100 = (int32_t)mfb.temperature * 10;
+
+                    int16_t ang_x10;
+                    if (motor_hal_get_sdo_position(m_hal, id, &sdo_val) == 0)
+                        ang_x10 = (int16_t)(sdo_val * 3600 / 65536);
+                    else
+                        ang_x10 = (int16_t)((int32_t)mfb.position * 3600 / 65536);
 
                     if (is_right) {
                         d.RealtimeVelocity = vel_x10;
