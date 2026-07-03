@@ -203,6 +203,7 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
     if (!g_ctx->auto_calib && !g_ctx->calib_done) {
         ECO_INFO_NEW("[main] auto_calib disabled, skipping calibration");
         g_ctx->calib_done = true;
+        if (g_rt_worker) g_rt_worker->SetActive(true);
         if (shm) shm->calib_state = 2;
     }
 
@@ -250,12 +251,12 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
             ECO_INFO_NEW("[main] calibration DONE");
             g_ctx->calib_done = true;
             g_ctx->calib_running = false;
-            if (shm) shm->calib_state = 2;
             g_calib_triggered = false;
             motor_calib_destroy((motor_calib_t*)g_ctx->calib_ctx);
             g_ctx->calib_ctx = nullptr;
 
             if (g_rt_worker) g_rt_worker->SetActive(true);
+            if (shm) shm->calib_state = 2;
             /* 校准完成后根据配置自动开启周期上报 */
             if (g_rt_worker && g_ctx->report_auto_enable) {
                 g_rt_worker->SetReportEnabled(true, g_ctx->report_period_ms);
@@ -268,12 +269,12 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
             ECO_WARN_NEW("[main] calibration TIMEOUT, entering RUNNING (degraded)");
             g_ctx->calib_done = true;
             g_ctx->calib_running = false;
-            if (shm) shm->calib_state = 3;
             g_calib_triggered = false;
             motor_calib_destroy((motor_calib_t*)g_ctx->calib_ctx);
             g_ctx->calib_ctx = nullptr;
 
             if (g_rt_worker) g_rt_worker->SetActive(true);
+            if (shm) shm->calib_state = 3;
             if (g_rt_worker && g_ctx->report_auto_enable) {
                 g_rt_worker->SetReportEnabled(true, g_ctx->report_period_ms);
                 ECO_INFO_NEW("[main] periodic report enabled, period={}ms",
