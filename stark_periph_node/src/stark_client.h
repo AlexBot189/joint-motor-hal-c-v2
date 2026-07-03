@@ -1,39 +1,28 @@
 /*
- * stark_client.h — 上层算法控制接口 (Header-Only)
+ * stark_client.h -- 算法控制接口 (Header-Only)
  * Copyright (c) 2026 zhiqiang.yang
  *
- * 用法: 算法进程只需 #include "stark_client.h", 无需链接任何库.
+ * 依赖: stark_shm.h (共享内存布局)
+ * 编译: gcc -O2 your_algo.c -lpthread -lrt -lm
  *
- * 快速开始:
- *   stark_client_t c;
- *   stark_open(&c);                    // 连接 SHM
- *   while (!stark_ready(&c)) usleep(10000);  // 等校准完成
- *   while (1) {
- *       motor_data_t fb = stark_fb(&c, 1);         // 读电机反馈
- *       imu_data_t imu = stark_imu(&c);            // 读 IMU
- *       stark_multi(&c, tor1, 0, 0, tor2, 0, 0);   // 写控制命令
- *       usleep(1000);
- *   }
- *   stark_close(&c);
+ * 数据方向:
+ *   motor_node  -- fb_buffer -->  算法
+ *   算法        -- mailbox  -->  motor_node
  *
- * 控制模式:
- *   - 力矩控制: stark_torque(c, id, ma)   : ID对应电机, mA
- *   - 速度控制: stark_speed(c, id, rpm)    : RPM
- *   - 位置控制: stark_position(c, id, deg) : 绝对角度(deg)
- *   - 多轴广播: stark_multi(c, t1,v1,p1, t2,v2,p2)  : 一帧CANFD双电机
- *   - MIT阻抗:  stark_mit(c,id,pos,vel,kp,kd,tor)
+ * 使用流程:
+ *   1. stark_open   - 连接 SHM
+ *   2. stark_ready  - 等待校准完成 (阻塞轮询)
+ *   3. stark_enable - 使能电机
+ *   4. 控制循环     - 读 stark_fb/imu, 写 stark_multi/torque/speed/position
+ *   5. stark_estop  - 安全停机
+ *   6. stark_close  - 断开
  *
- * 管理命令:
- *   - stark_enable(c, id) / stark_disable(c, id)
- *   - stark_estop(c, id) / stark_recover(c, id)
- *   - stark_clear_fault(c, id)
- *
- * 注意事项:
- *   1. 本文件依赖 stark_shm.h (共享内存数据结构), 保持版本一致
- *   2. 所有函数均为 static inline, 零函数调用开销
- *   3. 仅适用于 SHM 存在且 motor_node 已启动的场景
- *   4. 管理命令 (enable/disable/estop) 和实时命令 (torque/speed/multi)
- *      不要在同一周期混合发送; 管理命令触发 Byte0 修改, 实时命令复用
+ * 规则:
+ *   - 管理命令 (enable/disable/estop/set_mode/clear_fault) 和实时控制命令
+ *     不要在同一周期混合发送, 管理命令后至少间隔 5ms 再发控制命令
+ *   - 双电机推荐 stark_multi, 一帧 CANFD 同时下发, 同步更好
+ *   - 每个控制周期都要发命令, 即使目标值不变也要发, 闲置 >500ms 触发安全停机
+ *   - root 权限运行 (SHM 由 stark_periph_manager_node 以 root 创建)
  */
 #pragma once
 
@@ -48,15 +37,21 @@
 extern "C" {
 #endif
 
+/* 控制模式常量, 对应 stark_set_mode */
+#define STARK_MODE_PP       1   /* 轮廓位置, 驱动板侧梯形加减速 */
+#define STARK_MODE_PV       2   /* 轮廓速度, 驱动板侧梯形加减速 */
+#define STARK_MODE_CSP      3   /* 循环同步位置, SYNC 触发 */
+#define STARK_MODE_CSV      4   /* 循环同步速度, SYNC 触发 */
+#define STARK_MODE_CURRENT  5   /* Q轴电流直控 */
+#define STARK_MODE_MIT      6   /* MIT 阻抗控制 */
+
 /* 客户端句柄 */
 typedef struct {
-    int         fd;
-    stark_shm_t* shm;
+    int           fd;
+    stark_shm_t*  shm;
 } stark_client_t;
 
-/* ================================================================
- * 生命周期
- * ================================================================ */
+/* -- 生命周期 ---------------------------------------------------- */
 
 static inline int stark_open(stark_client_t* c)
 {
@@ -83,9 +78,7 @@ static inline void stark_close(stark_client_t* c)
     c->fd  = -1;
 }
 
-/* ================================================================
- * 状态查询
- * ================================================================ */
+/* -- 状态查询 ---------------------------------------------------- */
 
 static inline int stark_ready(stark_client_t* c)
 {
@@ -95,7 +88,7 @@ static inline int stark_ready(stark_client_t* c)
 
 static inline int stark_online(stark_client_t* c, int id)
 {
-    if (!c || !c->shm || id < 1 || id > 2) return 0;
+    if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return 0;
     return (c->shm->motor_online & (1 << (id - 1))) != 0;
 }
 
@@ -123,9 +116,7 @@ static inline int stark_fault_reason(stark_client_t* c)
     return c->shm->fault_reason;
 }
 
-/* ================================================================
- * 反馈读取 (零拷贝, 读 active Buffer)
- * ================================================================ */
+/* -- 反馈读取 (零拷贝, 读 SHM 双 Buffer active 端) --------------- */
 
 static inline motor_data_t stark_fb(stark_client_t* c, int id)
 {
@@ -164,23 +155,19 @@ static inline barometer_data_t stark_baro(stark_client_t* c)
     return c->shm->fb_buffer[idx].baro;
 }
 
-/* ================================================================
- * 控制命令 — 实时路径 (写 SHM mailbox, 走 PDO)
- * ================================================================ */
+/* -- 控制命令: 实时路径 (写 mailbox, RT 线程每 1ms 消费) -------- */
 
-/* 内部: 准备 mailbox 写 (seq_begin++) */
 static inline uint64_t _stark_mbox_begin(stark_client_t* c)
 {
     return __atomic_add_fetch(&c->shm->mailbox.seq_begin, 1, __ATOMIC_RELEASE);
 }
 
-/* 内部: 提交 mailbox */
 static inline void _stark_mbox_end(stark_client_t* c, uint64_t seq)
 {
     __atomic_store_n(&c->shm->mailbox.seq_end, seq, __ATOMIC_RELEASE);
 }
 
-/* 力矩控制 */
+/* 力矩控制, 单位 mA */
 static inline void stark_torque(stark_client_t* c, int id, int32_t ma)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -188,14 +175,14 @@ static inline void stark_torque(stark_client_t* c, int id, int32_t ma)
     uint64_t seq = _stark_mbox_begin(c);
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id    = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd         = STARK_CMD_TORQUE;
-    c->shm->mailbox.cmd[idx].value       = ma;
+    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_TORQUE;
+    c->shm->mailbox.cmd[idx].value    = ma;
 
     _stark_mbox_end(c, seq);
 }
 
-/* 速度控制 */
+/* 速度控制 (CSV), 单位 RPM */
 static inline void stark_speed(stark_client_t* c, int id, float rpm)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -203,14 +190,14 @@ static inline void stark_speed(stark_client_t* c, int id, float rpm)
     uint64_t seq = _stark_mbox_begin(c);
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id    = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd         = STARK_CMD_SPEED;
-    c->shm->mailbox.cmd[idx].value       = (int32_t)(rpm * 100.0f);
+    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_SPEED;
+    c->shm->mailbox.cmd[idx].value    = (int32_t)(rpm * 100.0f);
 
     _stark_mbox_end(c, seq);
 }
 
-/* 轮廓速度 (PV 模式) */
+/* 轮廓速度 (PV), rpm=目标速度 accel=加速度 RPM/s */
 static inline void stark_pv(stark_client_t* c, int id, float rpm, float accel)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -226,7 +213,7 @@ static inline void stark_pv(stark_client_t* c, int id, float rpm, float accel)
     _stark_mbox_end(c, seq);
 }
 
-/* 循环同步速度 (CSV 模式) */
+/* 循环同步速度 (CSV), 单位 RPM */
 static inline void stark_csv(stark_client_t* c, int id, float rpm)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -234,14 +221,14 @@ static inline void stark_csv(stark_client_t* c, int id, float rpm)
     uint64_t seq = _stark_mbox_begin(c);
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id    = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd         = STARK_CMD_CSV;
-    c->shm->mailbox.cmd[idx].value       = (int32_t)(rpm * 100.0f);
+    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_CSV;
+    c->shm->mailbox.cmd[idx].value    = (int32_t)(rpm * 100.0f);
 
     _stark_mbox_end(c, seq);
 }
 
-/* 绝对位置控制 (CSP 模式) */
+/* 绝对位置控制 (CSP), 单位 deg, 范围 [-180, 180] */
 static inline void stark_position(stark_client_t* c, int id, float deg)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -249,31 +236,29 @@ static inline void stark_position(stark_client_t* c, int id, float deg)
     uint64_t seq = _stark_mbox_begin(c);
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id    = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd         = STARK_CMD_POS;
-    c->shm->mailbox.cmd[idx].value       = (int32_t)(deg * 100.0f);
+    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_POS;
+    c->shm->mailbox.cmd[idx].value    = (int32_t)(deg * 100.0f);
 
     _stark_mbox_end(c, seq);
 }
 
-/* 相对位置控制 — 算法读当前位置 + 偏移, 写绝对目标 */
+/* 相对位置控制, 自动读当前位置加偏移, 钳位到 [-180, 180] */
 static inline void stark_rel_position(stark_client_t* c, int id, float delta_deg)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    /* 读当前位置 (角度), 加偏移 */
     motor_data_t fb = stark_fb(c, id);
     float cur_deg  = (float)fb.position * (360.0f / 65536.0f);
     float target   = cur_deg + delta_deg;
 
-    /* 钳位到 ±180° */
     if (target > 180.0f)  target -= 360.0f;
     if (target < -180.0f) target += 360.0f;
 
     stark_position(c, id, target);
 }
 
-/* 轮廓位置模式 (PP 模式, 带加减速) */
+/* 轮廓位置 (PP), deg=目标角度 accel=加速度RPM/s vel=轮廓速度RPM */
 static inline void stark_pp(stark_client_t* c, int id,
                              float deg, float accel_rpm, float vel_rpm)
 {
@@ -291,7 +276,7 @@ static inline void stark_pp(stark_client_t* c, int id,
     _stark_mbox_end(c, seq);
 }
 
-/* MIT 阻抗控制 */
+/* MIT 阻抗控制, pos_deg=平衡点 vel_rpm=阻尼速度 kp=刚度 kd=阻尼 torque_ma=前馈 */
 static inline void stark_mit(stark_client_t* c, int id,
                               float pos_deg, float vel_rpm,
                               float kp, float kd, float torque_ma)
@@ -301,26 +286,26 @@ static inline void stark_mit(stark_client_t* c, int id,
     uint64_t seq = _stark_mbox_begin(c);
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id    = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd         = STARK_CMD_MIT;
-    c->shm->mailbox.cmd[idx].mit_pos     = (uint16_t)((pos_deg + 180.0f) * 65535.0f / 360.0f);
-    c->shm->mailbox.cmd[idx].mit_vel     = (uint16_t)(vel_rpm);
-    c->shm->mailbox.cmd[idx].mit_kp      = (uint16_t)(kp * 100.0f);
-    c->shm->mailbox.cmd[idx].mit_kd      = (uint16_t)(kd * 100.0f);
-    c->shm->mailbox.cmd[idx].mit_torque  = (uint16_t)(torque_ma);
+    c->shm->mailbox.cmd[idx].motor_id   = (uint8_t)id;
+    c->shm->mailbox.cmd[idx].cmd        = STARK_CMD_MIT;
+    c->shm->mailbox.cmd[idx].mit_pos    = (uint16_t)((pos_deg + 180.0f) * 65535.0f / 360.0f);
+    c->shm->mailbox.cmd[idx].mit_vel    = (uint16_t)(vel_rpm);
+    c->shm->mailbox.cmd[idx].mit_kp     = (uint16_t)(kp * 100.0f);
+    c->shm->mailbox.cmd[idx].mit_kd     = (uint16_t)(kd * 100.0f);
+    c->shm->mailbox.cmd[idx].mit_torque = (uint16_t)(torque_ma);
 
     _stark_mbox_end(c, seq);
 }
 
-/* 多轴广播 — 一帧 64B CANFD 同时发双电机
+/*
+ * 多轴广播, 一帧 64B CANFD 同时控制双电机.
  *
- * 参数:
- *   t1, t2 = 目标力矩 (mA), 电流模式有效
- *   v1, v2 = 速度前馈 (RPM), 位置/速度模式有效
- *   p1, p2 = 位置 (deg), 位置模式有效
- *
- * 当前驱动板控制的模式决定哪个字段生效.
- * 默认电流模式: 只用 t1/t2, v1/v2/p1/p2 填 0 */
+ * 参数: t1/t2=力矩(mA) v1/v2=速度前馈(RPM) p1/p2=位置(deg)
+ * 实际生效的字段取决于当前控制模式:
+ *   CURRENT 模式: 只用 t1/t2, v 和 p 填 0
+ *   CSP 模式:     p1/p2 输入绝对角度
+ *   CSV/PV 模式:  v1/v2 输入速度
+ */
 static inline void stark_multi(stark_client_t* c,
                                 int32_t t1, int32_t v1, int32_t p1,
                                 int32_t t2, int32_t v2, int32_t p2)
@@ -344,13 +329,7 @@ static inline void stark_multi(stark_client_t* c,
     _stark_mbox_end(c, seq);
 }
 
-/* ================================================================
- * 管理命令 — Byte0 路径 (PDO Byte0 修改, RT 线程下一周期生效)
- *
- * 注意: 这些命令和实时控制命令 (torque/speed/multi) 不要在同一周期混合发送.
- * 管理命令触发 Byte0 修改后在当前周期立即生效, 实时命令复用该 Byte0 状态.
- * 如需安全: 先发管理命令, 等待至少 1ms, 再发实时命令.
- * ================================================================ */
+/* -- 管理命令 (非 RT, 走 PDO Byte0, 与控制命令间隔 5ms+) ------- */
 
 static inline void _stark_byte0_cmd(stark_client_t* c, int id, int cmd)
 {
@@ -362,12 +341,35 @@ static inline void _stark_byte0_cmd(stark_client_t* c, int id, int cmd)
     _stark_mbox_end(c, seq);
 }
 
-static inline void stark_enable(stark_client_t* c, int id)    { _stark_byte0_cmd(c, id, STARK_CMD_ENABLE); }
-static inline void stark_disable(stark_client_t* c, int id)   { _stark_byte0_cmd(c, id, STARK_CMD_DISABLE); }
-static inline void stark_estop(stark_client_t* c, int id)     { _stark_byte0_cmd(c, id, STARK_CMD_ESTOP); }
-static inline void stark_recover(stark_client_t* c, int id)   { _stark_byte0_cmd(c, id, STARK_CMD_RECOVER); }
-static inline void stark_clear_fault(stark_client_t* c, int id) { _stark_byte0_cmd(c, id, STARK_CMD_CLEAR_FAULT); }
+/* 使能电机 */
+static inline void stark_enable(stark_client_t* c, int id)
+    { _stark_byte0_cmd(c, id, STARK_CMD_ENABLE); }
 
+/*
+ * 失能电机: 先 PDO 失能, 再通过多轴广播发 disable+release_brake+电流0,
+ * 确保电机停止后刹车松开.
+ */
+static inline void stark_disable(stark_client_t* c, int id)
+    { _stark_byte0_cmd(c, id, STARK_CMD_DISABLE); }
+
+/*
+ * 急停: PDO 失能 + bus=OFF (刹车抱死), 再发 disable+brake_hold+电流0.
+ */
+static inline void stark_estop(stark_client_t* c, int id)
+    { _stark_byte0_cmd(c, id, STARK_CMD_ESTOP); }
+
+/* 从急停恢复 */
+static inline void stark_recover(stark_client_t* c, int id)
+    { _stark_byte0_cmd(c, id, STARK_CMD_RECOVER); }
+
+/*
+ * 清除故障: PDO 清故障位 + 自动使能 + 切电流模式 target=0.
+ * 清障后电机会恢复使能状态, 可直接进入控制循环.
+ */
+static inline void stark_clear_fault(stark_client_t* c, int id)
+    { _stark_byte0_cmd(c, id, STARK_CMD_CLEAR_FAULT); }
+
+/* 切换控制模式, mode 取值见 STARK_MODE_* 常量 */
 static inline void stark_set_mode(stark_client_t* c, int id, int mode)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -379,18 +381,16 @@ static inline void stark_set_mode(stark_client_t* c, int id, int mode)
     _stark_mbox_end(c, seq);
 }
 
-/* ================================================================
- * 周期上报数据读取 (零拷贝, 指向 SHM)
- * ================================================================ */
+/* -- 周期上报 (5ms 自动推送, 校准完成后自动开启) ------------------ */
 
-/* 读取 PeriodicUploadData, 未开启时返回 NULL */
+/* 返回周期上报数据指针, 未开启时返回 NULL */
 static inline const PeriodicUploadData* stark_report_data(stark_client_t* c)
 {
     if (!c || !c->shm || !c->shm->periodic_enabled) return NULL;
     return &c->shm->periodic_data;
 }
 
-/* 读取上报版本号, 对比上次可检测数据更新 */
+/* 上报版本号, 单调递增, 对比上次可检测数据更新 */
 static inline uint32_t stark_report_version(stark_client_t* c)
 {
     if (!c || !c->shm) return 0;
