@@ -429,6 +429,21 @@ static inline uint32_t stark_report_version(stark_client_t* c)
     return __atomic_load_n(&c->shm->periodic_version, __ATOMIC_ACQUIRE);
 }
 
+/*
+ * 尝试读取新数据. 封装版本号比对, 控制循环内一行调用.
+ * 用法: stark_report_try_read(&c, &ver, &d), 返回 1 表示新数据, d 指向 SHM 零拷贝
+ */
+static inline int stark_report_try_read(stark_client_t* c, uint32_t *last_ver,
+                                         const PeriodicUploadData** out)
+{
+    if (!c || !c->shm || !c->shm->periodic_enabled) return 0;
+    uint32_t cur = __atomic_load_n(&c->shm->periodic_version, __ATOMIC_ACQUIRE);
+    if (cur == *last_ver) return 0;
+    *last_ver = cur;
+    *out = &c->shm->periodic_data;
+    return 1;
+}
+
 #ifdef __cplusplus
 }
 #endif
