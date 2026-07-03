@@ -34,7 +34,6 @@ StarkRtWorker::StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
     , m_ctrl(ctrl)
     , m_imu_sensor(imu_sensor)
     , m_motor_count(motor_count)
-    , m_last_seq(0)
     , m_can_last_frame_us(0)
     , m_latency_idx(0)
     , m_report_divider(m_rt.report_divider)
@@ -49,11 +48,6 @@ StarkRtWorker::StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
     memset(m_sensor_notified, 0, sizeof(m_sensor_notified));
     memset(m_latency_history, 0, sizeof(m_latency_history));
     m_imu_notified = false;
-
-    /* 对齐 SHM 残留 seq_begin, 防止假 FAULT */
-    if (m_shm) {
-        m_last_seq = __atomic_load_n(&m_shm->mailbox.seq_begin, __ATOMIC_ACQUIRE);
-    }
 }
 
 StarkRtWorker::~StarkRtWorker()
@@ -215,14 +209,8 @@ void StarkRtWorker::ProcessMgmt()
 /*
  * ProcessMailbox() — 读 SHM mailbox ,  PDO multi_ctrl 广播
  *
- * 支持双电机同时控制 (一次 multi_ctrl 发完 ID 1,2)
- *
- * Mailbox 并发协议:
- *   算法写: seq_begin++ ,  write cmd[0], cmd[1] ,  seq_end = seq_begin
- *   RT 读:  read seq_begin (acquire)
- *          if begin != end: 正在写, 跳过
- *          if begin == m_last_seq: 无新命令, 返回
- *          else: 读全部 cmd ,  multi_ctrl ,  m_last_seq = begin
+ * 支持双电机同时控制 (一次 multi_ctrl 发完 ID 1,2).
+ * SPSC 环形缓冲: 算法写 slot[seq_write % DEPTH], RT 消费 seq_read 到 seq_write.
  */
 
 void StarkRtWorker::ProcessMailbox()
@@ -230,145 +218,127 @@ void StarkRtWorker::ProcessMailbox()
     if (!m_active.load(std::memory_order_acquire)) return;
     if (!m_shm || !m_hal) return;
 
-    uint64_t begin = __atomic_load_n(&m_shm->mailbox.seq_begin, __ATOMIC_ACQUIRE);
-    uint64_t end   = __atomic_load_n(&m_shm->mailbox.seq_end,   __ATOMIC_ACQUIRE);
+    uint64_t r = __atomic_load_n(&m_shm->mailbox.seq_read,  __ATOMIC_ACQUIRE);
+    uint64_t w = __atomic_load_n(&m_shm->mailbox.seq_write, __ATOMIC_ACQUIRE);
 
-    if (begin != end)  return;   /* 算法正在写 */
-    if (begin == m_last_seq) return;   /* 无新命令 */
+    if (r >= w) return;  /* 无新数据 */
 
-    /* 首次收到算法命令 ,  设标志, 让主循环调 state_transition */
-    if (!m_handshake_done.load(std::memory_order_acquire) && begin > 0) {
+    /* 首次收到算法命令: 握手 */
+    if (!m_handshake_done.load(std::memory_order_acquire) && w > 0) {
         m_handshake_done.store(true, std::memory_order_release);
-        /* 握手完成, 主循环在 READY 状态检测后推进到 RUNNING */
     }
 
-    /* 处理双电机命令 */
-    motor_command_t cmd0 = m_shm->mailbox.cmd[0];
-    motor_command_t cmd1 = m_shm->mailbox.cmd[1];
-    m_last_seq = begin;
+    /* 消费所有待处理帧 */
+    uint64_t count = w - r;
+    if (count > STARK_MBOX_DEPTH) count = STARK_MBOX_DEPTH;
 
-    /* 先处理 Byte0 控制命令 (改 pdo_byte0, 不发 target) */
-    for (int i = 0; i < m_motor_count; i++) {
-        motor_command_t c = (i == 0) ? cmd0 : cmd1;
-        uint8_t mid = c.motor_id;
-        if (mid < 1) continue;
+    for (uint64_t n = 0; n < count; n++) {
+        uint64_t idx = (r + n) % STARK_MBOX_DEPTH;
+        motor_command_t cmd0 = m_shm->mailbox.frames[idx].cmd[0];
+        motor_command_t cmd1 = m_shm->mailbox.frames[idx].cmd[1];
 
-        switch (c.cmd) {
-        case STARK_CMD_ENABLE:
-            motor_hal_pdo_enable(m_hal, mid); break;
-        case STARK_CMD_DISABLE:
-            motor_hal_pdo_disable(m_hal, mid);
-            {
-                multi_axis_cmd_t mcmd = {};
-                mcmd.node_id       = mid;
-                mcmd.enable        = false;
-                mcmd.release_brake = true;
-                mcmd.mode          = MOTOR_MODE_CURRENT;
-                mcmd.target1       = 0;
-                motor_hal_multi_ctrl(m_hal, &mcmd, 1);
+        /* Byte0 管理命令 (改 pdo_byte0) */
+        for (int i = 0; i < m_motor_count; i++) {
+            motor_command_t c = (i == 0) ? cmd0 : cmd1;
+            uint8_t mid = c.motor_id;
+            if (mid < 1) continue;
+
+            switch (c.cmd) {
+            case STARK_CMD_ENABLE:
+                motor_hal_pdo_enable(m_hal, mid); break;
+            case STARK_CMD_DISABLE:
+                motor_hal_pdo_disable(m_hal, mid);
+                { multi_axis_cmd_t mcmd = {}; mcmd.node_id = mid;
+                  mcmd.enable = false; mcmd.release_brake = true;
+                  mcmd.mode = MOTOR_MODE_CURRENT; mcmd.target1 = 0;
+                  motor_hal_multi_ctrl(m_hal, &mcmd, 1); }
+                break;
+            case STARK_CMD_ESTOP:
+                motor_hal_pdo_estop(m_hal, mid);
+                { multi_axis_cmd_t mcmd = {}; mcmd.node_id = mid;
+                  mcmd.enable = false; mcmd.release_brake = false;
+                  mcmd.mode = MOTOR_MODE_CURRENT; mcmd.target1 = 0;
+                  motor_hal_multi_ctrl(m_hal, &mcmd, 1); }
+                break;
+            case STARK_CMD_RECOVER:
+                motor_hal_pdo_recover(m_hal, mid); break;
+            case STARK_CMD_SET_MODE:
+                motor_hal_pdo_set_mode(m_hal, mid, (motor_mode_t)c.value); break;
+            case STARK_CMD_CLEAR_FAULT:
+                motor_hal_pdo_clear_fault(m_hal, mid);
+                motor_hal_pdo_enable(m_hal, mid);
+                motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_CURRENT, 0, 0, 0);
+                break;
+            default: break;
             }
-            break;
-        case STARK_CMD_ESTOP:
-            motor_hal_pdo_estop(m_hal, mid);
-            {
-                multi_axis_cmd_t mcmd = {};
-                mcmd.node_id       = mid;
-                mcmd.enable        = false;
-                mcmd.release_brake = false;
-                mcmd.mode          = MOTOR_MODE_CURRENT;
-                mcmd.target1       = 0;
-                motor_hal_multi_ctrl(m_hal, &mcmd, 1);
+        }
+
+        /* 控制命令 (通过 pdo_byte0 发 PDO) */
+        if (cmd0.cmd == STARK_CMD_MULTI || cmd1.cmd == STARK_CMD_MULTI) {
+            multi_axis_cmd_t mcmds[STARK_MAX_MOTORS] = {};
+            int mcount = 0; uint8_t b0;
+
+            if (motor_hal_pdo_consume_byte0(m_hal, cmd0.motor_id, &b0) == 0) {
+                mcmds[mcount].node_id       = cmd0.motor_id;
+                mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
+                mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
+                mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
+                mcmds[mcount].target1       = (int16_t)cmd0.value;
+                mcmds[mcount].target2       = (uint16_t)cmd0.value2;
+                mcmds[mcount].feedforward   = (int16_t)cmd0.feedforward;
+                mcount++;
             }
-            break;
-        case STARK_CMD_RECOVER:
-            motor_hal_pdo_recover(m_hal, mid); break;
-        case STARK_CMD_SET_MODE:
-            motor_hal_pdo_set_mode(m_hal, mid, (motor_mode_t)c.value); break;
-        case STARK_CMD_CLEAR_FAULT:
-            motor_hal_pdo_clear_fault(m_hal, mid);
-            motor_hal_pdo_enable(m_hal, mid);
-            motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_CURRENT, 0, 0, 0);
-            break;
-        default: break;
+            if (motor_hal_pdo_consume_byte0(m_hal, cmd1.motor_id, &b0) == 0) {
+                mcmds[mcount].node_id       = cmd1.motor_id;
+                mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
+                mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
+                mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
+                mcmds[mcount].target1       = (int16_t)cmd1.value;
+                mcmds[mcount].target2       = (uint16_t)cmd1.value2;
+                mcmds[mcount].feedforward   = (int16_t)cmd1.feedforward;
+                mcount++;
+            }
+            if (mcount > 0) motor_hal_multi_ctrl(m_hal, mcmds, (uint8_t)mcount);
+        } else {
+            for (int i = 0; i < m_motor_count; i++) {
+                motor_command_t c = (i == 0) ? cmd0 : cmd1;
+                uint8_t mid = c.motor_id;
+                if (mid < 1 || mid > (uint8_t)m_motor_count) continue;
+
+                switch (c.cmd) {
+                case STARK_CMD_TORQUE:
+                    motor_hal_set_torque(m_hal, mid, (int16_t)c.value); break;
+                case STARK_CMD_SPEED:
+                    motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f); break;
+                case STARK_CMD_CSV:
+                    motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f); break;
+                case STARK_CMD_PV:
+                    motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_PROFILE_VEL,
+                                       (int16_t)(c.value / 100),
+                                       (uint16_t)(c.value2 / 100), 0); break;
+                case STARK_CMD_POS:
+                    motor_hal_set_position(m_hal, mid, (float)c.value / 100.0f); break;
+                case STARK_CMD_PP:
+                    motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_PROFILE_POS,
+                                       (int16_t)c.value, (uint16_t)c.value2,
+                                       (int16_t)c.feedforward); break;
+                case STARK_CMD_MIT:
+                    motor_hal_mit_control(m_hal, mid,
+                        (float)c.mit_pos * (360.0f / 65535.0f) - 180.0f,
+                        (float)((int16_t)(c.mit_vel << 4)) / 16.0f,
+                        (float)c.mit_kp / 100.0f,
+                        (float)c.mit_kd / 100.0f,
+                        (float)((int16_t)(c.mit_torque << 4)) / 16.0f); break;
+                default: break;
+                }
+            }
         }
     }
 
-    /* 再处理控制命令 (通过已设好的 pdo_byte0 发控制帧) */
+    /* 确认消费 */
+    __atomic_store_n(&m_shm->mailbox.seq_read, r + count, __ATOMIC_RELEASE);
 
-    /* 多轴广播: 任意一个 cmd 是 MULTI 就走广播路径, 单电机也支持 */
-    if (cmd0.cmd == STARK_CMD_MULTI || cmd1.cmd == STARK_CMD_MULTI) {
-        multi_axis_cmd_t mcmds[STARK_MAX_MOTORS] = {};
-        int mcount = 0;
-        uint8_t b0;
-
-        if (motor_hal_pdo_consume_byte0(m_hal, cmd0.motor_id, &b0) == 0) {
-            mcmds[mcount].node_id       = cmd0.motor_id;
-            mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
-            mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
-            mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
-            mcmds[mcount].target1       = (int16_t)cmd0.value;
-            mcmds[mcount].target2       = (uint16_t)cmd0.value2;
-            mcmds[mcount].feedforward   = (int16_t)cmd0.feedforward;
-            mcount++;
-        }
-        if (motor_hal_pdo_consume_byte0(m_hal, cmd1.motor_id, &b0) == 0) {
-            mcmds[mcount].node_id       = cmd1.motor_id;
-            mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
-            mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
-            mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
-            mcmds[mcount].target1       = (int16_t)cmd1.value;
-            mcmds[mcount].target2       = (uint16_t)cmd1.value2;
-            mcmds[mcount].feedforward   = (int16_t)cmd1.feedforward;
-            mcount++;
-        }
-        if (mcount > 0) motor_hal_multi_ctrl(m_hal, mcmds, (uint8_t)mcount);
-    } else {
-    for (int i = 0; i < m_motor_count; i++) {
-        motor_command_t c = (i == 0) ? cmd0 : cmd1;
-        uint8_t mid = c.motor_id;
-        if (mid < 1 || mid > (uint8_t)m_motor_count) continue;
-
-        switch (c.cmd) {
-        case STARK_CMD_TORQUE:
-            motor_hal_set_torque(m_hal, mid, (int16_t)c.value);
-            break;
-        case STARK_CMD_SPEED:
-            motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f);
-            break;
-        case STARK_CMD_CSV:
-            motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f);
-            break;
-        case STARK_CMD_PV:
-            motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_PROFILE_VEL,
-                               (int16_t)(c.value / 100),
-                               (uint16_t)(c.value2 / 100), 0);
-            break;
-        case STARK_CMD_POS:
-            motor_hal_set_position(m_hal, mid, (float)c.value / 100.0f);
-            break;
-        case STARK_CMD_PP:
-            motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_PROFILE_POS,
-                               (int16_t)c.value, (uint16_t)c.value2,
-                               (int16_t)c.feedforward);
-            break;
-        case STARK_CMD_MIT:
-            /* MIT 值转 float (uint16, float, uint16, 经 motor_hal_mit_control 编码) */
-            motor_hal_mit_control(m_hal, mid,
-                (float)c.mit_pos * (360.0f / 65535.0f) - 180.0f,
-                (float)((int16_t)(c.mit_vel << 4)) / 16.0f,
-                (float)c.mit_kp / 100.0f,
-                (float)c.mit_kd / 100.0f,
-                (float)((int16_t)(c.mit_torque << 4)) / 16.0f);
-            break;
-        default: break;  /* Byte0 commands are no-op here */
-        }
-    }
-    } /* end else (non-MULTI path) */
-
-    /* T7: 读 mailbox 完成 */
     m_tracer.mark_mailbox_read();
-
-    /* T8: PDO 已在上面每条命令中发出 */
     m_tracer.mark_pdo_sent();
 }
 
@@ -604,14 +574,11 @@ void StarkRtWorker::PublishFeedback()
 /*
  * SafetyCheck() — 安全监控
  *
- * 安全动作必须走 PDO, 不在 RT 线程中调 SDO.
- *
  * 检查项:
- *   1. seq_begin 停滞 > 200ms ,  PDO torque=0, WARN
- *   2. seq_begin 停滞 > 500ms ,  PDO Shutdown, FAULT
- *   3. (TODO) 编码器停滞
- *   4. (TODO) 过温检测
- *   5. (TODO) CAN 断线
+ *   1. 算法心跳超时 → PDO disable 双电机 (不发 FAULT)
+ *   2. (TODO) 编码器停滞
+ *   3. (TODO) 过温检测
+ *   4. (TODO) CAN 断线
  */
 
 void StarkRtWorker::SafetyCheck()

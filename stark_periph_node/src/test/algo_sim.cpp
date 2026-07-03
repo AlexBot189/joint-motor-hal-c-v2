@@ -60,20 +60,20 @@ static uint64_t now_us(void)
 
 /* helper: 快捷填充cmd字段 */
 static void cmd_set(stark_shm_t *shm, int idx, uint8_t motor_id,
-                    stark_cmd_type_t cmd, int32_t value,
+                    uint64_t seq, stark_cmd_type_t cmd, int32_t value,
                     int32_t value2, int32_t feedforward, uint64_t ts)
 {
-    shm->mailbox.cmd[idx].motor_id     = motor_id;
-    shm->mailbox.cmd[idx].cmd          = (uint8_t)cmd;
-    shm->mailbox.cmd[idx].value        = value;
-    shm->mailbox.cmd[idx].value2       = value2;
-    shm->mailbox.cmd[idx].feedforward  = feedforward;
-    shm->mailbox.cmd[idx].mit_pos      = 0;
-    shm->mailbox.cmd[idx].mit_vel      = 0;
-    shm->mailbox.cmd[idx].mit_kp       = 0;
-    shm->mailbox.cmd[idx].mit_kd       = 0;
-    shm->mailbox.cmd[idx].mit_torque   = 0;
-    shm->mailbox.cmd[idx].timestamp_us = ts;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].motor_id     = motor_id;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].cmd          = (uint8_t)cmd;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].value        = value;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].value2       = value2;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].feedforward  = feedforward;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].mit_pos      = 0;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].mit_vel      = 0;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].mit_kp       = 0;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].mit_kd       = 0;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].mit_torque   = 0;
+    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[idx].timestamp_us = ts;
 }
 
 int main()
@@ -131,18 +131,16 @@ int main()
             if (state == STATE_RUNNING && !initialized) {
                 printf("[algo_sim] motors ready ,  PDO enable + set mode\n");
                 /* 双电机: PDO使能 + 力矩模式 */
-                cmd_set(shm, 0, 1, STARK_CMD_ENABLE,   0, 0, 0, 0);
-                cmd_set(shm, 1, 2, STARK_CMD_ENABLE,   0, 0, 0, 0);
+                cmd_set(shm, 0, 1, seq, STARK_CMD_ENABLE,   0, 0, 0, 0);
+                cmd_set(shm, 1, 2, seq, STARK_CMD_ENABLE,   0, 0, 0, 0);
                 seq++;
-                __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-                shm->mailbox.seq_end = seq;
+shm->mailbox.seq_write = seq;
                 usleep(5000);
 
-                cmd_set(shm, 0, 1, STARK_CMD_SET_MODE, ALGO_MODE_CURRENT, 0, 0, 0);
-                cmd_set(shm, 1, 2, STARK_CMD_SET_MODE, ALGO_MODE_CURRENT, 0, 0, 0);
+                cmd_set(shm, 0, 1, seq, STARK_CMD_SET_MODE, ALGO_MODE_CURRENT, 0, 0, 0);
+                cmd_set(shm, 1, 2, seq, STARK_CMD_SET_MODE, ALGO_MODE_CURRENT, 0, 0, 0);
                 seq++;
-                __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-                shm->mailbox.seq_end = seq;
+shm->mailbox.seq_write = seq;
                 usleep(5000);
                 initialized = true;
             }
@@ -162,15 +160,15 @@ int main()
             if (t_sec < 3.0f) {
                 /* ── 力矩控制 ── */
                 if (online & 0x01) {
-                    cmd_set(shm, 0, 1, STARK_CMD_TORQUE, 200, 0, 0, fb->timestamp_us);
+                    cmd_set(shm, 0, 1, seq, STARK_CMD_TORQUE, 200, 0, 0, fb->timestamp_us);
                 }
                 if (online & 0x02) {
-                    cmd_set(shm, 1, 2, STARK_CMD_TORQUE, 200, 0, 0, fb->timestamp_us);
+                    cmd_set(shm, 1, 2, seq, STARK_CMD_TORQUE, 200, 0, 0, fb->timestamp_us);
                 }
 
                 /* 也可以走多轴广播 (取消注释体验一帧64B发出双电机):
-                if (online & 0x01) cmd_set(shm, 0, 1, STARK_CMD_MULTI, 200, 0, 0, fb->timestamp_us);
-                if (online & 0x02) cmd_set(shm, 1, 2, STARK_CMD_MULTI, 200, 0, 0, fb->timestamp_us);
+                if (online & 0x01) cmd_set(shm, 0, 1, seq, STARK_CMD_MULTI, 200, 0, 0, fb->timestamp_us);
+                if (online & 0x02) cmd_set(shm, 1, 2, seq, STARK_CMD_MULTI, 200, 0, 0, fb->timestamp_us);
                 */
 
             } else if (t_sec < 6.0f) {
@@ -178,22 +176,21 @@ int main()
                 static bool pos_mode_set = false;
                 if (!pos_mode_set) {
                     printf("[algo_sim] switching to POS mode\n");
-                    cmd_set(shm, 0, 1, STARK_CMD_SET_MODE, ALGO_MODE_CSP, 0, 0, 0);
-                    cmd_set(shm, 1, 2, STARK_CMD_SET_MODE, ALGO_MODE_CSP, 0, 0, 0);
+                    cmd_set(shm, 0, 1, seq, STARK_CMD_SET_MODE, ALGO_MODE_CSP, 0, 0, 0);
+                    cmd_set(shm, 1, 2, seq, STARK_CMD_SET_MODE, ALGO_MODE_CSP, 0, 0, 0);
                     seq++;
-                    __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-                    shm->mailbox.seq_end = seq;
+shm->mailbox.seq_write = seq;
                     usleep(5000);
                     pos_mode_set = true;
                 }
 
                 float angle = 15.0f * sinf((t_sec - 3.0f) * 2.0f * M_PI);
                 if (online & 0x01) {
-                    cmd_set(shm, 0, 1, STARK_CMD_POS,
+                    cmd_set(shm, 0, 1, seq, STARK_CMD_POS,
                             (int32_t)(angle * 100.0f),  0, 0, fb->timestamp_us);
                 }
                 if (online & 0x02) {
-                    cmd_set(shm, 1, 2, STARK_CMD_POS,
+                    cmd_set(shm, 1, 2, seq, STARK_CMD_POS,
                             (int32_t)(-angle * 100.0f), 0, 0, fb->timestamp_us);
                 }
 
@@ -202,35 +199,34 @@ int main()
                 static bool mit_mode_set = false;
                 if (!mit_mode_set) {
                     printf("[algo_sim] switching to MIT mode\n");
-                    cmd_set(shm, 0, 1, STARK_CMD_SET_MODE, ALGO_MODE_MIT, 0, 0, 0);
-                    cmd_set(shm, 1, 2, STARK_CMD_SET_MODE, ALGO_MODE_MIT, 0, 0, 0);
+                    cmd_set(shm, 0, 1, seq, STARK_CMD_SET_MODE, ALGO_MODE_MIT, 0, 0, 0);
+                    cmd_set(shm, 1, 2, seq, STARK_CMD_SET_MODE, ALGO_MODE_MIT, 0, 0, 0);
                     seq++;
-                    __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-                    shm->mailbox.seq_end = seq;
+shm->mailbox.seq_write = seq;
                     usleep(5000);
                     mit_mode_set = true;
                 }
 
                 /* MIT: 中间位置, 低刚度 (可以被推动) */
                 if (online & 0x01) {
-                    shm->mailbox.cmd[0].motor_id     = 1;
-                    shm->mailbox.cmd[0].cmd          = STARK_CMD_MIT;
-                    shm->mailbox.cmd[0].mit_pos      = 32768;   /* 中间 */
-                    shm->mailbox.cmd[0].mit_vel      = 0;
-                    shm->mailbox.cmd[0].mit_kp       = 50;      /* 低刚度 */
-                    shm->mailbox.cmd[0].mit_kd       = 5;       /* 低阻尼 */
-                    shm->mailbox.cmd[0].mit_torque   = 0;
-                    shm->mailbox.cmd[0].timestamp_us = fb->timestamp_us;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[0].motor_id     = 1;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[0].cmd          = STARK_CMD_MIT;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[0].mit_pos      = 32768;   /* 中间 */
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[0].mit_vel      = 0;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[0].mit_kp       = 50;      /* 低刚度 */
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[0].mit_kd       = 5;       /* 低阻尼 */
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[0].mit_torque   = 0;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[0].timestamp_us = fb->timestamp_us;
                 }
                 if (online & 0x02) {
-                    shm->mailbox.cmd[1].motor_id     = 2;
-                    shm->mailbox.cmd[1].cmd          = STARK_CMD_MIT;
-                    shm->mailbox.cmd[1].mit_pos      = 32768;
-                    shm->mailbox.cmd[1].mit_vel      = 0;
-                    shm->mailbox.cmd[1].mit_kp       = 50;
-                    shm->mailbox.cmd[1].mit_kd       = 5;
-                    shm->mailbox.cmd[1].mit_torque   = 0;
-                    shm->mailbox.cmd[1].timestamp_us = fb->timestamp_us;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[1].motor_id     = 2;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[1].cmd          = STARK_CMD_MIT;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[1].mit_pos      = 32768;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[1].mit_vel      = 0;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[1].mit_kp       = 50;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[1].mit_kd       = 5;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[1].mit_torque   = 0;
+                    shm->mailbox.frames[seq % STARK_MBOX_DEPTH].cmd[1].timestamp_us = fb->timestamp_us;
                 }
 
             } else {
@@ -247,13 +243,13 @@ int main()
                         } else if (err & ALGO_ERR_STALL) {
                             printf(" (stall ,  clearing via PDO bit5)\n");
                             if (shm->motor_online & (1 << i)) {
-                                cmd_set(shm, i, (uint8_t)(i + 1),
+                                cmd_set(shm, i, (uint8_t)(i + 1), seq,
                                         STARK_CMD_CLEAR_FAULT, 0, 0, 0, fb->timestamp_us);
                             }
                         } else if (err != 0) {
                             printf(" (generic ,  clearing via PDO bit5)\n");
                             if (shm->motor_online & (1 << i)) {
-                                cmd_set(shm, i, (uint8_t)(i + 1),
+                                cmd_set(shm, i, (uint8_t)(i + 1), seq,
                                         STARK_CMD_CLEAR_FAULT, 0, 0, 0, fb->timestamp_us);
                             }
                         } else {
@@ -269,8 +265,7 @@ int main()
             fb->ts_algo_done = t5_us;
 
             seq++;
-            __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-            shm->mailbox.seq_end = seq;
+shm->mailbox.seq_write = seq;
         }
 
 next_cycle:
@@ -294,11 +289,10 @@ next_cycle:
 
     /* ── 退出前急停 ── */
     printf("[algo_sim] ESTOP all motors...\n");
-    cmd_set(shm, 0, 1, STARK_CMD_ESTOP, 0, 0, 0, 0);
-    cmd_set(shm, 1, 2, STARK_CMD_ESTOP, 0, 0, 0, 0);
+    cmd_set(shm, 0, 1, seq, STARK_CMD_ESTOP, 0, 0, 0, 0);
+    cmd_set(shm, 1, 2, seq, STARK_CMD_ESTOP, 0, 0, 0, 0);
     seq++;
-    __atomic_store_n(&shm->mailbox.seq_begin, seq, __ATOMIC_RELEASE);
-    shm->mailbox.seq_end = seq;
+shm->mailbox.seq_write = seq;
     usleep(20000);
 
     printf("[algo_sim] total loops: %lu\n", (unsigned long)loop_count);

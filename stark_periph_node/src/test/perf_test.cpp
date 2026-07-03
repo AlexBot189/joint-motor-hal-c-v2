@@ -94,7 +94,7 @@ int main()
 
         clock_gettime(CLOCK_MONOTONIC, &t1);
         for (int i = 0; i < N; i++) {
-            __atomic_store_n(&shm->mailbox.seq_begin,
+            __atomic_store_n(&shm->mailbox.seq_write,
                              (uint64_t)i, __ATOMIC_RELEASE);
         }
         clock_gettime(CLOCK_MONOTONIC, &t2);
@@ -169,7 +169,7 @@ int main()
         printf("│ motor_severity   : %d                          │\n", shm->motor_severity);
         printf("│ fault_reason     : %d                          │\n", shm->fault_reason);
         printf("│ mailbox.seq      : %lu                      │\n",
-               (unsigned long)shm->mailbox.seq_begin);
+               (unsigned long)shm->mailbox.seq_write);
         printf("├─────────────────────────────────────────────┤\n");
         printf("│ 延迟追踪                                   │\n");
         printf("├── 耗时追踪 (STARK_LATENCY_TRACE)                ──┤\n");

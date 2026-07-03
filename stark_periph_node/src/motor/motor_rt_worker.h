@@ -8,7 +8,7 @@
  * 单周期流程:
  *   ① ProcessMailbox()   ,  读 SHM mailbox ,  PDO multi_ctrl
  *   ② PublishFeedback()  ,  fb_cache + IMU ,  SHM double buffer
- *   ③ SafetyCheck()      ,  seq停滞 / torque归零 (PDO)
+ *   ③ SafetyCheck()      , 心跳超时脱使能
  */
 #pragma once
 
@@ -100,7 +100,6 @@ public:
     RtConfig     m_rt;
 
     /* 延迟追踪 */
-    uint64_t m_last_seq;
     uint64_t m_can_last_frame_us;
     uint64_t m_latency_history[64];     /* 最近64次闭环延迟 (T8-T0) */
     uint32_t m_latency_idx;

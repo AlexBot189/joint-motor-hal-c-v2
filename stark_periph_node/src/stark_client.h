@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -160,16 +161,25 @@ static inline barometer_data_t stark_baro(stark_client_t* c)
     return c->shm->fb_buffer[idx].baro;
 }
 
-/* -- 控制命令: 实时路径 (写 mailbox, RT 线程每 1ms 消费) -------- */
+/* -- 控制命令: 实时路径 (环形缓冲 mailbox, 不丢帧) ------------- */
 
-static inline uint64_t _stark_mbox_begin(stark_client_t* c)
+/* SPSC 环形缓冲写入, 返回槽位索引. 缓冲满时短暂自旋等待. */
+static inline int _stark_mbox_begin(stark_client_t* c)
 {
-    return __atomic_add_fetch(&c->shm->mailbox.seq_begin, 1, __ATOMIC_RELEASE);
+    if (!c || !c->shm) return -1;
+    uint64_t w, r;
+    do {
+        w = __atomic_load_n(&c->shm->mailbox.seq_write, __ATOMIC_RELAXED);
+        r = __atomic_load_n(&c->shm->mailbox.seq_read,  __ATOMIC_ACQUIRE);
+        if (w - r >= STARK_MBOX_DEPTH) usleep(50);  /* 缓冲满 */
+    } while (w - r >= STARK_MBOX_DEPTH);
+    return (int)(w % STARK_MBOX_DEPTH);
 }
 
-static inline void _stark_mbox_end(stark_client_t* c, uint64_t seq)
+/* 提交写入: 递增 seq_write, 通知 RT */
+static inline void _stark_mbox_commit(stark_client_t* c)
 {
-    __atomic_store_n(&c->shm->mailbox.seq_end, seq, __ATOMIC_RELEASE);
+    __atomic_add_fetch(&c->shm->mailbox.seq_write, 1, __ATOMIC_RELEASE);
 }
 
 /* 力矩控制, 单位 mA */
@@ -177,14 +187,16 @@ static inline void stark_torque(stark_client_t* c, int id, int32_t ma)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_TORQUE;
-    c->shm->mailbox.cmd[idx].value    = ma;
+    c->shm->mailbox.frames[slot].cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_TORQUE;
+    c->shm->mailbox.frames[slot].cmd[idx].value    = ma;
 
-    _stark_mbox_end(c, seq);
+    _stark_mbox_commit(c);
 }
 
 /* 速度控制 (CSV), 单位 RPM */
@@ -192,14 +204,16 @@ static inline void stark_speed(stark_client_t* c, int id, float rpm)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_SPEED;
-    c->shm->mailbox.cmd[idx].value    = (int32_t)(rpm * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_SPEED;
+    c->shm->mailbox.frames[slot].cmd[idx].value    = (int32_t)(rpm * 100.0f);
 
-    _stark_mbox_end(c, seq);
+    _stark_mbox_commit(c);
 }
 
 /* 轮廓速度 (PV), rpm=目标速度 accel=加速度 RPM/s */
@@ -207,15 +221,17 @@ static inline void stark_pv(stark_client_t* c, int id, float rpm, float accel)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_PV;
-    c->shm->mailbox.cmd[idx].value    = (int32_t)(rpm * 100.0f);
-    c->shm->mailbox.cmd[idx].value2   = (int32_t)(accel * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_PV;
+    c->shm->mailbox.frames[slot].cmd[idx].value    = (int32_t)(rpm * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].value2   = (int32_t)(accel * 100.0f);
 
-    _stark_mbox_end(c, seq);
+    _stark_mbox_commit(c);
 }
 
 /* 循环同步速度 (CSV), 单位 RPM */
@@ -223,14 +239,16 @@ static inline void stark_csv(stark_client_t* c, int id, float rpm)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_CSV;
-    c->shm->mailbox.cmd[idx].value    = (int32_t)(rpm * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_CSV;
+    c->shm->mailbox.frames[slot].cmd[idx].value    = (int32_t)(rpm * 100.0f);
 
-    _stark_mbox_end(c, seq);
+    _stark_mbox_commit(c);
 }
 
 /* 绝对位置控制 (CSP), 单位 deg, 范围 [-180, 180] */
@@ -238,14 +256,16 @@ static inline void stark_position(stark_client_t* c, int id, float deg)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd      = STARK_CMD_POS;
-    c->shm->mailbox.cmd[idx].value    = (int32_t)(deg * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_POS;
+    c->shm->mailbox.frames[slot].cmd[idx].value    = (int32_t)(deg * 100.0f);
 
-    _stark_mbox_end(c, seq);
+    _stark_mbox_commit(c);
 }
 
 /* 相对位置控制, 自动读当前位置加偏移, 钳位到 [-180, 180] */
@@ -269,16 +289,18 @@ static inline void stark_pp(stark_client_t* c, int id,
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id    = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd         = STARK_CMD_PP;
-    c->shm->mailbox.cmd[idx].value       = (int32_t)(deg * 100.0f);
-    c->shm->mailbox.cmd[idx].value2      = (int32_t)(accel_rpm * 100.0f);
-    c->shm->mailbox.cmd[idx].feedforward = (int32_t)(vel_rpm * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].motor_id    = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[idx].cmd         = STARK_CMD_PP;
+    c->shm->mailbox.frames[slot].cmd[idx].value       = (int32_t)(deg * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].value2      = (int32_t)(accel_rpm * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].feedforward = (int32_t)(vel_rpm * 100.0f);
 
-    _stark_mbox_end(c, seq);
+    _stark_mbox_commit(c);
 }
 
 /* MIT 阻抗控制, pos_deg=平衡点 vel_rpm=阻尼速度 kp=刚度 kd=阻尼 torque_ma=前馈 */
@@ -288,18 +310,20 @@ static inline void stark_mit(stark_client_t* c, int id,
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
     int idx = id - 1;
 
-    c->shm->mailbox.cmd[idx].motor_id   = (uint8_t)id;
-    c->shm->mailbox.cmd[idx].cmd        = STARK_CMD_MIT;
-    c->shm->mailbox.cmd[idx].mit_pos    = (uint16_t)((pos_deg + 180.0f) * 65535.0f / 360.0f);
-    c->shm->mailbox.cmd[idx].mit_vel    = (uint16_t)(vel_rpm);
-    c->shm->mailbox.cmd[idx].mit_kp     = (uint16_t)(kp * 100.0f);
-    c->shm->mailbox.cmd[idx].mit_kd     = (uint16_t)(kd * 100.0f);
-    c->shm->mailbox.cmd[idx].mit_torque = (uint16_t)(torque_ma);
+    c->shm->mailbox.frames[slot].cmd[idx].motor_id   = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[idx].cmd        = STARK_CMD_MIT;
+    c->shm->mailbox.frames[slot].cmd[idx].mit_pos    = (uint16_t)((pos_deg + 180.0f) * 65535.0f / 360.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].mit_vel    = (uint16_t)(vel_rpm);
+    c->shm->mailbox.frames[slot].cmd[idx].mit_kp     = (uint16_t)(kp * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].mit_kd     = (uint16_t)(kd * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].mit_torque = (uint16_t)(torque_ma);
 
-    _stark_mbox_end(c, seq);
+    _stark_mbox_commit(c);
 }
 
 /*
@@ -317,21 +341,22 @@ static inline void stark_multi(stark_client_t* c,
 {
     if (!c || !c->shm) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
 
-    c->shm->mailbox.cmd[0].motor_id    = 1;
-    c->shm->mailbox.cmd[0].cmd         = STARK_CMD_MULTI;
-    c->shm->mailbox.cmd[0].value       = t1;
-    c->shm->mailbox.cmd[0].value2      = v1;
-    c->shm->mailbox.cmd[0].feedforward = p1;
+    c->shm->mailbox.frames[slot].cmd[0].motor_id    = 1;
+    c->shm->mailbox.frames[slot].cmd[0].cmd         = STARK_CMD_MULTI;
+    c->shm->mailbox.frames[slot].cmd[0].value       = t1;
+    c->shm->mailbox.frames[slot].cmd[0].value2      = v1;
+    c->shm->mailbox.frames[slot].cmd[0].feedforward = p1;
 
-    c->shm->mailbox.cmd[1].motor_id    = 2;
-    c->shm->mailbox.cmd[1].cmd         = STARK_CMD_MULTI;
-    c->shm->mailbox.cmd[1].value       = t2;
-    c->shm->mailbox.cmd[1].value2      = v2;
-    c->shm->mailbox.cmd[1].feedforward = p2;
+    c->shm->mailbox.frames[slot].cmd[1].motor_id    = 2;
+    c->shm->mailbox.frames[slot].cmd[1].cmd         = STARK_CMD_MULTI;
+    c->shm->mailbox.frames[slot].cmd[1].value       = t2;
+    c->shm->mailbox.frames[slot].cmd[1].value2      = v2;
+    c->shm->mailbox.frames[slot].cmd[1].feedforward = p2;
 
-    _stark_mbox_end(c, seq);
+    _stark_mbox_commit(c);
 }
 
 /* -- 管理命令 (per-motor mgmt slot, 不和算法 mailbox 竞争) --- */
@@ -386,11 +411,13 @@ static inline void stark_set_mode(stark_client_t* c, int id, int mode)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
-    c->shm->mailbox.cmd[id - 1].motor_id = (uint8_t)id;
-    c->shm->mailbox.cmd[id - 1].cmd      = STARK_CMD_SET_MODE;
-    c->shm->mailbox.cmd[id - 1].value    = mode;
-    _stark_mbox_end(c, seq);
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
+    c->shm->mailbox.frames[slot].cmd[id - 1].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[id - 1].cmd      = STARK_CMD_SET_MODE;
+    c->shm->mailbox.frames[slot].cmd[id - 1].value    = mode;
+    _stark_mbox_commit(c);
 }
 
 /* -- 双向心跳 -------------------------------------------------- */

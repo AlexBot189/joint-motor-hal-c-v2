@@ -7,7 +7,7 @@
  *
  * 并发: 单写多读, 无锁.
  *   fb_buffer: 双 Buffer, RT 线程写, 多读者
- *   mailbox:   算法写, RT 读 (seq_begin/seq_end 防撕裂)
+ *   mailbox:   算法写, RT 读 (环形缓冲, SPSC 无锁)
  *   status:    motor_node 写, 算法只读
  */
 #pragma once
@@ -140,11 +140,18 @@ typedef struct {
     uint64_t timestamp_us;      /* 算法下发时刻                                          */
 } motor_command_t;
 
-/* Mailbox — 双电机命令 (算法写, motor_node 读) */
+/* Mailbox 环形缓冲 — 算法写, RT 读, SPSC 无锁, 不丢帧 */
+#define STARK_MBOX_DEPTH 8
+
 typedef struct {
-    uint64_t          seq_begin;   /* 命令传输+握手+心跳 */
-    motor_command_t   cmd[STARK_MAX_MOTORS];  /* 电机命令数组                             */
-    uint64_t          seq_end;     /* 写完置为 seq_begin, reader 对比防撕裂               */
+    motor_command_t cmd[STARK_MAX_MOTORS];
+} mailbox_frame_t;
+
+typedef struct {
+    volatile uint64_t seq_write;   /* 算法写入游标, 单调递增 */
+    volatile uint64_t seq_read;    /* RT 消费游标, 单调递增 */
+    mailbox_frame_t   frames[STARK_MBOX_DEPTH];
+    uint8_t           _pad_mbox[16];
 } stark_mailbox_t;
 
 /* 故障级别 */
@@ -291,7 +298,7 @@ typedef struct {
     uint32_t          algo_heartbeat_timeout_ms;   /* stark_node 启动写入, 默认 1000 */
     volatile uint32_t rt_cycle;                    /* RT 每 1ms 递增, 算法检测存活 */
 
-    uint8_t   _pad[3708];             /* 对齐 64KB */
+    uint8_t   _pad[3132];             /* 对齐 64KB */
 } stark_shm_t;
 
 #ifdef __cplusplus
