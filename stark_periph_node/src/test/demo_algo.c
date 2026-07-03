@@ -49,6 +49,7 @@ static void run_torque(stark_client_t* c, int32_t amplitude_ma)
 
     uint64_t t0 = now_ms();
     int32_t last = 0;
+    uint32_t rpt_ver = 0;
 
     while (g_running) {
         uint64_t t = now_ms() - t0;
@@ -63,6 +64,30 @@ static void run_torque(stark_client_t* c, int32_t amplitude_ma)
                    (unsigned long)(t / 1000), ma, counts_to_deg(fb.position), fb.current_iq);
             last = ma;
         }
+
+        /* 周期上报数据: stark_report_try_read 一行获取 */
+        {
+            const PeriodicUploadData* d;
+            if (stark_report_try_read(c, &rpt_ver, &d)) {
+                printf("[rpt] cyc=%u ts=%u | "
+                       "IMU roll=%.1f pitch=%.1f yaw=%.1f | "
+                       "R: vel=%d ang=%d cur=%d temp=%d "
+                       "L: vel=%d ang=%d cur=%d temp=%d | "
+                       "S1: hall=%u,%u,%u tor=%u kne=%d "
+                       "S2: hall=%u,%u,%u tor=%u kne=%d\n",
+                       d->frame_cycle, d->imu_ts_us,
+                       d->gyro_roll, d->gyro_pitch, d->gyro_yaw,
+                       d->RealtimeVelocity, d->motor_abs_angle,
+                       d->cal_Iq_current * 10, d->motor_temp,
+                       d->RealtimeVelocity_left, d->motor_abs_angle_left,
+                       d->cal_Iq_current_left * 10, d->motor_temp_left,
+                       d->hall_a_data, d->hall_b_data, d->hall_c_data,
+                       d->df181_torque, d->knee_angle,
+                       d->hall_a_data_left, d->hall_b_data_left, d->hall_c_data_left,
+                       d->df181_torque_left, d->knee_angle_left);
+            }
+        }
+
         stark_heartbeat(c);
         usleep(1000);
     }
@@ -230,7 +255,7 @@ static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
     }
 }
 
-/* PeriodicUploadData display -- version-gated, one print per update */
+/* PeriodicUploadData display */
 static void run_report_loop(stark_client_t* c)
 {
     printf("[report] waiting for data stream...\n");
@@ -239,17 +264,13 @@ static void run_report_loop(stark_client_t* c)
         usleep(100000);
     }
 
-    uint32_t last_ver = 0;
+    uint32_t rpt_ver = 0;
     while (g_running) {
-        uint32_t ver = stark_report_version(c);
-        if (ver == last_ver) { usleep(1000); continue; }
-        last_ver = ver;
-
-        const PeriodicUploadData* d = stark_report_data(c);
-        if (!d) { usleep(1000); continue; }
+        const PeriodicUploadData* d;
+        if (!stark_report_try_read(c, &rpt_ver, &d)) { usleep(1000); continue; }
 
         printf("=== [%ums] ver=%u frame=%u m_ts=%u i_ts=%u s_ts=%u ===\n",
-               d->timestamp_ms, ver,
+               d->timestamp_ms, rpt_ver,
                d->frame_cycle, d->motor_ts_us, d->imu_ts_us, d->sensor_ts_us);
 
         /* IMU */
