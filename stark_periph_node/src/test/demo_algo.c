@@ -315,27 +315,38 @@ static void run_stat_loop(stark_client_t* c)
 static void usage(void)
 {
     printf("用法: ./demo_algo <mode> [args...]\n\n");
-    printf("模式:\n");
+    printf("控制模式:\n");
     printf("  torque <mA>           电流环, 正弦波, 振幅=mA\n");
+    printf("  multi  <ma1> <ma2>    多轴广播, 恒电流\n");
+    printf("  speed  <rpm>          速度控制 (CSV), 梯形波\n");
+    printf("  csv    <rpm>          CSV 速度, 梯形波\n");
+    printf("  pv     <rpm> [acc]    轮廓速度 PV, 梯形波\n");
+    printf("  pos    <deg>          位置控制 (CSP), 方波\n");
+    printf("  csp    <deg>          CSP 位置, 方波\n");
     printf("  pp     <deg> [acc] [v] 轮廓位置 PP, 方波\n");
-    printf("  pv     <rpm> [acc]      轮廓速度 PV, 梯形波\n");
-    printf("  csp    <deg>           CSP 位置, 方波\n");
-    printf("  csv    <rpm>           CSV 速度, 梯形波\n");
-    printf("  speed  <rpm>           速度控制 (同 csv)\n");
-    printf("  pos    <deg>           位置控制 (同 csp)\n");
-    printf("  mit    <kp> <kd>       MIT 阻抗\n");
-    printf("  multi  <ma1> <ma2>     多轴广播, 恒电流\n");
-    printf("  stat                   只读反馈\n");
-    printf("  report                 周期上报数据打印\n");
+    printf("  mit    <kp> <kd>      MIT 阻抗\n");
+    printf("\n管理命令:\n");
+    printf("  enable  <id>          使能电机, id=1/2\n");
+    printf("  disable <id>          失能电机\n");
+    printf("  estop   <id>          急停\n");
+    printf("  clearf  <id>          清故障\n");
+    printf("\n状态:\n");
+    printf("  stat                  只读反馈\n");
+    printf("  report                周期上报数据打印\n");
     printf("\n示例:\n");
-    printf("  ./demo_algo torque 200        # 电流 ±200mA\n");
-    printf("  ./demo_algo pp 15 2000 10     # PP ±15°, acc=2000RPM/s vel=10RPM\n");
+    printf("  ./demo_algo torque 200        # 电流 ±200mA 正弦波\n");
+    printf("  ./demo_algo multi 200 200     # 双电机各 200mA\n");
+    printf("  ./demo_algo speed 10          # 速度 ±10RPM 梯形波\n");
     printf("  ./demo_algo pv 30 1000        # PV ±30RPM, acc=1000RPM/s\n");
-    printf("  ./demo_algo csp 15            # CSP ±15°\n");
-    printf("  ./demo_algo csv 10            # CSV ±10RPM\n");
+    printf("  ./demo_algo pos 15            # 位置 ±15° 方波\n");
+    printf("  ./demo_algo pp 15 2000 10     # PP ±15°, acc=2000RPM/s vel=10RPM\n");
     printf("  ./demo_algo mit 100 50        # MIT kp=100 kd=50\n");
-    printf("  ./demo_algo multi 200 200    # 双电机各 200mA\n");
-    printf("  ./demo_algo stat             # 只读反馈\n");
+    printf("  ./demo_algo enable 1          # 使能电机1\n");
+    printf("  ./demo_algo disable 2         # 失能电机2\n");
+    printf("  ./demo_algo estop 1           # 急停电机1\n");
+    printf("  ./demo_algo clearf 1          # 清电机1故障\n");
+    printf("  ./demo_algo report            # 周期上报数据\n");
+    printf("  ./demo_algo stat              # 只读反馈\n");
 }
 
 int main(int argc, char** argv)
@@ -367,7 +378,7 @@ int main(int argc, char** argv)
     }
     printf("[init] 就绪, 电机在线: %d %d\n", stark_online(&c, 1), stark_online(&c, 2));
 
-    /* stat/report 模式不需要使能 */
+    /* stat/report/mgmt 模式不需要使能 */
     if (strcmp(mode, "stat") == 0) {
         run_stat_loop(&c);
         stark_close(&c);
@@ -375,6 +386,40 @@ int main(int argc, char** argv)
     }
     if (strcmp(mode, "report") == 0) {
         run_report_loop(&c);
+        stark_close(&c);
+        return 0;
+    }
+
+    /* 管理命令: 直接执行后退出 */
+    if (strcmp(mode, "enable") == 0) {
+        if (argc < 3) { printf("ERR: need motor id\n"); stark_close(&c); return 1; }
+        int id = atoi(argv[2]);
+        stark_enable(&c, id);
+        printf("motor %d enabled\n", id);
+        stark_close(&c);
+        return 0;
+    }
+    if (strcmp(mode, "disable") == 0) {
+        if (argc < 3) { printf("ERR: need motor id\n"); stark_close(&c); return 1; }
+        int id = atoi(argv[2]);
+        stark_disable(&c, id);
+        printf("motor %d disabled\n", id);
+        stark_close(&c);
+        return 0;
+    }
+    if (strcmp(mode, "estop") == 0) {
+        if (argc < 3) { printf("ERR: need motor id\n"); stark_close(&c); return 1; }
+        int id = atoi(argv[2]);
+        stark_estop(&c, id);
+        printf("motor %d emergency stopped\n", id);
+        stark_close(&c);
+        return 0;
+    }
+    if (strcmp(mode, "clearf") == 0) {
+        if (argc < 3) { printf("ERR: need motor id\n"); stark_close(&c); return 1; }
+        int id = atoi(argv[2]);
+        stark_clear_fault(&c, id);
+        printf("motor %d fault cleared\n", id);
         stark_close(&c);
         return 0;
     }

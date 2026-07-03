@@ -192,15 +192,38 @@ void StarkRtWorker::ProcessMailbox()
         case STARK_CMD_ENABLE:
             motor_hal_pdo_enable(m_hal, mid); break;
         case STARK_CMD_DISABLE:
-            motor_hal_pdo_disable(m_hal, mid); break;
+            motor_hal_pdo_disable(m_hal, mid);
+            {
+                multi_axis_cmd_t mcmd = {};
+                mcmd.node_id       = mid;
+                mcmd.enable        = false;
+                mcmd.release_brake = true;
+                mcmd.mode          = MOTOR_MODE_CURRENT;
+                mcmd.target1       = 0;
+                motor_hal_multi_ctrl(m_hal, &mcmd, 1);
+            }
+            break;
         case STARK_CMD_ESTOP:
-            motor_hal_pdo_estop(m_hal, mid); break;
+            motor_hal_pdo_estop(m_hal, mid);
+            {
+                multi_axis_cmd_t mcmd = {};
+                mcmd.node_id       = mid;
+                mcmd.enable        = false;
+                mcmd.release_brake = false;
+                mcmd.mode          = MOTOR_MODE_CURRENT;
+                mcmd.target1       = 0;
+                motor_hal_multi_ctrl(m_hal, &mcmd, 1);
+            }
+            break;
         case STARK_CMD_RECOVER:
             motor_hal_pdo_recover(m_hal, mid); break;
         case STARK_CMD_SET_MODE:
             motor_hal_pdo_set_mode(m_hal, mid, (motor_mode_t)c.value); break;
         case STARK_CMD_CLEAR_FAULT:
-            motor_hal_pdo_clear_fault(m_hal, mid); break;
+            motor_hal_pdo_clear_fault(m_hal, mid);
+            motor_hal_pdo_enable(m_hal, mid);
+            motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_CURRENT, 0, 0, 0);
+            break;
         default: break;
         }
     }
