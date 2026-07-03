@@ -34,6 +34,9 @@ struct StarkNodeContext {
     /* 周期上报 */
     bool         report_auto_enable = true;   /* 校准后自动开启上报 */
     uint32_t     report_period_ms   = 5;      /* 上报周期 ms */
+
+    /* 校准后使能 */
+    bool         calib_enable_after = false;  /* 校准完成后使能电机, 跟随 auto_enable */
 };
 
 }  /* namespace stark_periph_manager_node */

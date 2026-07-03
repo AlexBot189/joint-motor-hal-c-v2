@@ -86,6 +86,7 @@ int cmd_do_calib(motor_hal_t *hal, int cmd_id, int argc, char **argv)
             .timeout_ms          = timeout_ms,
             .angle_threshold_deg = 1.0f,
             .ctrl_mode           = MOTOR_MODE_CURRENT,
+            .enable_after_done   = true,  /* motor_tool 校准后立即可用 */
         };
 
         if (motor_calib_start(g_calib, &cfg) != 0) {

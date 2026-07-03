@@ -117,16 +117,19 @@ void StarkRtWorker::Run()
         /* 快照: 保存 ProcessMailbox 之前的 seq, 供 SafetyCheck 比较 */
         uint64_t seq_before = m_last_seq;
 
-        /* ① 控制下发: 读 SHM mailbox ,  multi_ctrl ,  PDO */
+        /* ① 管理命令: 读 SHM mgmt 通道 (独立于 mailbox, 不丢命令) */
+        ProcessMgmt();
+
+        /* ② 控制下发: 读 SHM mailbox ,  multi_ctrl ,  PDO */
         ProcessMailbox();
 
-        /* ② 反馈上报: 读 fb_cache ,  SHM double buffer (200Hz) */
+        /* ③ 反馈上报: 读 fb_cache ,  SHM double buffer (200Hz) */
         PublishFeedback();
 
-        /* ③ 安全监控 */
+        /* ④ 安全监控 */
         SafetyCheck(seq_before);
 
-        /* ④ 提交延迟样本 */
+        /* ⑤ 提交延迟样本 */
         m_tracer.commit_sample();
 
         m_cycle_count++;
@@ -144,6 +147,77 @@ void StarkRtWorker::Run()
             m_overrun_count++;
             clock_gettime(CLOCK_MONOTONIC, &next_wake);
         }
+    }
+}
+
+/*
+ * ProcessMgmt() — 读 SHM mgmt 通道, 处理管理命令 (独立于 mailbox)
+ *
+ * 每电机独立 slot: mgmt_cmd[id-1] / mgmt_seq[id-1] / mgmt_ack[id-1].
+ * 写入方递增 mgmt_seq[i], RT 处理后将 seq 拷贝到 mgmt_ack[i].
+ * 多电机命令互不覆盖, 不依赖 mailbox seq.
+ */
+
+void StarkRtWorker::ProcessMgmt()
+{
+    if (!m_active.load(std::memory_order_acquire)) return;
+    if (!m_shm || !m_hal) return;
+
+    for (int i = 0; i < m_motor_count; i++) {
+        uint8_t seq = __atomic_load_n(&m_shm->mgmt_seq[i], __ATOMIC_ACQUIRE);
+        uint8_t ack = __atomic_load_n(&m_shm->mgmt_ack[i], __ATOMIC_RELAXED);
+
+        if (seq == ack) continue;
+
+        uint8_t cmd = m_shm->mgmt_cmd[i];
+        uint8_t id  = (uint8_t)(i + 1);
+
+        if (cmd == 0) {
+            __atomic_store_n(&m_shm->mgmt_ack[i], seq, __ATOMIC_RELEASE);
+            continue;
+        }
+
+        switch (cmd) {
+        case STARK_CMD_ENABLE:
+            motor_hal_pdo_enable(m_hal, id);
+            break;
+        case STARK_CMD_DISABLE:
+            motor_hal_pdo_disable(m_hal, id);
+            {
+                multi_axis_cmd_t mcmd = {};
+                mcmd.node_id       = id;
+                mcmd.enable        = false;
+                mcmd.release_brake = true;
+                mcmd.mode          = MOTOR_MODE_CURRENT;
+                mcmd.target1       = 0;
+                motor_hal_multi_ctrl(m_hal, &mcmd, 1);
+            }
+            break;
+        case STARK_CMD_ESTOP:
+            motor_hal_pdo_estop(m_hal, id);
+            {
+                multi_axis_cmd_t mcmd = {};
+                mcmd.node_id       = id;
+                mcmd.enable        = false;
+                mcmd.release_brake = false;
+                mcmd.mode          = MOTOR_MODE_CURRENT;
+                mcmd.target1       = 0;
+                motor_hal_multi_ctrl(m_hal, &mcmd, 1);
+            }
+            break;
+        case STARK_CMD_RECOVER:
+            motor_hal_pdo_recover(m_hal, id);
+            break;
+        case STARK_CMD_CLEAR_FAULT:
+            motor_hal_pdo_clear_fault(m_hal, id);
+            motor_hal_pdo_enable(m_hal, id);
+            motor_hal_ctrl_raw(m_hal, id, MOTOR_MODE_CURRENT, 0, 0, 0);
+            break;
+        default:
+            break;
+        }
+
+        __atomic_store_n(&m_shm->mgmt_ack[i], seq, __ATOMIC_RELEASE);
     }
 }
 

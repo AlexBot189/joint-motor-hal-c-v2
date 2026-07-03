@@ -227,6 +227,7 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
             calib_cfg.timeout_ms = g_ctx->calib_timeout_ms;
             calib_cfg.angle_threshold_deg = 1.0f;
             calib_cfg.ctrl_mode = MOTOR_MODE_CURRENT;
+            calib_cfg.enable_after_done = g_ctx->calib_enable_after;
 
             int ret = motor_calib_start((motor_calib_t*)g_ctx->calib_ctx, &calib_cfg);
             if (ret == 0) {

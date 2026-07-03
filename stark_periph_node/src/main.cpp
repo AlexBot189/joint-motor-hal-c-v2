@@ -127,10 +127,11 @@ int main(int argc, char** argv)
     g_node_ctx.calib_timeout_ms = g_dispatcher->GetCalibTimeoutMs();
     g_node_ctx.report_auto_enable = g_dispatcher->GetReportAutoEnable();
     g_node_ctx.report_period_ms   = g_dispatcher->GetReportPeriodMs();
+    g_node_ctx.calib_enable_after = g_dispatcher->GetMotorAutoEnable();
 
-    ECO_INFO_NEW("[main] config: motor_count={} sensor_period={}ms bus_fmt={} auto_calib={}",
+    ECO_INFO_NEW("[main] config: motor_count={} sensor_period={}ms bus_fmt={} auto_calib={} motor_auto_enable={}",
                  motor_count, g_node_ctx.sensor_period_ms,
-                 g_node_ctx.sensor_bus_format, g_node_ctx.auto_calib);
+                 g_node_ctx.sensor_bus_format, g_node_ctx.auto_calib, g_node_ctx.calib_enable_after);
 
     /* 步骤 4: 初始化 ROS (编译可选) */
 

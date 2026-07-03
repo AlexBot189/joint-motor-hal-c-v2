@@ -142,30 +142,33 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
         uint8_t id_l = cal->cfg.motor_id_l;
         int ret = 0;
 
-        /* Step 3: DS402 使能 (0x06, 0x07, 0x0F) */
-        if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 2);
-        if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 2);
-        usleep(20000);
-        if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x07, 2);
-        if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x07, 2);
-        usleep(20000);
-        if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x0F, 2);
-        if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x0F, 2);
+        /* Step 3-5: 使能 + 模式设置 + 透传 (仅 enable_after_done=true) */
+        if (cal->cfg.enable_after_done) {
+            /* Step 3: DS402 使能 (0x06, 0x07, 0x0F) */
+            if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x06, 2);
+            if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x06, 2);
+            usleep(20000);
+            if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x07, 2);
+            if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x07, 2);
+            usleep(20000);
+            if (id_r > 0) ret |= motor_hal_sdo_write(cal->hal, id_r, 0x6040, 0, 0x0F, 2);
+            if (id_l > 0) ret |= motor_hal_sdo_write(cal->hal, id_l, 0x6040, 0, 0x0F, 2);
 
-        if (ret != 0) {
-            CALIB_LOG("enable failed");
-            cal->state = MOTOR_CALIB_TIMEOUT;
-            return MOTOR_CALIB_TIMEOUT;
+            if (ret != 0) {
+                CALIB_LOG("enable failed");
+                cal->state = MOTOR_CALIB_TIMEOUT;
+                return MOTOR_CALIB_TIMEOUT;
+            }
+            usleep(120000); /* 等抱闸释放 */
+
+            /* Step 4: 设置控制模式 (默认电流模式) */
+            if (id_r > 0) motor_hal_set_mode(cal->hal, id_r, cal->cfg.ctrl_mode);
+            if (id_l > 0) motor_hal_set_mode(cal->hal, id_l, cal->cfg.ctrl_mode);
+
+            /* Step 5: 启动传感器透传 (1KHz) */
+            if (id_r > 0) motor_hal_sensor_config(cal->hal, id_r, 4, 3);
+            if (id_l > 0) motor_hal_sensor_config(cal->hal, id_l, 4, 3);
         }
-        usleep(120000); /* 等抱闸释放 */
-
-        /* Step 4: 设置控制模式 (默认电流模式) */
-        if (id_r > 0) motor_hal_set_mode(cal->hal, id_r, cal->cfg.ctrl_mode);
-        if (id_l > 0) motor_hal_set_mode(cal->hal, id_l, cal->cfg.ctrl_mode);
-
-        /* Step 5: 启动传感器透传 (1KHz) */
-        if (id_r > 0) motor_hal_sensor_config(cal->hal, id_r, 4, 3);
-        if (id_l > 0) motor_hal_sensor_config(cal->hal, id_l, 4, 3);
 
         cal->state = MOTOR_CALIB_DONE;
         return MOTOR_CALIB_DONE;

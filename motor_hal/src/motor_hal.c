@@ -1128,7 +1128,7 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
                 fprintf(stderr, "  ,  Bootup node=%d\n", node);
                 /* 自动启动: 只设标志, 由主线程 motor_hal_process_pending_startups() 消费 */
                 /* 不能在 recv 线程里调 motor_startup_full — SDO 阻塞会导致自己收不到响应 */
-                if (m->config.auto_enable && m->state == MOTOR_STATE_NOT_READY) {
+                if (m->state == MOTOR_STATE_NOT_READY) {
                     m->pending_startup = true;
                 }
             } else {
@@ -1363,10 +1363,16 @@ int motor_hal_process_pending_startups(motor_hal_t *hal)
         int ret = motor_startup_full(hal->drv, &m->config, &m->bootup_received);
         if (ret == 0) {
             pthread_mutex_lock(&hal->lock);
-            m->enabled = true;
-            _set_state(hal, m, MOTOR_STATE_OP_ENABLED);
+            if (m->config.auto_enable) {
+                m->enabled = true;
+                _set_state(hal, m, MOTOR_STATE_OP_ENABLED);
+            } else {
+                m->enabled = false;
+                _set_state(hal, m, MOTOR_STATE_SWITCH_ON_DIS);
+            }
             pthread_mutex_unlock(&hal->lock);
-            fprintf(stderr, "  ,  node=%d OPERATION_ENABLED (auto)\n", m->node_id);
+            fprintf(stderr, "  ,  node=%d %s\n", m->node_id,
+                    m->config.auto_enable ? "OPERATION_ENABLED (auto)" : "SWITCH_ON_DISABLED (ready)");
         } else {
             fprintf(stderr, "  ,  node=%d auto-startup failed (ret=%d)\n", m->node_id, ret);
         }

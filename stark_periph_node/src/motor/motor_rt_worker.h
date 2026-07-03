@@ -79,6 +79,7 @@ public:
     /** @brief 周期上报开关 + 周期配置 */
     void SetReportEnabled(bool enabled, uint32_t period_ms);
     void Run();
+    void ProcessMgmt();
     void ProcessMailbox();
     void PublishFeedback();
     void SafetyCheck(uint64_t seq_before_process);

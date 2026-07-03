@@ -283,7 +283,12 @@ typedef struct {
     PeriodicUploadData periodic_data;  /* 周期上报数据, 约 128B */
     uint8_t   _pad_rpt[32];           /* 预留扩展 */
 
-    uint8_t   _pad[3728];             /* 对齐 64KB                                    */
+    /* 管理命令通道 (每电机独立 slot, 不和算法 mailbox 竞争) */
+    volatile uint8_t mgmt_cmd[STARK_MAX_MOTORS];   /* stark_cmd_type_t, 0=idle */
+    volatile uint8_t mgmt_seq[STARK_MAX_MOTORS];   /* 写入递增, RT 处理完拷贝到 ack */
+    volatile uint8_t mgmt_ack[STARK_MAX_MOTORS];   /* RT 确认 */
+
+    uint8_t   _pad[3716];             /* 对齐 64KB */
 } stark_shm_t;
 
 #ifdef __cplusplus

@@ -68,6 +68,7 @@ public:
     uint8_t  GetSensorBusFormat()  const { return m_sensor_bus_format; }
     bool     GetReportAutoEnable() const { return m_report_auto_enable; }
     uint32_t GetReportPeriodMs()   const { return m_report_period_ms; }
+    bool     GetMotorAutoEnable()  const { return m_motor_auto_enable; }
 
     bool IsRunning() const { return m_running; }
     void SetConfigPath(const std::string& path) { m_config_path = path; }
@@ -113,6 +114,7 @@ private:
     uint8_t      m_sensor_bus_format = 3;  /* CANFD BRS */
     bool         m_report_auto_enable = true;  /* 校准后自动开启周期上报 */
     uint32_t     m_report_period_ms   = 5;    /* 上报周期 ms */
+    bool         m_motor_auto_enable  = false; /* 任意电机 auto_enable=true 则置 true */
 };
 
 }  /* namespace stark_periph_manager_node */

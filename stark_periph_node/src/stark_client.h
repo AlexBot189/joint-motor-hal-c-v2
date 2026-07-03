@@ -329,47 +329,54 @@ static inline void stark_multi(stark_client_t* c,
     _stark_mbox_end(c, seq);
 }
 
-/* -- 管理命令 (非 RT, 走 PDO Byte0, 与控制命令间隔 5ms+) ------- */
+/* -- 管理命令 (per-motor mgmt slot, 不和算法 mailbox 竞争) --- */
 
-static inline void _stark_byte0_cmd(stark_client_t* c, int id, int cmd)
+/*
+ * enable/disable/estop/recover/clear_fault 走 mgmt 通道.
+ * 每电机独立 slot (mgmt_cmd[id-1] / mgmt_seq[id-1] / mgmt_ack[id-1]),
+ * 不受其他电机或 mailbox 控制循环的 seq 覆盖影响.
+ */
+static inline void _stark_mgmt_cmd(stark_client_t* c, int id, int cmd)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
-    uint64_t seq = _stark_mbox_begin(c);
-    c->shm->mailbox.cmd[id - 1].motor_id = (uint8_t)id;
-    c->shm->mailbox.cmd[id - 1].cmd      = (uint8_t)cmd;
-    _stark_mbox_end(c, seq);
+    int idx = id - 1;
+    c->shm->mgmt_cmd[idx] = (uint8_t)cmd;
+    /* 写屏障: cmd 必须在 seq 递增前对其他核心可见 */
+    __atomic_thread_fence(__ATOMIC_RELEASE);
+    __atomic_add_fetch(&c->shm->mgmt_seq[idx], 1, __ATOMIC_RELEASE);
 }
 
 /* 使能电机 */
 static inline void stark_enable(stark_client_t* c, int id)
-    { _stark_byte0_cmd(c, id, STARK_CMD_ENABLE); }
+    { _stark_mgmt_cmd(c, id, STARK_CMD_ENABLE); }
 
 /*
  * 失能电机: 先 PDO 失能, 再通过多轴广播发 disable+release_brake+电流0,
  * 确保电机停止后刹车松开.
  */
 static inline void stark_disable(stark_client_t* c, int id)
-    { _stark_byte0_cmd(c, id, STARK_CMD_DISABLE); }
+    { _stark_mgmt_cmd(c, id, STARK_CMD_DISABLE); }
 
 /*
  * 急停: PDO 失能 + bus=OFF (刹车抱死), 再发 disable+brake_hold+电流0.
  */
 static inline void stark_estop(stark_client_t* c, int id)
-    { _stark_byte0_cmd(c, id, STARK_CMD_ESTOP); }
+    { _stark_mgmt_cmd(c, id, STARK_CMD_ESTOP); }
 
 /* 从急停恢复 */
 static inline void stark_recover(stark_client_t* c, int id)
-    { _stark_byte0_cmd(c, id, STARK_CMD_RECOVER); }
+    { _stark_mgmt_cmd(c, id, STARK_CMD_RECOVER); }
 
 /*
  * 清除故障: PDO 清故障位 + 自动使能 + 切电流模式 target=0.
  * 清障后电机会恢复使能状态, 可直接进入控制循环.
  */
 static inline void stark_clear_fault(stark_client_t* c, int id)
-    { _stark_byte0_cmd(c, id, STARK_CMD_CLEAR_FAULT); }
+    { _stark_mgmt_cmd(c, id, STARK_CMD_CLEAR_FAULT); }
 
-/* 切换控制模式, mode 取值见 STARK_MODE_* 常量 */
+/* 切换控制模式, mode 取值见 STARK_MODE_* 常量.
+ * set_mode 在控制循环启动前调用, 无 stark_multi 竞争, 走 mailbox 即可. */
 static inline void stark_set_mode(stark_client_t* c, int id, int mode)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;

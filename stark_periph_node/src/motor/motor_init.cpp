@@ -277,7 +277,8 @@ bool CanDispatcher::LoadMotorConfig()
                 mc.profile_decel     = m.value("profile_decel", 5000u);
                 mc.profile_velocity  = m.value("profile_velocity", 20u);
                 mc.disable_watchdog  = m.value("disable_watchdog", true);
-                mc.auto_enable       = m.value("auto_enable", true);
+                mc.auto_enable       = m.value("auto_enable", false);
+                if (mc.auto_enable) m_motor_auto_enable = true;
                 mc.bootup_timeout_ms = 5000;
                 mc.tpdo_sync_count   = m.value("tpdo_sync_count", (uint8_t)1);
 
@@ -381,7 +382,7 @@ bool CanDispatcher::LoadMotorConfig()
     def.profile_decel     = 5000;
     def.profile_velocity  = 20;
     def.disable_watchdog  = true;
-    def.auto_enable       = true;
+    def.auto_enable       = false;
     def.bootup_timeout_ms = 5000;
     def.tpdo_sync_count   = 1;
 

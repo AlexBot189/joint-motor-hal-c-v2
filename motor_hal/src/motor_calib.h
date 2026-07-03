@@ -37,6 +37,7 @@ typedef struct {
     int       timeout_ms;          /* 总超时 (ms), 默认 10000 */
     float     angle_threshold_deg; /* 位置判定阈值 (°), 默认 1.0 */
     uint8_t   ctrl_mode;           /* 校准后切换的控制模式, 默认 MOTOR_MODE_CURRENT */
+    bool      enable_after_done;   /* 校准完成后是否 SDO 使能电机, 默认 true */
 } motor_calib_config_t;
 
 /* ================================================================
