@@ -365,11 +365,11 @@ int main(int argc, char** argv)
 
     const char* mode = argv[1];
 
-    /* 连接 SHM */
+    /* 连接 SHM (允许 stark_node 后启动) */
     stark_client_t c;
-    if (stark_open(&c) != 0) {
-        printf("ERR: SHM 连接失败\n");
-        return 1;
+    printf("[init] 等待 stark_node...\n");
+    while (stark_open(&c) != 0) {
+        usleep(100000);
     }
     printf("[init] SHM 已连接\n");
 
