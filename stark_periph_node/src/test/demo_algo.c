@@ -71,16 +71,16 @@ static void run_torque(stark_client_t* c, int32_t amplitude_ma)
             if (stark_report_try_read(c, &rpt_ver, &d)) {
                 printf("[rpt] cyc=%u ts=%u | "
                        "IMU roll=%.1f pitch=%.1f yaw=%.1f | "
-                       "R: vel=%d ang=%d cur=%d temp=%d "
-                       "L: vel=%d ang=%d cur=%d temp=%d | "
+                       "R: vel=%.1fRPM ang=%.1fdeg cur=%dmA temp=%.2fC "
+                       "L: vel=%.1fRPM ang=%.1fdeg cur=%dmA temp=%.2fC | "
                        "S1: hall=%u,%u,%u tor=%u kne=%d "
                        "S2: hall=%u,%u,%u tor=%u kne=%d\n",
                        d->frame_cycle, d->imu_ts_us,
                        d->gyro_roll, d->gyro_pitch, d->gyro_yaw,
-                       d->RealtimeVelocity, d->motor_abs_angle,
-                       d->cal_Iq_current * 10, d->motor_temp,
-                       d->RealtimeVelocity_left, d->motor_abs_angle_left,
-                       d->cal_Iq_current_left * 10, d->motor_temp_left,
+                       d->RealtimeVelocity / 10.0f, d->motor_abs_angle / 10.0f,
+                       d->cal_Iq_current * 10, d->motor_temp / 100.0f,
+                       d->RealtimeVelocity_left / 10.0f, d->motor_abs_angle_left / 10.0f,
+                       d->cal_Iq_current_left * 10, d->motor_temp_left / 100.0f,
                        d->hall_a_data, d->hall_b_data, d->hall_c_data,
                        d->df181_torque, d->knee_angle,
                        d->hall_a_data_left, d->hall_b_data_left, d->hall_c_data_left,
