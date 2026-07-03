@@ -301,8 +301,7 @@ bool CanDispatcher::LoadMotorConfig()
         /* 解析 safety */
         if (cfg.contains("safety")) {
             auto& s = cfg["safety"];
-            m_safety_cfg.algo_timeout_ms   = s.value("algo_timeout_ms",   200u);
-            m_safety_cfg.algo_shutdown_ms  = s.value("algo_shutdown_ms",  500u);
+            m_safety_cfg.heartbeat_timeout_ms = s.value("heartbeat_timeout_ms", 1000u);
             m_safety_cfg.overtemp_celsius  = s.value("overtemp_celsius",  80);
             m_safety_cfg.can_offline_ms    = s.value("can_offline_ms",    2000u);
             m_safety_cfg.encoder_stall_s   = s.value("encoder_stall_s",   3u);

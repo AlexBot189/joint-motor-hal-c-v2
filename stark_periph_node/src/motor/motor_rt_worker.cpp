@@ -35,7 +35,6 @@ StarkRtWorker::StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
     , m_imu_sensor(imu_sensor)
     , m_motor_count(motor_count)
     , m_last_seq(0)
-    , m_seq_stall_us(0)
     , m_can_last_frame_us(0)
     , m_latency_idx(0)
     , m_report_divider(m_rt.report_divider)
@@ -114,25 +113,17 @@ void StarkRtWorker::Run()
 
     while (m_running.load(std::memory_order_acquire)) {
 
-        /* 快照: 保存 ProcessMailbox 之前的 seq, 供 SafetyCheck 比较 */
-        uint64_t seq_before = m_last_seq;
-
-        /* ① 管理命令: 读 SHM mgmt 通道 (独立于 mailbox, 不丢命令) */
         ProcessMgmt();
-
-        /* ② 控制下发: 读 SHM mailbox ,  multi_ctrl ,  PDO */
         ProcessMailbox();
-
-        /* ③ 反馈上报: 读 fb_cache ,  SHM double buffer (200Hz) */
         PublishFeedback();
-
-        /* ④ 安全监控 */
-        SafetyCheck(seq_before);
+        SafetyCheck();
 
         /* ⑤ 提交延迟样本 */
         m_tracer.commit_sample();
 
         m_cycle_count++;
+
+        if (m_shm) m_shm->rt_cycle = (uint32_t)(m_cycle_count & 0xFFFFFFFF);
 
         /* 精确周期休眠 */
         next_wake.tv_nsec += period_ns;
@@ -623,7 +614,7 @@ void StarkRtWorker::PublishFeedback()
  *   5. (TODO) CAN 断线
  */
 
-void StarkRtWorker::SafetyCheck(uint64_t seq_before_process)
+void StarkRtWorker::SafetyCheck()
 {
     if (!m_active.load(std::memory_order_acquire)) return;
     if (!m_shm) return;
@@ -632,81 +623,23 @@ void StarkRtWorker::SafetyCheck(uint64_t seq_before_process)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t now_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 
-    /* seq_begin 停滞检测 */
-    if (seq_before_process > 0) {
-        uint64_t begin = __atomic_load_n(&m_shm->mailbox.seq_begin, __ATOMIC_ACQUIRE);
+    /* 算法心跳检测 (替代 seq 超时) */
+    uint32_t heartbeat = __atomic_load_n(&m_shm->algo_heartbeat, __ATOMIC_ACQUIRE);
+    uint32_t timeout   = m_shm->algo_heartbeat_timeout_ms;
+    if (timeout == 0) timeout = m_safety.heartbeat_timeout_ms;
 
-        if (begin == seq_before_process) {
-            if (m_seq_stall_us == 0) {
-                m_seq_stall_us = now_us;
-            }
-
-            uint64_t stall_ms = (now_us - m_seq_stall_us) / 1000ULL;
-
-            if (stall_ms > m_safety.algo_shutdown_ms) {
-                /* FAULT: 算法严重失联 ,  PDO 降险 (只触发一次) */
-                if (!m_fault_triggered) {
-                    m_fault_triggered   = true;
-                    m_shm->motor_severity = MOTOR_FAULT;
-                    m_shm->fault_reason   = FAULT_ALGO_TIMEOUT;
-                    __atomic_store_n(&m_pending_state, (uint32_t)STATE_FAULT, __ATOMIC_RELEASE);
-                    _safe_disable_all();
-                    RT_LOG("SAFETY FAULT: algo timeout %llu ms, all disabled",
-                           (unsigned long long)stall_ms);
-                }
-            }
-            else if (stall_ms > m_safety.algo_timeout_ms) {
-                /* WARN: torque=0 via PDO (RT safe) */
-                if (m_shm->motor_severity < MOTOR_WARN) {
-                    m_shm->motor_severity = MOTOR_WARN;
-                    m_shm->fault_reason   = FAULT_ALGO_TIMEOUT;
-                    _safe_torque_zero_all();
-                    RT_LOG("SAFETY WARN: algo timeout %llu ms, torque=0",
-                           (unsigned long long)stall_ms);
-                }
-            }
+    if (heartbeat != m_last_heartbeat) {
+        m_last_heartbeat   = heartbeat;
+        m_heartbeat_lost_us = 0;
+    } else if (m_handshake_done.load(std::memory_order_acquire)) {
+        if (m_heartbeat_lost_us == 0) {
+            m_heartbeat_lost_us = now_us;
         }
-        else {
-            /* seq 恢复 ,  自动恢复 */
-            m_seq_stall_us = 0;
-            if (m_shm->motor_severity == MOTOR_FAULT &&
-                m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
-            {
-                /* 算法重连 ,  清除 FAULT, 回到 READY (calib_done 保持) */
-                m_handshake_done.store(false, std::memory_order_release);
-                m_fault_triggered = false;
-                m_shm->motor_severity = MOTOR_OK;
-                m_shm->fault_reason   = FAULT_NONE;
-                __atomic_store_n(&m_pending_state, (uint32_t)STATE_READY, __ATOMIC_RELEASE);
-                RT_LOG("SAFETY RECOVER: algo reconnected ,  READY");
-            }
-            else if (m_shm->motor_severity == MOTOR_WARN &&
-                     m_shm->fault_reason == FAULT_ALGO_TIMEOUT)
-            {
-                /* WARN 级自动恢复 */
-                m_fault_triggered = false;
-                m_shm->motor_severity = MOTOR_OK;
-                m_shm->fault_reason   = FAULT_NONE;
-            }
+        uint64_t lost_ms = (now_us - m_heartbeat_lost_us) / 1000ULL;
+        if (lost_ms > timeout) {
+            _safe_disable_all();
         }
     }
-}
-
-/* _safe_torque_zero_all — PDO 路径 torque=0 (RT 安全) */
-
-void StarkRtWorker::_safe_torque_zero_all()
-{
-    if (!m_hal) return;
-
-    multi_axis_cmd_t cmds[STARK_MAX_MOTORS] = {};
-    for (int i = 0; i < m_motor_count; i++) {
-        cmds[i].node_id       = (uint8_t)(i + 1);
-        cmds[i].mode          = MOTOR_MODE_CURRENT;
-        cmds[i].enable        = true;
-        cmds[i].release_brake = true;
-        cmds[i].target1       = 0;  /* torque=0 */
-    }
-    motor_hal_multi_ctrl(m_hal, cmds, (uint8_t)m_motor_count);
 }
 
 /* _safe_disable_all — PDO 路径 enable=false + torque=0 */
@@ -715,10 +648,6 @@ void StarkRtWorker::_safe_disable_all()
 {
     if (!m_hal) return;
 
-    /* PDO 降险: enable=false + torque=0
-     * 电机记住此状态直到收到新 PDO.
-     * 算法失联时 ProcessMailbox 因 seq 不变直接 return,
-     * 不会发新 PDO。算法恢复后通过 STARK_CMD_RECOVER/ENABLE 恢复. */
     multi_axis_cmd_t cmds[STARK_MAX_MOTORS] = {};
     for (int i = 0; i < m_motor_count; i++) {
         cmds[i].node_id       = (uint8_t)(i + 1);

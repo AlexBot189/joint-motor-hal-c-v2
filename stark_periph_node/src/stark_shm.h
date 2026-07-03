@@ -157,12 +157,10 @@ typedef enum {
 /* 故障原因 */
 typedef enum {
     FAULT_NONE             = 0,
-    FAULT_ALGO_TIMEOUT,         /* 算法失联 (seq_begin 200ms 不变)                      */
     FAULT_CMD_STALL,            /* 输出停滞 (同一 cmd 重复 500ms)                       */
     FAULT_CAN_OFFLINE,          /* CAN 断线 (2s 无帧)                                  */
     FAULT_ENCODER_FAULT,        /* 编码器异常 (position 恒定 3s)                         */
     FAULT_OVERTEMP,             /* 驱动器过温 (> 80°C)                                 */
-    FAULT_HANDSHAKE_TIMEOUT,    /* 握手超时 (ENABLED 状态 10s 无 cmd)                    */
     FAULT_CALIB_TIMEOUT,        /* 校准超时                                             */
 } fault_reason_t;
 
@@ -288,7 +286,12 @@ typedef struct {
     volatile uint8_t mgmt_seq[STARK_MAX_MOTORS];   /* 写入递增, RT 处理完拷贝到 ack */
     volatile uint8_t mgmt_ack[STARK_MAX_MOTORS];   /* RT 确认 */
 
-    uint8_t   _pad[3716];             /* 对齐 64KB */
+    /* 双向心跳 */
+    volatile uint32_t algo_heartbeat;              /* 算法递增, RT 检测超时脱使能 */
+    uint32_t          algo_heartbeat_timeout_ms;   /* stark_node 启动写入, 默认 1000 */
+    volatile uint32_t rt_cycle;                    /* RT 每 1ms 递增, 算法检测存活 */
+
+    uint8_t   _pad[3708];             /* 对齐 64KB */
 } stark_shm_t;
 
 #ifdef __cplusplus

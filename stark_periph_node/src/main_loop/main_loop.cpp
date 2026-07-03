@@ -299,8 +299,7 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
 }
 
 /*
- * poll_rt_pending — 处理 RT 线程的状态切换请求
- *   FAULT 恢复 / 触发 FAULT
+ * poll_rt_pending — RT 状态切换请求处理
  */
 
 static void poll_rt_pending(stark_shm_t* shm)
@@ -309,15 +308,6 @@ static void poll_rt_pending(stark_shm_t* shm)
 
     stark_state_t pending = g_rt_worker->GetPendingState();
 
-    /* 算法重连: FAULT 回到 READY, calib_done 保持 */
-    if (pending == STATE_READY && g_stark_state == STATE_FAULT) {
-        ECO_INFO_NEW("[main] FAULT back to READY (algo reconnect, calib_done={})",
-                     g_ctx->calib_done);
-        state_transition(STATE_READY);
-        return;
-    }
-
-    /* RT 线程触发 FAULT */
     if (pending == STATE_FAULT && g_stark_state != STATE_FAULT) {
         state_transition(STATE_FAULT);
 

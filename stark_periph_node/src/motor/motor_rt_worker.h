@@ -29,8 +29,7 @@ class StarkMotorCtrl;
 class ImuHALSensor;
 
 struct SafetyConfig {
-    uint32_t algo_timeout_ms   = 200;
-    uint32_t algo_shutdown_ms  = 500;
+    uint32_t heartbeat_timeout_ms = 1000;
     int32_t  overtemp_celsius  = 80;
     uint32_t can_offline_ms    = 2000;
     uint32_t encoder_stall_s   = 3;
@@ -82,14 +81,11 @@ public:
     void ProcessMgmt();
     void ProcessMailbox();
     void PublishFeedback();
-    void SafetyCheck(uint64_t seq_before_process);
+    void SafetyCheck();
 
     void SetThreadRt();
 
     /* 双电机 torque=0 (PDO, RT安全) */
-    void _safe_torque_zero_all();
-
-    /* 双电机紧急降险: PDO enable=false + torque=0 */
     void _safe_disable_all();
 
     motor_hal_t*    m_hal;
@@ -105,10 +101,13 @@ public:
 
     /* 延迟追踪 */
     uint64_t m_last_seq;
-    uint64_t m_seq_stall_us;
     uint64_t m_can_last_frame_us;
     uint64_t m_latency_history[64];     /* 最近64次闭环延迟 (T8-T0) */
     uint32_t m_latency_idx;
+
+    /* 心跳检测 */
+    uint32_t m_last_heartbeat;
+    uint64_t m_heartbeat_lost_us;
 
     /* 周期控制 */
     int      m_report_divider;

@@ -100,6 +100,7 @@ int main(int argc, char** argv)
                                   motor_count);
 
     g_rt_worker->SetSafetyConfig(g_dispatcher->GetSafetyConfig());
+    shm->algo_heartbeat_timeout_ms = g_dispatcher->GetSafetyConfig().heartbeat_timeout_ms;
 
     RtConfig rt_cfg = g_dispatcher->GetRtConfig();
     if (!enable_rt) {

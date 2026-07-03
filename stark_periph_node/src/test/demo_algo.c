@@ -63,6 +63,7 @@ static void run_torque(stark_client_t* c, int32_t amplitude_ma)
                    (unsigned long)(t / 1000), ma, counts_to_deg(fb.position), fb.current_iq);
             last = ma;
         }
+        stark_heartbeat(c);
         usleep(1000);
     }
 }
@@ -97,6 +98,7 @@ static void run_speed(stark_client_t* c, float max_rpm)
             printf("[t=%3lus] target=%.0f RPM  fb_vel=%d RPM  fb_pos=%.1f deg\n",
                    (unsigned long)(t / 1000), rpm, fb.velocity, counts_to_deg(fb.position));
         }
+        stark_heartbeat(c);
         usleep(5000);
     }
 }
@@ -121,6 +123,7 @@ static void run_position(stark_client_t* c, float amplitude_deg)
                    (unsigned long)(t / 1000), target,
                    counts_to_deg(fb.position), fb.current_iq);
         }
+        stark_heartbeat(c);
         usleep(1000);
     }
 }
@@ -142,6 +145,7 @@ static void run_mit(stark_client_t* c, float kp, float kd)
                    counts_to_deg(fb1.position), fb1.current_iq,
                    counts_to_deg(fb2.position), fb2.current_iq);
         }
+        stark_heartbeat(c);
         usleep(1000);
     }
 }
@@ -164,6 +168,7 @@ static void run_pp(stark_client_t* c, float amplitude_deg, float accel, float ve
             printf("[t=%3lus] target=%.0f deg  fb_pos=%.1f deg\n",
                    (unsigned long)(t / 1000), target, counts_to_deg(fb.position));
         }
+        stark_heartbeat(c);
         usleep(1000);
     }
 }
@@ -196,6 +201,7 @@ static void run_pv(stark_client_t* c, float max_rpm, float accel)
             printf("[t=%3lus] target=%.0f RPM  fb_vel=%d RPM\n",
                    (unsigned long)(t / 1000), rpm, fb.velocity);
         }
+        stark_heartbeat(c);
         usleep(5000);
     }
 }
@@ -219,6 +225,7 @@ static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
                    counts_to_deg(fb2.position), fb2.current_iq,
                    imu.yaw, imu.pitch, imu.roll);
         }
+        stark_heartbeat(c);
         usleep(1000);
     }
 }

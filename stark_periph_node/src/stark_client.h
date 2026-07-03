@@ -21,7 +21,9 @@
  *   - 管理命令 (enable/disable/estop/set_mode/clear_fault) 和实时控制命令
  *     不要在同一周期混合发送, 管理命令后至少间隔 5ms 再发控制命令
  *   - 双电机推荐 stark_multi, 一帧 CANFD 同时下发, 同步更好
- *   - 每个控制周期都要发命令, 即使目标值不变也要发, 闲置 >500ms 触发安全停机
+ *   - 外骨骼场景: 算法不发命令时反馈正常, 关节自由
+ *   - 定期调 stark_heartbeat + stark_rt_alive (建议 200ms)
+ *   - stark_node 后启动时 stark_open 可重试等待
  *   - root 权限运行 (SHM 由 stark_periph_manager_node 以 root 创建)
  */
 #pragma once
@@ -51,11 +53,14 @@ typedef struct {
     stark_shm_t*  shm;
 } stark_client_t;
 
+static inline void stark_close(stark_client_t* c);
+
 /* -- 生命周期 ---------------------------------------------------- */
 
 static inline int stark_open(stark_client_t* c)
 {
     if (!c) return -1;
+    stark_close(c);
     c->fd = shm_open(STARK_SHM_NAME, O_RDWR, 0666);
     if (c->fd < 0) return -1;
     c->shm = (stark_shm_t*)mmap(NULL, STARK_SHM_SIZE,
@@ -386,6 +391,26 @@ static inline void stark_set_mode(stark_client_t* c, int id, int mode)
     c->shm->mailbox.cmd[id - 1].cmd      = STARK_CMD_SET_MODE;
     c->shm->mailbox.cmd[id - 1].value    = mode;
     _stark_mbox_end(c, seq);
+}
+
+/* -- 双向心跳 -------------------------------------------------- */
+
+/* 算法声明存活, 建议每 200ms 调一次 */
+static inline void stark_heartbeat(stark_client_t* c)
+{
+    if (!c || !c->shm) return;
+    __atomic_add_fetch(&c->shm->algo_heartbeat, 1, __ATOMIC_RELEASE);
+}
+
+/* stark_node 反向存活检测, 同频调用. 返回 0 需重连 */
+static inline int stark_rt_alive(stark_client_t* c, uint32_t *last_cycle)
+{
+    if (!c || !c->shm) return 0;
+    if (!stark_ready(c)) return 0;
+    uint32_t cur = __atomic_load_n(&c->shm->rt_cycle, __ATOMIC_ACQUIRE);
+    if (cur == *last_cycle) return 0;
+    *last_cycle = cur;
+    return 1;
 }
 
 /* -- 周期上报 (5ms 自动推送, 校准完成后自动开启) ------------------ */
