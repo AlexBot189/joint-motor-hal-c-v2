@@ -33,7 +33,8 @@
     "algo_shutdown_ms": 500,
     "overtemp_celsius": 80,
     "can_offline_ms": 2000,
-    "encoder_stall_s": 3
+    "encoder_stall_s": 3,
+    "heartbeat_timeout_ms": 0
   },
   "shm": {
     "name": "/stark_shm",
