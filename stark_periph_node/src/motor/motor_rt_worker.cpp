@@ -16,10 +16,15 @@
 #include <cstring>
 #include <ctime>
 #include <cassert>
+#include <climits>
+#include <cstdlib>
+#include <cstdio>
 #include <sched.h>
 #include <pthread.h>
 #include <sys/prctl.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
+#include <linux/futex.h>
 #include <unistd.h>
 
 namespace stark_periph_manager_node {
@@ -213,6 +218,56 @@ void StarkRtWorker::ProcessMgmt()
  * SPSC 环形缓冲: 算法写 slot[seq_write % DEPTH], RT 消费 seq_read 到 seq_write.
  */
 
+/*
+ * 下发调试打印: 环境变量 STARK_TX_DEBUG=1 开启, 输出到 stderr.
+ * 默认关, 不影响正式运行. 库日志走 stdout, 调试可用
+ * `STARK_TX_DEBUG=1 ./stark_periph_manager_node 1>/dev/null` 屏蔽库噪音.
+ */
+static int _stark_tx_dbg(void)
+{
+    static int e = -1;
+    if (e < 0) {
+        const char* v = getenv("STARK_TX_DEBUG");
+        e = (v && v[0] && v[0] != '0') ? 1 : 0;
+    }
+    return e;
+}
+
+static const char* _stark_cmd_name(uint8_t cmd)
+{
+    switch (cmd) {
+    case STARK_CMD_TORQUE:      return "TORQUE";
+    case STARK_CMD_SPEED:       return "SPEED";
+    case STARK_CMD_POS:         return "POS";
+    case STARK_CMD_MIT:         return "MIT";
+    case STARK_CMD_PP:          return "PP";
+    case STARK_CMD_CSV:         return "CSV";
+    case STARK_CMD_MULTI:       return "MULTI";
+    case STARK_CMD_PV:          return "PV";
+    case STARK_CMD_ENABLE:      return "ENABLE";
+    case STARK_CMD_DISABLE:     return "DISABLE";
+    case STARK_CMD_ESTOP:       return "ESTOP";
+    case STARK_CMD_RECOVER:     return "RECOVER";
+    case STARK_CMD_SET_MODE:    return "SET_MODE";
+    case STARK_CMD_CLEAR_FAULT: return "CLEAR_FAULT";
+    default:                    return "?";
+    }
+}
+
+static void _stark_dbg_tx(const motor_command_t& c)
+{
+    if (c.motor_id < 1) return;
+    if (c.cmd == STARK_CMD_MIT) {
+        fprintf(stderr, "[TX] id=%u %s pos=%u vel=%u kp=%u kd=%u tau=%u\n",
+                c.motor_id, _stark_cmd_name(c.cmd),
+                c.mit_pos, c.mit_vel, c.mit_kp, c.mit_kd, c.mit_torque);
+    } else {
+        fprintf(stderr, "[TX] id=%u %s value=%d value2=%d ff=%d\n",
+                c.motor_id, _stark_cmd_name(c.cmd),
+                c.value, c.value2, c.feedforward);
+    }
+}
+
 void StarkRtWorker::ProcessMailbox()
 {
     if (!m_active.load(std::memory_order_acquire)) return;
@@ -236,6 +291,7 @@ void StarkRtWorker::ProcessMailbox()
         uint64_t idx = (r + n) % STARK_MBOX_DEPTH;
         motor_command_t cmd0 = m_shm->mailbox.frames[idx].cmd[0];
         motor_command_t cmd1 = m_shm->mailbox.frames[idx].cmd[1];
+        if (_stark_tx_dbg()) { _stark_dbg_tx(cmd0); _stark_dbg_tx(cmd1); }
 
         /* Byte0 管理命令 (改 pdo_byte0) */
         for (int i = 0; i < m_motor_count; i++) {
@@ -464,6 +520,10 @@ void StarkRtWorker::PublishFeedback()
 
             memcpy(&m_shm->periodic_data, &d, sizeof(d));
             __atomic_add_fetch(&m_shm->periodic_version, 1, __ATOMIC_RELEASE);
+            /* 唤醒阻塞在 stark_report_wait 的算法侧接收线程. 共享 futex,
+             * 无等待者时内核直接返回, 5ms 一次开销可忽略, 不影响 RT 时序. */
+            syscall(SYS_futex, &m_shm->periodic_version, FUTEX_WAKE,
+                    INT_MAX, NULL, NULL, 0);
         }
     }
 
@@ -594,6 +654,7 @@ void StarkRtWorker::SafetyCheck()
     uint32_t heartbeat = __atomic_load_n(&m_shm->algo_heartbeat, __ATOMIC_ACQUIRE);
     uint32_t timeout   = m_shm->algo_heartbeat_timeout_ms;
     if (timeout == 0) timeout = m_safety.heartbeat_timeout_ms;
+    if (timeout == 0) return;   /* heartbeat_timeout_ms=0 => 禁用心跳超时脱使能 (调试用) */
 
     if (heartbeat != m_last_heartbeat) {
         m_last_heartbeat   = heartbeat;
