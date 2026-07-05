@@ -31,10 +31,15 @@
 #include "stark_shm.h"
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
+#include <linux/futex.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <string.h>
+#include <errno.h>
+#include <time.h>
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -469,6 +474,57 @@ static inline int stark_report_try_read(stark_client_t* c, uint32_t *last_ver,
     *last_ver = cur;
     *out = &c->shm->periodic_data;
     return 1;
+}
+
+/*
+ * 阻塞等待新的周期上报数据. 无新数据时通过 futex 让出 CPU,
+ * 有新数据或超时后返回. 适合算法侧单独开一个数据接收线程被动等待,
+ * 主控制循环不必轮询.
+ *
+ * 参数:
+ *   last_ver   算法侧持有的版本号, 首次传入 0, 函数内部更新
+ *   out        输出参数, 指向 SHM 内零拷贝数据, 仅返回 1 时有效
+ *   timeout_ms 最长等待毫秒, 传 <0 表示无限等待
+ * 返回:
+ *   1  有新数据, *out 有效, *last_ver 已更新
+ *   0  超时, 上报未开启, 或被信号打断, 无新数据
+ *
+ * 与 stark_report_try_read 共用 periodic_version, 两种取数方式可自由
+ * 选择且互不影响. 唤醒由 stark 节点在每次上报后 futex_wake 触发.
+ * 内部使用共享 futex (不带 FUTEX_PRIVATE_FLAG), 支持跨进程共享内存.
+ */
+static inline int stark_report_wait(stark_client_t* c, uint32_t *last_ver,
+                                    const PeriodicUploadData** out,
+                                    int timeout_ms)
+{
+    if (!c || !c->shm || !last_ver || !out) return 0;
+    if (!c->shm->periodic_enabled) return 0;
+
+    for (;;) {
+        uint32_t cur = __atomic_load_n(&c->shm->periodic_version, __ATOMIC_ACQUIRE);
+        if (cur != *last_ver) {
+            *last_ver = cur;
+            *out = &c->shm->periodic_data;
+            return 1;
+        }
+
+        struct timespec  ts;
+        struct timespec *pts = NULL;
+        if (timeout_ms >= 0) {
+            ts.tv_sec  = timeout_ms / 1000;
+            ts.tv_nsec = (long)(timeout_ms % 1000) * 1000000L;
+            pts = &ts;
+        }
+
+        /* 版本仍为 cur 时睡眠, 等待写端递增并 futex_wake.
+         * FUTEX_WAIT 的 timeout 为相对时间. */
+        long r = syscall(SYS_futex, &c->shm->periodic_version,
+                         FUTEX_WAIT, cur, pts, NULL, 0);
+        if (r == 0)                          continue;  /* 被唤醒, 重新比对版本 */
+        if (errno == EAGAIN)                 continue;  /* 版本已变, 回头读到新数据 */
+        if (errno == EINTR && timeout_ms < 0) continue; /* 无限等待被信号打断, 重进 */
+        return 0;                                       /* 超时 / 被打断, 本次无新数据 */
+    }
 }
 
 #ifdef __cplusplus
