@@ -37,6 +37,13 @@
 
 /* 常量定义 */
 
+/*
+ * IMU 坐标系变换开关. 芯片 eDMP 按传感器物理坐标输出融合数据,
+ * 本机需转到标准机器人坐标(前-左-上 FLU, 右手系). 换硬件朝向时改此宏或 _remap_* 公式.
+ * 1=启用变换, 0=保持芯片原始坐标.
+ */
+#define EMD_IMU_AXIS_REMAP 1
+
 #define SERIF_TYPE UI_I2C
 
 #define ACCEL_FSR_ENUM (ACCEL_CONFIG0_ACCEL_UI_FS_SEL_4_G)
@@ -235,6 +242,37 @@ static void *_thread_main(void *arg);
 
 /* 回调需要访问的当前实例 (单实例场景) */
 static emd_gaf_t *g_active_instance = NULL;
+
+#if EMD_IMU_AXIS_REMAP
+/*
+ * 坐标系变换: 传感器 -> 标准机器人 FLU(前-左-上), 绕Z轴 Rz(-90).
+ *   前 = +Y_sensor,  左 = -X_sensor,  上 = Z_sensor
+ * 静态标定: 某轴朝天读 +1g, 朝地读 -1g (比力约定).
+ * 加速度/角速度/磁力计同一套变换.
+ */
+static inline void _remap_vec(float *x, float *y, float *z)
+{
+    float sx = *x, sy = *y;
+    *x =  sy;   /* 前 = +Y_sensor */
+    *y = -sx;   /* 左 = -X_sensor */
+    (void)z;    /* Z 不变 */
+}
+
+/*
+ * 四元数变换: 与向量同一旋转 Rz(-90), 右乘 q_r=(sqrt2/2, 0, 0, sqrt2/2).
+ * 注意: eDMP GAF 的 rv_quat convention 为芯片黑盒, 若实测 roll/pitch/yaw
+ * 符号不对, 改为左乘或取共轭.
+ */
+static void _remap_quat(float *w, float *x, float *y, float *z)
+{
+    const float s = 0.70710678f;
+    float qw = *w, qx = *x, qy = *y, qz = *z;
+    *w = s * (qw - qz);
+    *x = s * (qx + qy);
+    *y = s * (qy - qx);
+    *z = s * (qw + qz);
+}
+#endif
 
 /*
  * 公共 API — 生命周期
@@ -1006,6 +1044,10 @@ static void _sensor_event_cb(inv_imu_sensor_event_t *event)
         g->cached_gyro.gyro_z = event->gyro[2] * GYRO_FSR_DPS / 32768.0f;
     }
     g->cached_gyro.timestamp_us = g->timestamp;
+#if EMD_IMU_AXIS_REMAP
+    _remap_vec(&g->cached_accel.accel_x, &g->cached_accel.accel_y, &g->cached_accel.accel_z);
+    _remap_vec(&g->cached_gyro.gyro_x,   &g->cached_gyro.gyro_y,   &g->cached_gyro.gyro_z);
+#endif
     g->imu_updated = 1;
 
     pthread_mutex_unlock(&g->output_mutex);
@@ -1125,4 +1167,15 @@ static void _convert_output(const inv_edmp_gaf_outputs_t *in, uint64_t ts,
     if (in->temperature_valid) {
         out->temp_c = in->temp_degC_q16 / 65536.0f;
     }
+
+#if EMD_IMU_AXIS_REMAP
+    /* 传感器坐标 -> 标准机器人坐标(FLU), 见 _remap_vec/_remap_quat */
+    _remap_vec(&out->accel_x, &out->accel_y, &out->accel_z);
+    _remap_vec(&out->gyro_x,  &out->gyro_y,  &out->gyro_z);
+    _remap_vec(&out->mag_x,   &out->mag_y,   &out->mag_z);
+    _remap_quat(&out->quat_w, &out->quat_x, &out->quat_y, &out->quat_z);
+    out->heading_deg += 90.0f;
+    if (out->heading_deg > 180.0f)       out->heading_deg -= 360.0f;
+    else if (out->heading_deg < -180.0f) out->heading_deg += 360.0f;
+#endif
 }
