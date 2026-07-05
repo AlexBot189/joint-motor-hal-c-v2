@@ -18,7 +18,8 @@
 #include <pthread.h>
 #include <stdio.h>
 
-/* ---------- 诊断: hex dump ---------- */
+/* ---------- 诊断: hex dump (默认关, 编译带 -DMOTOR_DEBUG_HEX 开启) ---------- */
+#ifdef MOTOR_DEBUG_HEX
 static void _dump_hex(const char *dir, const canfd_frame_t *f)
 {
     fprintf(stderr, "[SDO %s] id=0x%03X dlc=%d :", dir, f->id, f->dlc);
@@ -27,6 +28,9 @@ static void _dump_hex(const char *dir, const canfd_frame_t *f)
     }
     fprintf(stderr, "\n");
 }
+#else
+static inline void _dump_hex(const char *dir, const canfd_frame_t *f) { (void)dir; (void)f; }
+#endif
 
 /* =====================================================
  * SDO 响应队列 (全局, 接收线程写 ,  SDO客户端读)
