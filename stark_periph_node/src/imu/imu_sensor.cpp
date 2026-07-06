@@ -18,9 +18,24 @@ extern "C" {
 
 namespace stark_periph_manager_node {
 
+ImuHALSensor::ImuHALSensor()
+{
+    pthread_mutex_init(&m_raw_mutex, NULL);
+    memset(&m_cached_raw, 0, sizeof(m_cached_raw));
+}
+
 ImuHALSensor::~ImuHALSensor()
 {
     Deinit();
+    pthread_mutex_destroy(&m_raw_mutex);
+}
+
+void ImuHALSensor::_RawDataCb(const emd_raw_sensor_t *data, void *user_data)
+{
+    ImuHALSensor *self = static_cast<ImuHALSensor*>(user_data);
+    pthread_mutex_lock(&self->m_raw_mutex);
+    self->m_cached_raw = *data;
+    pthread_mutex_unlock(&self->m_raw_mutex);
 }
 
 bool ImuHALSensor::Init(const char* i2c_dev, const char* gpio_chip,
@@ -56,6 +71,9 @@ bool ImuHALSensor::Init(const char* i2c_dev, const char* gpio_chip,
         return false;
     }
 
+    /* 4. 注册原始数据回调 (notify_raw_data 等价, sensor ODR) */
+    emd_gaf_set_raw_data_callback((emd_gaf_t*)m_handle, _RawDataCb, this);
+
     printf("[ImuHALSensor] initialized: %s %s:%u mode=%d\n",
            i2c_dev, gpio_chip, gpio_line, op_mode);
     return true;
@@ -80,20 +98,25 @@ void ImuHALSensor::Read(imu_data_t* out) const
 
     if (!m_handle) return;
 
+    /* 原始 accel/gyro/temp 从 notify_raw_data 回调缓冲读取 (sensor ODR) */
+    pthread_mutex_lock(&m_raw_mutex);
+    out->acc_x       = m_cached_raw.accel_x;
+    out->acc_y       = m_cached_raw.accel_y;
+    out->acc_z       = m_cached_raw.accel_z;
+    out->gyro_x      = m_cached_raw.gyro_x;
+    out->gyro_y      = m_cached_raw.gyro_y;
+    out->gyro_z      = m_cached_raw.gyro_z;
+    out->temp_c      = m_cached_raw.temp_c;
+    out->timestamp_us = m_cached_raw.timestamp_us;
+    pthread_mutex_unlock(&m_raw_mutex);
+
+    /* 融合数据 quat/mag/heading 从 emd_gaf_get_output 读取 (GAF ODR, 保留最近有效值) */
     emd_output_t imu;
     int ret = emd_gaf_get_output((emd_gaf_t*)m_handle, &imu);
 
     if (ret != 0) {
-        return; /* 无新数据，保持全零 */
+        return; /* 无新数据, accel/gyro 已从回调缓冲填充 */
     }
-
-    /* 原始传感器数据 (来自 eDMP 校准输出) */
-    out->acc_x     = imu.accel_x;
-    out->acc_y     = imu.accel_y;
-    out->acc_z     = imu.accel_z;
-    out->gyro_x    = imu.gyro_x;
-    out->gyro_y    = imu.gyro_y;
-    out->gyro_z    = imu.gyro_z;
 
     /* 9轴融合输出 */
     out->quat_w      = imu.quat_w;
@@ -101,7 +124,7 @@ void ImuHALSensor::Read(imu_data_t* out) const
     out->quat_y      = imu.quat_y;
     out->quat_z      = imu.quat_z;
 
-    /* 四元数 ,  欧拉角 (ZYX: Yaw-Pitch-Roll, rad ,  °) */
+    /* 四元数 -> 欧拉角 (ZYX: Yaw-Pitch-Roll, rad -> °) */
     {
         float qw = imu.quat_w, qx = imu.quat_x, qy = imu.quat_y, qz = imu.quat_z;
         out->yaw   = atan2f(2.0f*(qw*qz + qx*qy), 1.0f - 2.0f*(qy*qy + qz*qz)) * 57.29578f;
@@ -114,11 +137,9 @@ void ImuHALSensor::Read(imu_data_t* out) const
     out->mag_y       = imu.mag_y;
     out->mag_z       = imu.mag_z;
     out->heading_deg = imu.heading_deg;
-    out->temp_c      = imu.temp_c;
     out->stationary  = imu.stationary;
     out->gyr_accuracy = imu.gyr_accuracy;
     out->mag_accuracy = imu.mag_accuracy;
-    out->timestamp_us = imu.timestamp_us;
 }
 
 } /* namespace stark_periph_manager_node */

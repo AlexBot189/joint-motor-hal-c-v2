@@ -57,6 +57,27 @@ typedef struct {
     uint64_t timestamp_us;
 } emd_imu_data_t;
 
+/**
+ * @brief 原始 IMU 传感器数据 (sensor ODR, 可达 800Hz)
+ *
+ * notify_raw_data 回调携带的单帧原始数据。
+ * 不含四元数/磁力计等融合数据。
+ */
+typedef struct {
+    float     accel_x, accel_y, accel_z;   /* g, 已校准 */
+    float     gyro_x, gyro_y, gyro_z;      /* dps, 已校准 */
+    float     temp_c;                      /* °C */
+    uint64_t  timestamp_us;                /* us, CLOCK_MONOTONIC */
+} emd_raw_sensor_t;
+
+/**
+ * @brief 原始数据回调 (sensor ODR)
+ *
+ * 在 sensor_event_cb 内调用, 每帧 IMU 数据触发一次。
+ * 回调中应快速拷贝数据, 不要做耗时操作。
+ */
+typedef void (*emd_raw_data_cb_t)(const emd_raw_sensor_t *data, void *user_data);
+
 #ifdef __cplusplus
 }
 #endif

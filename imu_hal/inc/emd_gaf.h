@@ -121,6 +121,20 @@ int emd_gaf_get_output(emd_gaf_t *handle, emd_output_t *output);
 int emd_gaf_get_imu(emd_gaf_t *handle, emd_imu_data_t *accel, emd_imu_data_t *gyro);
 
 /**
+ * @brief 注册原始传感器数据回调
+ *
+ * 在 emd_gaf_start 之前调用。回调在 sensor_event_cb 内触发,
+ * 以 sensor ODR 速率提供已校准的 accel/gyro/temp 数据,
+ * 不含四元数/磁力计等融合数据。
+ *
+ * @param handle    实例句柄
+ * @param cb        回调函数指针, NULL 取消注册
+ * @param user_data 用户自定义参数, 回调时透传
+ */
+void emd_gaf_set_raw_data_callback(emd_gaf_t *handle,
+                                   emd_raw_data_cb_t cb, void *user_data);
+
+/**
  * @brief 查询后台线程状态
  * @return 1 运行中，0 已停止
  */

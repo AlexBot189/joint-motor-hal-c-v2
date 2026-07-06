@@ -4,19 +4,32 @@
  * 封装 libimu_hal.so，提供 ICM45608 eDMP GAF 9轴融合数据。
  * 硬件未接入时 Read() 返回全零，不阻塞。
  *
+ * 双通道数据:
+ *   - accel/gyro/temp: 通过 notify_raw_data 回调以 sensor ODR 更新
+ *   - quat/mag/heading: 通过 emd_gaf_get_output 以 GAF ODR 更新 (保留最近有效值)
+ *
  * Copyright (c) 2026 zhiqiang.yang
  */
 #pragma once
 
+#include <pthread.h>
 #include "stark_shm.h"
 
 struct emd_gaf; /* opaque, defined in emd_gaf.h */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "emd_gaf_types.h"
+#ifdef __cplusplus
+}
+#endif
 
 namespace stark_periph_manager_node {
 
 class ImuHALSensor {
 public:
-    ImuHALSensor()  = default;
+    ImuHALSensor();
     ~ImuHALSensor();
 
     /* 禁用拷贝 */
@@ -62,6 +75,12 @@ public:
 
 private:
     emd_gaf* m_handle = nullptr; /* emd_gaf_t*, 不透明指针 */
+
+    /* 原始数据回调缓冲 (sensor ODR, 回调线程写入, Read 线程读取) */
+    mutable pthread_mutex_t m_raw_mutex;
+    emd_raw_sensor_t        m_cached_raw;
+
+    static void _RawDataCb(const emd_raw_sensor_t *data, void *user_data);
 };
 
 } /* namespace stark_periph_manager_node */

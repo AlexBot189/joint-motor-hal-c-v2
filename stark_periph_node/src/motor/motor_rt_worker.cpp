@@ -450,9 +450,12 @@ void StarkRtWorker::PublishFeedback()
                 if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
                     uint32_t ts = (uint32_t)(mfb.timestamp_us & 0xFFFFFFFF);
                     if (ts < motor_ts_min) motor_ts_min = ts;
-                    int32_t vel_x10  = (int32_t)mfb.velocity * 10;
-                    int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
-                    int16_t fcode    = (int16_t)mfb.error_code;
+           //         int32_t vel_x10  = (int32_t)mfb.velocity * 10;
+           //         int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
+	            int32_t vel_x10  = (int32_t)mfb.velocity;
+                    int16_t iq_x100  = (int16_t)(mfb.current_iq);
+           
+	   	    int16_t fcode    = (int16_t)mfb.error_code;
                     int16_t mstate   = (int16_t)mfb.status_byte;
 
                     /* SDO telemetry: 0x300 frame has only Iq valid on RV1126B */

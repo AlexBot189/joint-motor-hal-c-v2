@@ -42,7 +42,14 @@
  * 本机需转到标准机器人坐标(前-左-上 FLU, 右手系). 换硬件朝向时改此宏或 _remap_* 公式.
  * 1=启用变换, 0=保持芯片原始坐标.
  */
-#define EMD_IMU_AXIS_REMAP 1
+#define EMD_IMU_AXIS_REMAP 0
+
+/*
+ * 芯片绕 X 轴 +90 安装 + 转 FLU. 异于 REMAP 的 Rz(-90).
+ * 变换公式: rx=-cz, ry=-cx, rz=+cy (右手系 FLU).
+ * 1=启用, 0=关闭. 与 EMD_IMU_AXIS_REMAP 互斥: 只开一个.
+ */
+#define EMD_IMU_AXIS_REMAP_2 1
 
 #define SERIF_TYPE UI_I2C
 
@@ -226,6 +233,10 @@ struct emd_gaf {
     emd_imu_data_t cached_gyro;
     int           output_updated;
     int           imu_updated;
+
+    /* 原始数据回调 (notify_raw_data 等价) */
+    emd_raw_data_cb_t raw_data_cb;
+    void              *raw_data_user;
 };
 
 /* 内部函数声明 */
@@ -271,6 +282,37 @@ static void _remap_quat(float *w, float *x, float *y, float *z)
     *x = s * (qx + qy);
     *y = s * (qy - qx);
     *z = s * (qw + qz);
+}
+#endif
+
+#if EMD_IMU_AXIS_REMAP_2
+/*
+ * 坐标系变换: 芯片绕 X 轴 +90 安装, 转标准 FLU.
+ *   前 = -Z_sensor,  左 = -X_sensor,  上 = +Y_sensor
+ * 静态标定: 某轴朝天读 +1g, 朝地读 -1g (比力约定).
+ */
+static inline void _remap_vec_2(float *x, float *y, float *z)
+{
+    float sx = *x, sy = *y, sz = *z;
+    *x = -sz;   /* 前 = -Z_sensor */
+    *y = -sx;   /* 左 = -X_sensor */
+    *z =  sy;   /* 上 = +Y_sensor */
+}
+
+/*
+ * 四元数变换: 旋转矩阵 R=[0,0,-1; -1,0,0; 0,1,0] -> q_R=[0.5,0.5,-0.5,-0.5]
+ * q_robot = q_chip    q_R^(-1) = q_chip    [0.5, -0.5, 0.5, 0.5]
+ * 展开: *w=0.5*(qw+qx-qy-qz)  *x=0.5*(-qw+qx+qy-qz)
+ *       *y=0.5*(qw-qx+qy-qz)  *z=0.5*(qw+qx+qy+qz)
+ */
+static void _remap_quat_2(float *w, float *x, float *y, float *z)
+{
+    const float s = 0.5f;
+    float qw = *w, qx = *x, qy = *y, qz = *z;
+    *w = s * ( qw + qx - qy - qz);
+    *x = s * (-qw + qx + qy - qz);
+    *y = s * ( qw - qx + qy - qz);
+    *z = s * ( qw + qx + qy + qz);
 }
 #endif
 
@@ -461,6 +503,14 @@ int emd_gaf_is_running(emd_gaf_t *handle)
 {
     if (!handle) return 0;
     return handle->running;
+}
+
+void emd_gaf_set_raw_data_callback(emd_gaf_t *handle,
+                                   emd_raw_data_cb_t cb, void *user_data)
+{
+    if (!handle) return;
+    handle->raw_data_cb   = cb;
+    handle->raw_data_user = user_data;
 }
 
 /*
@@ -775,6 +825,10 @@ static int _start_algo(emd_gaf_t *g)
     rc |= inv_imu_edmp_get_gaf_parameters(&g->imu_dev, &gaf_params);
     gaf_params.pdr_us        = g->gaf_pdr_us;
     gaf_params.run_spherical = g->fusion_enabled;
+
+    /* 高分辨率 gyro 与 GAF 融合不兼容, 且 FIFO hires 已禁用, 统一关闭 */
+    g->high_res_en = 0;
+
     if (g->mag_is_on)
         gaf_params.mag_dt_us = g->mag_odr_us;
     else
@@ -906,14 +960,6 @@ static void _sensor_event_cb(inv_imu_sensor_event_t *event)
             fprintf(stderr, "[E] Error when rebuilding GAF output, unknown FIFO frame received\n");
             si_sleep_us(10 * 1000 * 1000);
         } else if (gaf_outputs.frame_complete) {
-            g->edmp_outputs.acc_cal_q16[0] =
-                ((int32_t)event->accel[0] * RAW_ACC_SCALE) - g->acc_bias_q16[0];
-            g->edmp_outputs.acc_cal_q16[1] =
-                ((int32_t)event->accel[1] * RAW_ACC_SCALE) - g->acc_bias_q16[1];
-            g->edmp_outputs.acc_cal_q16[2] =
-                ((int32_t)event->accel[2] * RAW_ACC_SCALE) - g->acc_bias_q16[2];
-            g->edmp_outputs.acc_cal_valid = 1;
-
             g->edmp_outputs.grv_quat_valid = gaf_outputs.grv_quat_valid;
             if (g->edmp_outputs.grv_quat_valid) {
                 g->edmp_outputs.grv_quat_q30[0] = (int32_t)gaf_outputs.grv_quat_q14[0] << 16;
@@ -945,23 +991,6 @@ static void _sensor_event_cb(inv_imu_sensor_event_t *event)
                 g->edmp_outputs.gyr_bias_q16[0] = (int32_t)gaf_outputs.gyr_bias_q12[0] << 4;
                 g->edmp_outputs.gyr_bias_q16[1] = (int32_t)gaf_outputs.gyr_bias_q12[1] << 4;
                 g->edmp_outputs.gyr_bias_q16[2] = (int32_t)gaf_outputs.gyr_bias_q12[2] << 4;
-            }
-            if (g->gyro_is_on) {
-                if (g->high_res_en) {
-                    g->edmp_outputs.gyr_cal_q16[0] =
-                        (int32_t)event->gyro[0] * RAW_GYR_SCALE_HR - g->edmp_outputs.gyr_bias_q16[0];
-                    g->edmp_outputs.gyr_cal_q16[1] =
-                        (int32_t)event->gyro[1] * RAW_GYR_SCALE_HR - g->edmp_outputs.gyr_bias_q16[1];
-                    g->edmp_outputs.gyr_cal_q16[2] =
-                        (int32_t)event->gyro[2] * RAW_GYR_SCALE_HR - g->edmp_outputs.gyr_bias_q16[2];
-                } else {
-                    g->edmp_outputs.gyr_cal_q16[0] =
-                        (int32_t)event->gyro[0] * RAW_GYR_SCALE - g->edmp_outputs.gyr_bias_q16[0];
-                    g->edmp_outputs.gyr_cal_q16[1] =
-                        (int32_t)event->gyro[1] * RAW_GYR_SCALE - g->edmp_outputs.gyr_bias_q16[1];
-                    g->edmp_outputs.gyr_cal_q16[2] =
-                        (int32_t)event->gyro[2] * RAW_GYR_SCALE - g->edmp_outputs.gyr_bias_q16[2];
-                }
             }
 
             g->edmp_outputs.gyr_flags_valid = gaf_outputs.gyr_flags_valid;
@@ -1012,19 +1041,47 @@ static void _sensor_event_cb(inv_imu_sensor_event_t *event)
                     (int32_t)g->edmp_outputs.raw_mag[2] * RAW_MAG_SCALE - g->edmp_outputs.mag_bias_q16[2];
             }
 
-            g->edmp_outputs.temp_degC_q16 =
-                (25 * (1UL << 16)) + ((int32_t)event->temperature * 32768);
-            g->edmp_outputs.temperature_valid = 1;
-
-            /* 更新输出缓存 */
-            pthread_mutex_lock(&g->output_mutex);
-            _convert_output(&g->edmp_outputs, g->timestamp, &g->cached_output);
-            g->output_updated = 1;
-            pthread_mutex_unlock(&g->output_mutex);
-
             memset(&gaf_outputs, 0, sizeof(gaf_outputs));
         }
     }
+
+    /* 每帧都更新: accel, gyro, temp, 输出 (sensor ODR 为准) */
+    g->edmp_outputs.acc_cal_q16[0] =
+        ((int32_t)event->accel[0] * RAW_ACC_SCALE) - g->acc_bias_q16[0];
+    g->edmp_outputs.acc_cal_q16[1] =
+        ((int32_t)event->accel[1] * RAW_ACC_SCALE) - g->acc_bias_q16[1];
+    g->edmp_outputs.acc_cal_q16[2] =
+        ((int32_t)event->accel[2] * RAW_ACC_SCALE) - g->acc_bias_q16[2];
+    g->edmp_outputs.acc_cal_valid = 1;
+
+    if (g->gyro_is_on) {
+        if (g->high_res_en) {
+            g->edmp_outputs.gyr_cal_q16[0] =
+                (int32_t)event->gyro[0] * RAW_GYR_SCALE_HR - g->edmp_outputs.gyr_bias_q16[0];
+            g->edmp_outputs.gyr_cal_q16[1] =
+                (int32_t)event->gyro[1] * RAW_GYR_SCALE_HR - g->edmp_outputs.gyr_bias_q16[1];
+            g->edmp_outputs.gyr_cal_q16[2] =
+                (int32_t)event->gyro[2] * RAW_GYR_SCALE_HR - g->edmp_outputs.gyr_bias_q16[2];
+        } else {
+            g->edmp_outputs.gyr_cal_q16[0] =
+                (int32_t)event->gyro[0] * RAW_GYR_SCALE - g->edmp_outputs.gyr_bias_q16[0];
+            g->edmp_outputs.gyr_cal_q16[1] =
+                (int32_t)event->gyro[1] * RAW_GYR_SCALE - g->edmp_outputs.gyr_bias_q16[1];
+            g->edmp_outputs.gyr_cal_q16[2] =
+                (int32_t)event->gyro[2] * RAW_GYR_SCALE - g->edmp_outputs.gyr_bias_q16[2];
+        }
+        g->edmp_outputs.gyr_flags_valid = 1;
+    }
+
+    g->edmp_outputs.temp_degC_q16 =
+        (25 * (1UL << 16)) + ((int32_t)event->temperature * 32768);
+    g->edmp_outputs.temperature_valid = 1;
+
+    /* 输出缓存 */
+    pthread_mutex_lock(&g->output_mutex);
+    _convert_output(&g->edmp_outputs, g->timestamp, &g->cached_output);
+    g->output_updated = 1;
+    pthread_mutex_unlock(&g->output_mutex);
 
     /* 更新原始 IMU 缓存 */
     pthread_mutex_lock(&g->output_mutex);
@@ -1048,17 +1105,38 @@ static void _sensor_event_cb(inv_imu_sensor_event_t *event)
     _remap_vec(&g->cached_accel.accel_x, &g->cached_accel.accel_y, &g->cached_accel.accel_z);
     _remap_vec(&g->cached_gyro.gyro_x,   &g->cached_gyro.gyro_y,   &g->cached_gyro.gyro_z);
 #endif
+#if EMD_IMU_AXIS_REMAP_2
+    _remap_vec_2(&g->cached_accel.accel_x, &g->cached_accel.accel_y, &g->cached_accel.accel_z);
+    _remap_vec_2(&g->cached_gyro.gyro_x,   &g->cached_gyro.gyro_y,   &g->cached_gyro.gyro_z);
+#endif
     g->imu_updated = 1;
 
     pthread_mutex_unlock(&g->output_mutex);
 
-    /* 清除非 accel/gyro 的标志 (与硬件行为一致) */
-    g->edmp_outputs.grv_quat_valid  = 0;
-    g->edmp_outputs.gmrv_quat_valid = 0;
-    g->edmp_outputs.rv_quat_valid   = 0;
-    g->edmp_outputs.mag_bias_valid  = 0;
-    g->edmp_outputs.rmag_valid      = 0;
-    g->edmp_outputs.mrm_state_valid = 0;
+    /* 原始数据回调 (notify_raw_data 等价, sensor ODR) */
+    if (g->raw_data_cb) {
+        emd_raw_sensor_t raw;
+        raw.accel_x = g->edmp_outputs.acc_cal_q16[0] / 65536.0f;
+        raw.accel_y = g->edmp_outputs.acc_cal_q16[1] / 65536.0f;
+        raw.accel_z = g->edmp_outputs.acc_cal_q16[2] / 65536.0f;
+        raw.gyro_x  = g->edmp_outputs.gyr_cal_q16[0] / 65536.0f;
+        raw.gyro_y  = g->edmp_outputs.gyr_cal_q16[1] / 65536.0f;
+        raw.gyro_z  = g->edmp_outputs.gyr_cal_q16[2] / 65536.0f;
+        raw.temp_c  = g->edmp_outputs.temp_degC_q16 / 65536.0f;
+        raw.timestamp_us = g->timestamp;
+        /* 对原始数据应用坐标变换 */
+#if EMD_IMU_AXIS_REMAP
+        _remap_vec(&raw.accel_x, &raw.accel_y, &raw.accel_z);
+        _remap_vec(&raw.gyro_x,  &raw.gyro_y,  &raw.gyro_z);
+#endif
+#if EMD_IMU_AXIS_REMAP_2
+        _remap_vec_2(&raw.accel_x, &raw.accel_y, &raw.accel_z);
+        _remap_vec_2(&raw.gyro_x,  &raw.gyro_y,  &raw.gyro_z);
+#endif
+        g->raw_data_cb(&raw, g->raw_data_user);
+    }
+
+    /* 清空 MRM 一次性事件标志, quat/mag 保留以供下次 _convert_output 复用 */
     g->edmp_outputs.mrm_evt_chg_st  = 0;
     g->edmp_outputs.mrm_evt_exe_mrm = 0;
     g->edmp_outputs.mrm_evt_exc_thr = 0;
@@ -1174,6 +1252,16 @@ static void _convert_output(const inv_edmp_gaf_outputs_t *in, uint64_t ts,
     _remap_vec(&out->gyro_x,  &out->gyro_y,  &out->gyro_z);
     _remap_vec(&out->mag_x,   &out->mag_y,   &out->mag_z);
     _remap_quat(&out->quat_w, &out->quat_x, &out->quat_y, &out->quat_z);
+    out->heading_deg += 90.0f;
+    if (out->heading_deg > 180.0f)       out->heading_deg -= 360.0f;
+    else if (out->heading_deg < -180.0f) out->heading_deg += 360.0f;
+#endif
+#if EMD_IMU_AXIS_REMAP_2
+    /* 芯片绕 X+90 安装 -> FLU, 见 _remap_vec_2/_remap_quat_2 */
+    _remap_vec_2(&out->accel_x, &out->accel_y, &out->accel_z);
+    _remap_vec_2(&out->gyro_x,  &out->gyro_y,  &out->gyro_z);
+    _remap_vec_2(&out->mag_x,   &out->mag_y,   &out->mag_z);
+    _remap_quat_2(&out->quat_w, &out->quat_x, &out->quat_y, &out->quat_z);
     out->heading_deg += 90.0f;
     if (out->heading_deg > 180.0f)       out->heading_deg -= 360.0f;
     else if (out->heading_deg < -180.0f) out->heading_deg += 360.0f;

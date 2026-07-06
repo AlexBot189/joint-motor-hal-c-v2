@@ -21,6 +21,13 @@
 #include "emd_gaf.h"
 
 static volatile int g_running = 1;
+static emd_raw_sensor_t g_latest_raw;
+
+static void raw_data_cb(const emd_raw_sensor_t *data, void *user_data)
+{
+    (void)user_data;
+    g_latest_raw = *data;
+}
 
 static void sig_handler(int sig)
 {
@@ -97,6 +104,7 @@ int main(int argc, char *argv[])
     printf("IMU HAL initialized OK\n");
 
     /* 3. 启动后台线程 */
+    emd_gaf_set_raw_data_callback(gaf, raw_data_cb, NULL);
     rc = emd_gaf_start(gaf);
     if (rc != 0) {
         fprintf(stderr, "IMU HAL start failed: rc=%d\n", rc);
@@ -116,10 +124,10 @@ int main(int argc, char *argv[])
         emd_output_t out;
         emd_imu_data_t accel, gyro;
 
-        /* 非阻塞读取融合输出 */
+        /* 融合输出 (quat/mag/heading, GAF ODR, 保留最近有效值) */
         if (emd_gaf_get_output(gaf, &out) == 0) {
 
-            /* 四元数 ,  欧拉角 (ZYX: Yaw-Pitch-Roll), rad ,  deg */
+            /* 四元数 -> 欧拉角 (ZYX: Yaw-Pitch-Roll), rad -> deg */
             float qw = out.quat_w, qx = out.quat_x, qy = out.quat_y, qz = out.quat_z;
             float yaw   = atan2f(2.0f*(qw*qz + qx*qy), 1.0f - 2.0f*(qy*qy + qz*qz)) * 57.29578f;
             float sp    = 2.0f*(qw*qy - qz*qx);
@@ -127,23 +135,21 @@ int main(int argc, char *argv[])
             float pitch = asinf(sp) * 57.29578f;
             float roll  = atan2f(2.0f*(qw*qx + qy*qz), 1.0f - 2.0f*(qx*qx + qy*qy)) * 57.29578f;
 
-            printf("ts=%llu euler=(yaw=%.1f° pitch=%.1f° roll=%.1f°) heading=%.1f° quat=(%.3f,%.3f,%.3f,%.3f) acc=(%.3f,%.3f,%.3f) gyr=(%.1f,%.1f,%.1f) mag=(%.1f,%.1f,%.1f) temp=%.1f°C sta=%d ga=%d ma=%d\n",
+            printf("ts=%llu euler=(yaw=%.1f pitch=%.1f roll=%.1f) heading=%.1f quat=(%.3f,%.3f,%.3f,%.3f) acc=(%.3f,%.3f,%.3f) gyr=(%.1f,%.1f,%.1f) mag=(%.1f,%.1f,%.1f) temp=%.1fC sta=%d ga=%d ma=%d\n",
                    (unsigned long long)out.timestamp_us,
                    yaw, pitch, roll,
                    out.heading_deg,
                    out.quat_w, out.quat_x, out.quat_y, out.quat_z,
-                   out.accel_x, out.accel_y, out.accel_z,
-                   out.gyro_x, out.gyro_y, out.gyro_z,
+                   g_latest_raw.accel_x, g_latest_raw.accel_y, g_latest_raw.accel_z,
+                   g_latest_raw.gyro_x, g_latest_raw.gyro_y, g_latest_raw.gyro_z,
                    out.mag_x, out.mag_y, out.mag_z,
-                   out.temp_c,
+                   g_latest_raw.temp_c,
                    out.stationary,
                    out.gyr_accuracy, out.mag_accuracy);
         }
 
-        /* 非阻塞读取原始 IMU */
+        /* 原始 IMU 数据 (通过 emd_gaf_get_imu, sensor ODR) */
         emd_gaf_get_imu(gaf, &accel, &gyro);
-
-        usleep(10000);
     }
 
     /* 6. 清理 */
