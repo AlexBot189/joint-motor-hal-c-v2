@@ -185,6 +185,102 @@ int tool_torque_sdo(int id, int ma)
 }
 
 /* ================================================================
+ * SDO 电流控制 — 统一接口 (自动使能, 切模式, 写电流)
+ * ================================================================ */
+
+static int _ensure_enabled_single(uint8_t mid)
+{
+    motor_state_t st = motor_hal_get_state(g_hal, mid);
+    if (st == MOTOR_STATE_OP_ENABLED) return 0;
+    if (st == MOTOR_STATE_FAULT) {
+        motor_hal_fault_reset(g_hal, mid);
+        usleep(50000);
+    }
+    return motor_hal_enable(g_hal, mid);
+}
+
+static int _sdo_cur_single(uint8_t mid, int ma)
+{
+    int ret;
+    ret = _ensure_enabled_single(mid);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); return -1; }
+    ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_CURRENT);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(CUR) failed\n", mid); return -1; }
+    ret = motor_hal_sdo_write(g_hal, mid, 0x6071, 0, (uint32_t)ma, 2);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d write current failed\n", mid); return -1; }
+    return 0;
+}
+
+int tool_sdo_cur(int n1, int n2, int ma1, int ma2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+
+    int errors = 0;
+    int ret = _sdo_cur_single((uint8_t)n1, ma1);
+    if (ret == 0)
+        printf("✓ Motor %d: SDO cur=%dmA\n", n1, ma1);
+    else
+        errors++;
+
+    if (is_dual && n2 > 0) {
+        ret = _sdo_cur_single((uint8_t)n2, ma2);
+        if (ret == 0)
+            printf("✓ Motor %d: SDO cur=%dmA\n", n2, ma2);
+        else
+            errors++;
+    }
+
+    return errors > 0 ? -1 : 0;
+}
+
+/* ================================================================
+ * PDO 电流控制 — 统一接口 (自动使能 + 多轴广播 COB 0x200)
+ * ================================================================ */
+
+int tool_pdo_cur(int n1, int n2, int ma1, int ma2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+
+    /* 先 SDO 使能 (DS402 状态机), 再 PDO 控制 */
+    int errors = 0;
+    int ret = _ensure_enabled_single((uint8_t)n1);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", n1); return -1; }
+
+    if (is_dual && n2 > 0) {
+        ret = _ensure_enabled_single((uint8_t)n2);
+        if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", n2); return -1; }
+    }
+
+    /* 构造多轴广播命令 (COB 0x200) */
+    multi_axis_cmd_t cmds[2];
+    memset(cmds, 0, sizeof(cmds));
+    cmds[0].node_id       = (uint8_t)n1;
+    cmds[0].mode          = MOTOR_MODE_CURRENT;
+    cmds[0].enable        = true;
+    cmds[0].release_brake = true;
+    cmds[0].target1       = (int16_t)ma1;
+
+    uint8_t count = 1;
+    if (is_dual && n2 > 0) {
+        cmds[1].node_id       = (uint8_t)n2;
+        cmds[1].mode          = MOTOR_MODE_CURRENT;
+        cmds[1].enable        = true;
+        cmds[1].release_brake = true;
+        cmds[1].target1       = (int16_t)ma2;
+        count = 2;
+    }
+
+    motor_hal_multi_ctrl(g_hal, cmds, count);
+
+    if (is_dual && n2 > 0)
+        printf("✓ Motor %d+%d: PDO cur=%d,%dmA (multi-ctrl)\n", n1, n2, ma1, ma2);
+    else
+        printf("✓ Motor %d: PDO cur=%dmA (multi-ctrl)\n", n1, ma1);
+
+    return errors > 0 ? -1 : 0;
+}
+
+/* ================================================================
  * SDO 速度控制 — 完整时序: 使能, 切PV模式, 设加减速, 写目标速度
  *   speed <id> <rpm> [acc] [dec]
  *   加减速范围 0~10000 RPM/s, 无上限速度

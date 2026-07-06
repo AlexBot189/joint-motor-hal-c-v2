@@ -55,53 +55,37 @@ int cmd_do_pdo(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
 
-    if (argc < 4) {
-        fprintf(stderr, "Usage: motor_tool pdo <id> <mode> <target> [acc_or_feedfwd]\n");
-        fprintf(stderr, "  mode: pos / vel / cur / csp\n");
-        fprintf(stderr, "  pos: <deg>   vel: <rpm>   cur: <mA>   csp: <deg>\n");
-        fprintf(stderr, "  [acc]: profile accel RPM/s (pos/vel mode only)\n");
-        fprintf(stderr, "Examples:\n");
-        fprintf(stderr, "  motor_tool pdo 1 pos 45           # 电机1: 45°\n");
-        fprintf(stderr, "  motor_tool pdo 1 vel 50 1000      # 电机1: 50RPM acc=1000RPM/s\n");
-        fprintf(stderr, "  motor_tool pdo 1 cur 1000         # 电机1: 1000mA\n");
-        fprintf(stderr, "  motor_tool pdo 1 csp 90            # 电机1: CSP 90°\n");
+    if (argc < 5) {
+        fprintf(stderr, "Usage: motor_tool pdo cur <N> <mA>\n");
+        fprintf(stderr, "       motor_tool pdo cur <N1> <N2> <mA>\n");
         return -1;
     }
 
-    int id = atoi(argv[2]);
-    const char *mode_str = argv[3];
+    const char *mode_str = argv[2];
 
     if (strcmp(mode_str, "cur") == 0) {
-        int ma = atoi(argv[4]);
-        int ret = motor_hal_set_torque(g_hal, (uint8_t)id, (int16_t)ma);
-        if (ret == 0) printf("✓ Motor %d: PDO current=%d mA\n", id, ma);
-        else fprintf(stderr, "✗ Motor %d: PDO current failed (ret=%d)\n", id, ret);
-        return ret;
+        int n1, n2, ma1, ma2, is_dual;
 
-    } else if (strcmp(mode_str, "vel") == 0) {
-        float rpm = (float)atof(argv[4]);
-        int ret = motor_hal_set_velocity(g_hal, (uint8_t)id, rpm);
-        if (ret == 0) printf("✓ Motor %d: PDO vel=%.2f RPM\n", id, rpm);
-        else fprintf(stderr, "✗ Motor %d: PDO vel failed (ret=%d)\n", id, ret);
-        return ret;
+        if (argc == 5) {
+            /* pdo cur <N> <mA> */
+            n1 = atoi(argv[3]);
+            ma1 = atoi(argv[4]);
+            n2 = 0; ma2 = 0; is_dual = 0;
+        } else if (argc == 6) {
+            /* pdo cur <N1> <N2> <mA> */
+            n1 = atoi(argv[3]);
+            n2 = atoi(argv[4]);
+            ma1 = ma2 = atoi(argv[5]);
+            is_dual = 1;
+        } else {
+            fprintf(stderr, "ERROR: too many args\n");
+            return -1;
+        }
 
-    } else if (strcmp(mode_str, "pos") == 0) {
-        float deg = (float)atof(argv[4]);
-        int ret = motor_hal_set_position(g_hal, (uint8_t)id, deg);
-        if (ret == 0) printf("✓ Motor %d: PDO pos=%.2f°\n", id, deg);
-        else fprintf(stderr, "✗ Motor %d: PDO pos failed (ret=%d)\n", id, ret);
-        return ret;
-
-    } else if (strcmp(mode_str, "csp") == 0) {
-        float deg = (float)atof(argv[4]);
-        int16_t cnt = motor_deg_to_counts(deg);
-        int ret = motor_hal_ctrl_raw(g_hal, (uint8_t)id, MOTOR_MODE_CSP, cnt, 0, 0);
-        if (ret == 0) printf("✓ Motor %d: PDO CSP=%.2f° (cnt=%d)\n", id, deg, cnt);
-        else fprintf(stderr, "✗ Motor %d: PDO CSP failed (ret=%d)\n", id, ret);
-        return ret;
+        return tool_pdo_cur(n1, n2, ma1, ma2, is_dual);
     }
 
-    fprintf(stderr, "Unknown mode: %s (use: pos/vel/cur/csp)\n", mode_str);
+    fprintf(stderr, "Unsupported mode: %s (use: cur)\n", mode_str);
     return -1;
 }
 

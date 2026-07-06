@@ -49,23 +49,11 @@ static void print_help(void)
     printf("  sensor watch <id>     传感器数据持续显示\n");
     printf("  sensor stop <id>      停止透传\n\n");
 
-    printf("── 控制命令 (SDO, 使能在 daemon 启动时完成) ────\n");
-    printf("  torque <id> <mA>           电流控制 (0~20000mA)\n");
-    printf("  speed <id> <rpm> [acc] [dec]  速度控制\n");
-    printf("  abs <id> <deg>             位置控制\n");
-    printf("  abs_stop <id>              停止位置运动\n");
-    printf("  abs_accel <acc>            位置加减速 RPM/s (默认2000)\n");
-    printf("  abs_speed <rpm>            位置轨迹速度 RPM 输出端(默认10)\n\n");
-
-    printf("── PDO 实时控制 (直接发帧, <100μs) ────────────\n");
-    printf("  pdo <id> pos <deg>         单轴位置控制 PDO\n");
-    printf("  pdo <id> vel <rpm>         单轴速度控制 PDO\n");
-    printf("  pdo <id> cur <mA>           单轴电流控制 PDO\n");
-    printf("  pdo <id> csp <cnt>          单轴 CSP 控制 PDO\n");
-    printf("  multi pos 1:45 2:-45       多轴广播位置\n");
-    printf("  multi vel 1:50 2:-30       多轴广播速度\n");
-    printf("  multi cur 1:1000 2:500     多轴广播电流\n");
-    printf("  mit <id> <pos> <vel> <kp> <kd> <torque>  MIT 阻抗\n\n");
+    printf("── 控制命令 (自动使能) ────────────────────\n");
+    printf("  sdo cur <N> <mA>              SDO电流控制(单电机)\n");
+    printf("  sdo cur <N1> <N2> <mA>        SDO电流控制(双电机同值)\n");
+    printf("  pdo cur <N> <mA>              PDO电流控制(单电机,多轴广播)\n");
+    printf("  pdo cur <N1> <N2> <mA>        PDO电流控制(双电机同值)\n\n");
 
     printf("── 配置命令 ──────────────────────────────────────\n");
     printf("  limit_pos <id> <deg>       正限位 (失能, 写, Flash)\n");
@@ -101,14 +89,12 @@ static void print_help(void)
     printf("  sensor watch <id>    传感器数据持续显示\n\n");
 
     printf("── 框架工作流 ────────────────────────────────────\n");
-    printf("  ① motor_tool daemon can0 &        # 启动守护进程\n");
-    printf("  ② [电机上电 ,  发 0x701 bootup]     # 物理操作\n");
-    printf("  ③ # daemon 自动收到 bootup ,  auto-startup ,  使能\n");
-    printf("  ④ motor_tool calib start 1 2      # 校准\n");
-    printf("     motor_tool sensor config 1 250  # 开启透传\n");
-    printf("  ⑤ motor_tool torque 1 500         # 控制!\n");
-    printf("     motor_tool state 1              # 查看状态\n");
-    printf("     motor_tool stop                 # 停止\n\n");
+    printf("  ① motor_tool daemon can0 &        # 启动守护进程 (auto-startup + 零位校准)\n");
+    printf("  ② motor_tool sdo cur 1 500        # SDO 电流控制电机1 (自动使能)\n");
+    printf("  ③ motor_tool pdo cur 1 500        # PDO 电流控制电机1 (自动使能,多轴广播)\n");
+    printf("  ④ motor_tool sdo cur 1 2 500      # 双电机 SDO 电流控制\n");
+    printf("  ⑤ motor_tool disable 1            # 脱使能电机1\n");
+    printf("     motor_tool stop                 # 停止 daemon\n\n");
 }
 
 int main(int argc, char **argv)

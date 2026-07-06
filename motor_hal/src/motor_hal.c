@@ -758,7 +758,7 @@ int motor_hal_set_mode(motor_hal_t *hal, uint8_t node_id, motor_mode_t mode)
         [MOTOR_MODE_PROFILE_VEL] = 0x02,  /* PV:      巨蟹协议 0x02 */
         [MOTOR_MODE_CSP]         = 0x03,  /* CSP:     巨蟹协议 0x03 */
         [MOTOR_MODE_CSV]         = 0x04,  /* CSV:     巨蟹协议 0x04 */
-        [MOTOR_MODE_CURRENT]     = 0x05,  /* 电流环:  巨蟹快控 0x05 */
+        [MOTOR_MODE_CURRENT]     = 0x0A,  /* 电流环:  巨蟹协议 SDO 0x0A */
         [MOTOR_MODE_MIT]         = 0x06,  /* MIT:     巨蟹快控 0x06 */
     };
 

@@ -198,17 +198,38 @@ int daemon_get_client_fd(void) { return g_client_fd; }
 static void _accept_loop(void)
 {
     char buf[4096];
+    bool calib_done[TOOL_MAX_MOTORS] = {0};
 
     while (g_daemon_running) {
         /* 处理 auto_enable 触发的待启动电机 (recv 线程收到 bootup 时只设标志) */
         int started = motor_hal_process_pending_startups(g_hal);
+
+        /* 新启动的电机执行零位校准 (不使能状态) */
+        if (started > 0) {
+            for (int i = 0; i < tool_motor_count(); i++) {
+                int id = tool_motor_id(i);
+                if (id < 0) continue;
+                if (calib_done[i]) continue;
+                /* 只对刚 startup 成功的电机做校准 */
+                motor_state_t st = motor_hal_get_state(g_hal, (uint8_t)id);
+                if (st != MOTOR_STATE_SWITCH_ON_DIS && st != MOTOR_STATE_READY_TO_SW_ON)
+                    continue;
+                fprintf(stderr, "  ,  Motor %d: zero calibration...\n", id);
+                int ret = motor_hal_set_zero(g_hal, (uint8_t)id);
+                if (ret == 0)
+                    fprintf(stderr, "  ,  Motor %d: zero calibrated (ready, not enabled)\n", id);
+                else
+                    fprintf(stderr, "  ,  Motor %d: zero calibration FAILED (ret=%d)\n", id, ret);
+                calib_done[i] = true;
+            }
+        }
 
         /* 第一个电机上线后开启 SYNC 定时器
          *   触发 TPDO1 反馈 (0x180+node) — 50Hz不阻塞SDO */
         if (!g_sync_started && started > 0) {
             motor_hal_sync_start(g_hal, 20000);
             g_sync_started = true;
-            fprintf(stderr, "  ,  First motor online, SYNC started (50Hz)\n");
+            fprintf(stderr, "  ,  SYNC started (50Hz)\n");
         }
 
         fd_set fds;
@@ -258,7 +279,7 @@ int daemon_start(const char *iface)
     cfg.profile_decel     = 5000;
     cfg.profile_velocity  = 20;
     cfg.disable_watchdog  = true;
-    cfg.auto_enable       = true;
+    cfg.auto_enable       = false;
     cfg.bootup_timeout_ms = 3000;
     cfg.tpdo_sync_count   = 1;    /* TPDO1 sync — 电机1的0x300路径有硬件问题
                                 * 必须用TPDO1(0x180+node)作为反馈通道
@@ -295,7 +316,8 @@ int daemon_start(const char *iface)
     /* 7. 主循环 */
     g_daemon_running = 1;
 
-    printf("motor_tool daemon ready. Use 'motor_tool startup <id>' to start motors.\n");
+    printf("motor_tool daemon ready. Motors will auto-startup on bootup.\n");
+    printf("Use 'motor_tool sdo cur <id> <mA>' or 'motor_tool pdo cur <id> <mA>' to control.\n");
 
     _accept_loop();
 

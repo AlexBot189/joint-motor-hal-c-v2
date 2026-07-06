@@ -26,6 +26,7 @@ add_executable(motor_tool
     command_registry.c
     tool_hal.c
     daemon.c
+    cmd_sdo.c
     cmd_control.c
     cmd_read.c
     cmd_system.c
@@ -34,10 +35,7 @@ add_executable(motor_tool
     cmd_sensor.c
     cmd_report.c
     cmd_calib.c
-    cmd_pdo.c
-    cmd_rpdo.c
     cmd_pdo_ctrl.c
-    cmd_byte0.c
     cmd_probe.c
 )
 
