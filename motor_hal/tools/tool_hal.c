@@ -164,6 +164,24 @@ static int _ensure_enabled_single(uint8_t mid)
     return motor_hal_enable(g_hal, mid);
 }
 
+/* Halt 当前运动, 等待停机 — PP/PV/CSP/CSV 互切前必须停止轨迹生成器
+ *   CUR 模式不需要 (电流环独立于轨迹生成器) */
+static void _halt_motion(uint8_t mid)
+{
+    motor_state_t st = motor_hal_get_state(g_hal, mid);
+    if (st != MOTOR_STATE_OP_ENABLED) return;
+
+    /* 写 Halt (bit8=1) + EnableOp (bits0-3=0x0F) = 0x010F */
+    motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x010F, 2);
+
+    /* 等 statusword bit10=1 (target reached / 已停机), 最多 500ms */
+    for (int i = 0; i < 25; i++) {
+        usleep(20000);
+        uint16_t sw = motor_hal_get_statusword(g_hal, mid);
+        if (sw & 0x0400) return;
+    }
+}
+
 static int _sdo_cur_single(uint8_t mid, int ma)
 {
     int ret;
@@ -224,6 +242,8 @@ int tool_pdo_cur(int n1, int n2, int ma1, int ma2, int is_dual)
     }
 
     motor_hal_multi_ctrl(g_hal, cmds, count);
+    usleep(2000);
+    motor_hal_multi_ctrl(g_hal, cmds, count);
 
     if (is_dual && n2 > 0) {
         printf("✓ Motor %d+%d: PDO cur=%d,%dmA\n", n1, n2, ma1, ma2);
@@ -248,6 +268,7 @@ static int _sdo_pos_single(uint8_t mid, float deg)
     int ret;
     ret = _ensure_enabled_single(mid);
     if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); return -1; }
+    _halt_motion(mid);
     ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_POS);
     if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(PP) failed\n", mid); return -1; }
     motor_hal_set_accel_decel(g_hal, mid, POS_DEFAULT_ACCEL, POS_DEFAULT_ACCEL);
@@ -286,6 +307,7 @@ static int _sdo_csp_single(uint8_t mid, float deg)
     int ret;
     ret = _ensure_enabled_single(mid);
     if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); return -1; }
+    _halt_motion(mid);
     ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_CSP);
     if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(CSP) failed\n", mid); return -1; }
     ret = motor_hal_sdo_write(g_hal, mid, 0x607A, 0, (uint32_t)counts, 4);
@@ -340,10 +362,12 @@ int tool_pdo_pos(int n1, int n2, float deg1, float deg2, int is_dual)
     }
 
     motor_hal_multi_ctrl(g_hal, cmds, count);
+    usleep(2000);
+    motor_hal_multi_ctrl(g_hal, cmds, count);
     if (is_dual && n2 > 0) {
-        printf("✓ Motor %d+%d: PDO pos=%.2f,%.2f° (PP, accel=%d)\n", n1, n2, deg1, deg2, POS_DEFAULT_ACCEL);
+        printf("✓ Motor %d+%d: PDO pos=%.2f,%.2f° (PP, accel=%d, vel=%d)\n", n1, n2, deg1, deg2, POS_DEFAULT_ACCEL, POS_DEFAULT_PROF_VEL);
     } else {
-        printf("✓ Motor %d: PDO pos=%.2f° (PP, accel=%d)\n", n1, deg1, POS_DEFAULT_ACCEL);
+        printf("✓ Motor %d: PDO pos=%.2f° (PP, accel=%d, vel=%d)\n", n1, deg1, POS_DEFAULT_ACCEL, POS_DEFAULT_PROF_VEL);
     }
 
     return 0;
@@ -376,6 +400,8 @@ int tool_pdo_csp(int n1, int n2, float deg1, float deg2, int is_dual)
     }
 
     motor_hal_multi_ctrl(g_hal, cmds, count);
+    usleep(2000);
+    motor_hal_multi_ctrl(g_hal, cmds, count);
 
     if (is_dual && n2 > 0) {
         printf("✓ Motor %d+%d: PDO csp=%.2f,%.2f°\n", n1, n2, deg1, deg2);
@@ -395,9 +421,11 @@ static int _sdo_vel_single(uint8_t mid, int rpm)
     int ret;
     ret = _ensure_enabled_single(mid);
     if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); return -1; }
+    _halt_motion(mid);
     ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_VEL);
     if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(PV) failed\n", mid); return -1; }
     motor_hal_set_accel_decel(g_hal, mid, POS_DEFAULT_ACCEL, POS_DEFAULT_ACCEL);
+    motor_hal_set_profile_velocity(g_hal, mid, POS_DEFAULT_PROF_VEL);
     ret = motor_hal_sdo_write(g_hal, mid, 0x60FF, 0, (uint32_t)(int32_t)rpm, 4);
     if (ret != 0) { fprintf(stderr, "✗ Motor %d write vel target failed\n", mid); return -1; }
     return 0;
@@ -408,7 +436,7 @@ int tool_sdo_vel(int n1, int n2, int rpm1, int rpm2, int is_dual)
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int errors = 0;
     int ret = _sdo_vel_single((uint8_t)n1, rpm1);
-    if (ret == 0) { printf("✓ Motor %d: SDO vel=%dRPM (PV)\n", n1, rpm1); }
+    if (ret == 0) { printf("✓ Motor %d: SDO vel=%dRPM (PV, accel=%d, vel=%d)\n", n1, rpm1, POS_DEFAULT_ACCEL, POS_DEFAULT_PROF_VEL); }
     else errors++;
     if (is_dual && n2 > 0) {
         ret = _sdo_vel_single((uint8_t)n2, rpm2);
@@ -427,6 +455,7 @@ static int _sdo_csv_single(uint8_t mid, int rpm)
     int ret;
     ret = _ensure_enabled_single(mid);
     if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); return -1; }
+    _halt_motion(mid);
     ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_CSV);
     if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(CSV) failed\n", mid); return -1; }
     ret = motor_hal_sdo_write(g_hal, mid, 0x60FF, 0, (uint32_t)(int32_t)rpm, 4);
@@ -479,11 +508,13 @@ int tool_pdo_vel(int n1, int n2, int rpm1, int rpm2, int is_dual)
     }
 
     motor_hal_multi_ctrl(g_hal, cmds, count);
+    usleep(2000);
+    motor_hal_multi_ctrl(g_hal, cmds, count);
 
     if (is_dual && n2 > 0) {
-        printf("✓ Motor %d+%d: PDO vel=%d,%dRPM (PV)\n", n1, n2, rpm1, rpm2);
+        printf("✓ Motor %d+%d: PDO vel=%d,%dRPM (PV, accel=%d)\n", n1, n2, rpm1, rpm2, POS_DEFAULT_ACCEL);
     } else {
-        printf("✓ Motor %d: PDO vel=%dRPM (PV)\n", n1, rpm1);
+        printf("✓ Motor %d: PDO vel=%dRPM (PV, accel=%d)\n", n1, rpm1, POS_DEFAULT_ACCEL);
     }
 
     return 0;
@@ -515,6 +546,8 @@ int tool_pdo_csv(int n1, int n2, int rpm1, int rpm2, int is_dual)
         count = 2;
     }
 
+    motor_hal_multi_ctrl(g_hal, cmds, count);
+    usleep(2000);
     motor_hal_multi_ctrl(g_hal, cmds, count);
 
     if (is_dual && n2 > 0) {
