@@ -38,52 +38,29 @@ int tool_fault_reset(int id);
 int tool_reboot(int id);
 
 /* ================================================================
- * SDO 电流控制 — 完整时序 (使能, 切模式, 写目标电流)
- *   torque <id> <mA>  范围 0~20000 mA (0~20A)
- * ================================================================ */
-
-int tool_torque_sdo(int id, int ma);
-
-/* ================================================================
- * SDO 电流控制 — 统一接口 (自动使能 + 切模式 + 写电流)
- *   tool_sdo_cur(n1, n2, ma1, ma2, is_dual)
- *   单电机: n2=0, ma2=0, is_dual=0
- *   双电机同值: n1, n2, ma1=ma2=value, is_dual=1
+ * SDO 电流/位置/速度控制 — 统一接口 (自动使能 + 切模式 + 写目标)
+ *   tool_sdo_cur/pos/csp/vel/csv(n1, n2, val1, val2, is_dual)
+ *   单电机: n2=0, val2=0, is_dual=0
+ *   双电机同值: n1, n2, val1=val2=value, is_dual=1
+ *   双电机异值: n1, n2, val1, val2, is_dual=1
  * ================================================================ */
 
 int tool_sdo_cur(int n1, int n2, int ma1, int ma2, int is_dual);
+int tool_sdo_pos(int n1, int n2, float deg1, float deg2, int is_dual);
+int tool_sdo_csp(int n1, int n2, float deg1, float deg2, int is_dual);
+int tool_sdo_vel(int n1, int n2, int rpm1, int rpm2, int is_dual);
+int tool_sdo_csv(int n1, int n2, int rpm1, int rpm2, int is_dual);
 
 /* ================================================================
- * PDO 电流控制 — 统一接口 (自动使能 + 多轴广播)
- *   tool_pdo_cur(n1, n2, ma1, ma2, is_dual)
+ * PDO 控制 — 统一接口 (多轴广播 COB 0x200, 不触发 SDO)
+ *   tool_pdo_cur/pos/csp/vel/csv(n1, n2, val1, val2, is_dual)
  * ================================================================ */
 
 int tool_pdo_cur(int n1, int n2, int ma1, int ma2, int is_dual);
-
-/* ================================================================
- * SDO 速度控制 — 完整时序 (使能, 切模式, 设加减速, 写目标速度)
- *   speed <id> <rpm> [acc] [dec]
- *   加减速范围 0~10000 RPM/s, 速度无上限
- * ================================================================ */
-
-int tool_speed_sdo(int id, int rpm, int acc, int dec);
-
-/* ================================================================
- * SDO 位置控制 — 完整时序 (使能, 切模式, 设加减速/轨迹速度, 目标, 启动)
- *   abs <id> <deg>
- *   加减速范围 0~10000 RPM/s (默认2000)
- *   轨迹速度范围 0~30 RPM (默认10)
- *   目标位置范围 -180°~180°
- * ================================================================ */
-
-int tool_abs_sdo(int id, float deg);
-
-/* 位置控制参数配置 */
-int tool_abs_set_accel(int id, int acc);  /* 加减速 RPM/s */
-int tool_abs_set_speed(int id, int rpm);  /* 轨迹速度 RPM */
-
-/* 停止位置运动 (CW=0x0F) */
-int tool_abs_stop(int id);
+int tool_pdo_pos(int n1, int n2, float deg1, float deg2, int is_dual);
+int tool_pdo_csp(int n1, int n2, float deg1, float deg2, int is_dual);
+int tool_pdo_vel(int n1, int n2, int rpm1, int rpm2, int is_dual);
+int tool_pdo_csv(int n1, int n2, int rpm1, int rpm2, int is_dual);
 
 /* ================================================================
  * 单控 SDO 命令

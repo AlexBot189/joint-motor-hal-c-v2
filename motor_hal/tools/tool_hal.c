@@ -150,41 +150,6 @@ int tool_reboot(int id)
 }
 
 /* ================================================================
- * SDO 电流控制 — 完整时序: 使能, 切电流模式, 写目标电流
- *   torque <id> <mA>  范围 0~20000 mA
- * ================================================================ */
-
-int tool_torque_sdo(int id, int ma)
-{
-    if (ma < -20000 || ma > 20000) {
-        fprintf(stderr, "ERROR: current %d mA out of range (-20000~20000)\n", ma);
-        return -1;
-    }
-
-    int ids[TOOL_MAX_MOTORS], n;
-    if (_parse_ids(id, ids, &n) < 0) return -1;
-    n = tool_filter_online(ids, n);
-    if (n == 0) return -1;
-
-    int errors = 0;
-    for (int i = 0; i < n; i++) {
-        uint8_t mid = (uint8_t)ids[i];
-        int ret;
-
-        /* 切电流模式 (使能在 daemon startup 阶段完成, 控制命令只做模式切换) */
-        ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_CURRENT);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(CUR) failed\n", mid); errors++; continue; }
-
-        /* 写目标电流 (2字节, inst=0x2B) */
-        ret = motor_hal_sdo_write(g_hal, mid, 0x6071, 0, (uint32_t)ma, 2);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d write current failed\n", mid); errors++; continue; }
-
-        printf("✓ Motor %d: torque=%dmA (current mode)\n", mid, ma);
-    }
-    return errors > 0 ? -1 : 0;
-}
-
-/* ================================================================
  * SDO 电流控制 — 统一接口 (自动使能, 切模式, 写电流)
  * ================================================================ */
 
@@ -217,41 +182,29 @@ int tool_sdo_cur(int n1, int n2, int ma1, int ma2, int is_dual)
 
     int errors = 0;
     int ret = _sdo_cur_single((uint8_t)n1, ma1);
-    if (ret == 0)
+    if (ret == 0) {
         printf("✓ Motor %d: SDO cur=%dmA\n", n1, ma1);
-    else
-        errors++;
+    } else errors++;
 
     if (is_dual && n2 > 0) {
         ret = _sdo_cur_single((uint8_t)n2, ma2);
-        if (ret == 0)
+        if (ret == 0) {
             printf("✓ Motor %d: SDO cur=%dmA\n", n2, ma2);
-        else
-            errors++;
+        } else errors++;
     }
 
     return errors > 0 ? -1 : 0;
 }
 
 /* ================================================================
- * PDO 电流控制 — 统一接口 (自动使能 + 多轴广播 COB 0x200)
+ * PDO 电流控制 — 统一接口 (多轴广播 COB 0x200, 不触发 SDO)
  * ================================================================ */
 
 int tool_pdo_cur(int n1, int n2, int ma1, int ma2, int is_dual)
 {
     if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
 
-    /* 先 SDO 使能 (DS402 状态机), 再 PDO 控制 */
-    int errors = 0;
-    int ret = _ensure_enabled_single((uint8_t)n1);
-    if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", n1); return -1; }
-
-    if (is_dual && n2 > 0) {
-        ret = _ensure_enabled_single((uint8_t)n2);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", n2); return -1; }
-    }
-
-    /* 构造多轴广播命令 (COB 0x200) */
+    /* 构造多轴广播命令 (COB 0x200), enable/brake 由 byte0 控制, 不走 SDO */
     multi_axis_cmd_t cmds[2];
     memset(cmds, 0, sizeof(cmds));
     cmds[0].node_id       = (uint8_t)n1;
@@ -272,143 +225,305 @@ int tool_pdo_cur(int n1, int n2, int ma1, int ma2, int is_dual)
 
     motor_hal_multi_ctrl(g_hal, cmds, count);
 
-    if (is_dual && n2 > 0)
-        printf("✓ Motor %d+%d: PDO cur=%d,%dmA (multi-ctrl)\n", n1, n2, ma1, ma2);
-    else
-        printf("✓ Motor %d: PDO cur=%dmA (multi-ctrl)\n", n1, ma1);
-
-    return errors > 0 ? -1 : 0;
-}
-
-/* ================================================================
- * SDO 速度控制 — 完整时序: 使能, 切PV模式, 设加减速, 写目标速度
- *   speed <id> <rpm> [acc] [dec]
- *   加减速范围 0~10000 RPM/s, 无上限速度
- * ================================================================ */
-
-int tool_speed_sdo(int id, int rpm, int acc, int dec)
-{
-    int ids[TOOL_MAX_MOTORS], n;
-    if (_parse_ids(id, ids, &n) < 0) return -1;
-    n = tool_filter_online(ids, n);
-    if (n == 0) return -1;
-
-    uint16_t accel = (uint16_t)acc;
-    uint16_t decel = (uint16_t)dec;
-
-    if (accel > 10000 || decel > 10000) {
-        fprintf(stderr, "ERROR: accel/decel %d/%d out of range (0~10000 RPM/s)\n", accel, decel);
-        return -1;
+    if (is_dual && n2 > 0) {
+        printf("✓ Motor %d+%d: PDO cur=%d,%dmA\n", n1, n2, ma1, ma2);
+    } else {
+        printf("✓ Motor %d: PDO cur=%dmA\n", n1, ma1);
     }
 
-    int errors = 0;
-    for (int i = 0; i < n; i++) {
-        uint8_t mid = (uint8_t)ids[i];
-        int ret;
-
-        /* 切 PV 模式 (使能在 daemon startup 阶段完成) */
-        ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_VEL);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(PV) failed\n", mid); errors++; continue; }
-
-        /* 加减速 0x6083/0x6084 (电机端 RPM/s) */
-        ret = motor_hal_set_accel_decel(g_hal, mid, accel, decel);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d set_accel_decel failed\n", mid); errors++; continue; }
-
-        /* 目标速度 0x60FF (4字节, 电机端 RPM) */
-        ret = motor_hal_sdo_write(g_hal, mid, 0x60FF, 0, (uint32_t)rpm, 4);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d write speed target failed\n", mid); errors++; continue; }
-
-        printf("✓ Motor %d: speed=%dRPM accel=%d decel=%d (PV mode)\n", mid, rpm, accel, decel);
-    }
-    return errors > 0 ? -1 : 0;
-}
-
-/* ================================================================
- * SDO 位置控制 — 完整时序: 使能, 切PP模式, 设加减速, 轨迹速度, 目标, 启动
- *   abs <id> <deg>
- *   加减速默认2000 RPM/s, 轨迹速度默认10 RPM, 目标范围 -180°~180°
- * ================================================================ */
-
-static uint16_t g_abs_accel = 2000;   /* RPM/s, 默认2000, 范围0~10000 */
-static uint16_t g_abs_speed = 10;     /* RPM 输出端, 默认10, 范围0~30 */
-
-int tool_abs_set_accel(int id, int acc)
-{
-    (void)id;
-    uint16_t a = (uint16_t)acc;
-    if (a > 10000) { fprintf(stderr, "ERROR: accel %d out of range (0~10000 RPM/s)\n", a); return -1; }
-    g_abs_accel = a;
-    printf("✓ Position mode accel set to %d RPM/s\n", a);
     return 0;
 }
 
-int tool_abs_set_speed(int id, int rpm)
-{
-    (void)id;
-    uint16_t s = (uint16_t)rpm;
-    if (s > 30) { fprintf(stderr, "ERROR: speed %d out of range (0~30 RPM, output side)\n", s); return -1; }
-    g_abs_speed = s;
-    printf("✓ Position mode profile velocity set to %d RPM\n", s);
-    return 0;
-}
+/* ================================================================
+ * SDO 位置控制 (PP) — 统一接口 (自动使能 + 切模式 + 设参数 + 写目标 + 启动)
+ *   默认参数: accel=500 RPM/s, decel=500 RPM/s, profile_vel=10 RPM (out)
+ * ================================================================ */
 
-int tool_abs_sdo(int id, float deg)
-{
-    int ids[TOOL_MAX_MOTORS], n;
-    if (_parse_ids(id, ids, &n) < 0) return -1;
-    n = tool_filter_online(ids, n);
-    if (n == 0) return -1;
+#define POS_DEFAULT_ACCEL     500
+#define POS_DEFAULT_PROF_VEL  10
 
+static int _sdo_pos_single(uint8_t mid, float deg)
+{
     int32_t counts = motor_deg_to_counts(deg);
+    int ret;
+    ret = _ensure_enabled_single(mid);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); return -1; }
+    ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_POS);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(PP) failed\n", mid); return -1; }
+    motor_hal_set_accel_decel(g_hal, mid, POS_DEFAULT_ACCEL, POS_DEFAULT_ACCEL);
+    motor_hal_set_profile_velocity(g_hal, mid, POS_DEFAULT_PROF_VEL);
+    ret = motor_hal_sdo_write(g_hal, mid, 0x607A, 0, (uint32_t)counts, 4);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d write pos target failed\n", mid); return -1; }
+    ret = motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x004F, 2);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d start motion failed\n", mid); return -1; }
+    return 0;
+}
 
-    if (counts < -32767 || counts > 32768) {
-        fprintf(stderr, "ERROR: position %d counts out of range (-32767~32768)\n", counts);
-        return -1;
-    }
-
+int tool_sdo_pos(int n1, int n2, float deg1, float deg2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int errors = 0;
-    for (int i = 0; i < n; i++) {
-        uint8_t mid = (uint8_t)ids[i];
-        int ret;
-
-        /* 切 PP 模式 (使能在 daemon startup 阶段完成) */
-        ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_POS);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(PP) failed\n", mid); errors++; continue; }
-
-        /* 加减速 0x6083/0x6084 (电机端 RPM/s) */
-        motor_hal_set_accel_decel(g_hal, mid, g_abs_accel, g_abs_accel);
-
-        /* 轨迹速度 0x6081 (输出端 RPM, 范围0~30) */
-        motor_hal_set_profile_velocity(g_hal, mid, g_abs_speed);
-
-        /* 目标位置 0x607A */
-        ret = motor_hal_sdo_write(g_hal, mid, 0x607A, 0, (uint32_t)counts, 4);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d write pos target failed\n", mid); errors++; continue; }
-
-        /* 启动绝对运动 CW=0x4F */
-        ret = motor_hal_sdo_write(g_hal, mid, 0x6040, 0, 0x004F, 2);
-        if (ret != 0) { fprintf(stderr, "✗ Motor %d start motion failed\n", mid); errors++; continue; }
-
-        printf("✓ Motor %d: abs %.2f° (counts=%d, accel=%d, vel=%d)\n",
-               mid, deg, counts, g_abs_accel, g_abs_speed);
+    int ret = _sdo_pos_single((uint8_t)n1, deg1);
+    if (ret == 0) {
+        printf("✓ Motor %d: SDO pos=%.2f° (PP, accel=%d, vel=%d)\n", n1, deg1, POS_DEFAULT_ACCEL, POS_DEFAULT_PROF_VEL);
+    } else errors++;
+    if (is_dual && n2 > 0) {
+        ret = _sdo_pos_single((uint8_t)n2, deg2);
+        if (ret == 0) {
+            printf("✓ Motor %d: SDO pos=%.2f° (PP)\n", n2, deg2);
+        } else errors++;
     }
     return errors > 0 ? -1 : 0;
 }
 
-int tool_abs_stop(int id)
-{
-    int ids[TOOL_MAX_MOTORS], n;
-    if (_parse_ids(id, ids, &n) < 0) return -1;
-    n = tool_filter_online(ids, n);
-    if (n == 0) return -1;
+/* ================================================================
+ * SDO 位置控制 (CSP) — 统一接口 (自动使能 + 切CSP模式 + 写目标)
+ * ================================================================ */
 
+static int _sdo_csp_single(uint8_t mid, float deg)
+{
+    int32_t counts = motor_deg_to_counts(deg);
+    int ret;
+    ret = _ensure_enabled_single(mid);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); return -1; }
+    ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_CSP);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(CSP) failed\n", mid); return -1; }
+    ret = motor_hal_sdo_write(g_hal, mid, 0x607A, 0, (uint32_t)counts, 4);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d write pos target failed\n", mid); return -1; }
+    return 0;
+}
+
+int tool_sdo_csp(int n1, int n2, float deg1, float deg2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
     int errors = 0;
-    for (int i = 0; i < n; i++) {
-        int ret = motor_hal_sdo_write(g_hal, (uint8_t)ids[i], 0x6040, 0, 0x000F, 2);
-        if (ret < 0) { fprintf(stderr, "✗ Motor %d stop motion failed\n", ids[i]); errors++; }
-        else printf("✓ Motor %d motion stopped\n", ids[i]);
+    int ret = _sdo_csp_single((uint8_t)n1, deg1);
+    if (ret == 0) {
+        printf("✓ Motor %d: SDO csp=%.2f°\n", n1, deg1);
+    } else errors++;
+    if (is_dual && n2 > 0) {
+        ret = _sdo_csp_single((uint8_t)n2, deg2);
+        if (ret == 0) {
+            printf("✓ Motor %d: SDO csp=%.2f°\n", n2, deg2);
+        } else errors++;
     }
     return errors > 0 ? -1 : 0;
+}
+
+/* ================================================================
+ * PDO 位置控制 (PP) — 统一接口 (多轴广播 COB 0x200, 不触发 SDO)
+ *   accel 固定默认值, 可通过 sdo_write 0x6083 单独修改
+ * ================================================================ */
+
+int tool_pdo_pos(int n1, int n2, float deg1, float deg2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+
+    multi_axis_cmd_t cmds[2];
+    memset(cmds, 0, sizeof(cmds));
+    cmds[0].node_id       = (uint8_t)n1;
+    cmds[0].mode          = MOTOR_MODE_PROFILE_POS;
+    cmds[0].enable        = true;
+    cmds[0].release_brake = true;
+    cmds[0].target1       = motor_deg_to_counts(deg1);
+    cmds[0].target2       = POS_DEFAULT_ACCEL;
+
+    uint8_t count = 1;
+    if (is_dual && n2 > 0) {
+        cmds[1].node_id       = (uint8_t)n2;
+        cmds[1].mode          = MOTOR_MODE_PROFILE_POS;
+        cmds[1].enable        = true;
+        cmds[1].release_brake = true;
+        cmds[1].target1       = motor_deg_to_counts(deg2);
+        cmds[1].target2       = POS_DEFAULT_ACCEL;
+        count = 2;
+    }
+
+    motor_hal_multi_ctrl(g_hal, cmds, count);
+    if (is_dual && n2 > 0) {
+        printf("✓ Motor %d+%d: PDO pos=%.2f,%.2f° (PP, accel=%d)\n", n1, n2, deg1, deg2, POS_DEFAULT_ACCEL);
+    } else {
+        printf("✓ Motor %d: PDO pos=%.2f° (PP, accel=%d)\n", n1, deg1, POS_DEFAULT_ACCEL);
+    }
+
+    return 0;
+}
+
+/* ================================================================
+ * PDO 位置控制 (CSP) — 统一接口 (多轴广播 COB 0x200, 不触发 SDO)
+ * ================================================================ */
+
+int tool_pdo_csp(int n1, int n2, float deg1, float deg2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+
+    multi_axis_cmd_t cmds[2];
+    memset(cmds, 0, sizeof(cmds));
+    cmds[0].node_id       = (uint8_t)n1;
+    cmds[0].mode          = MOTOR_MODE_CSP;
+    cmds[0].enable        = true;
+    cmds[0].release_brake = true;
+    cmds[0].target1       = motor_deg_to_counts(deg1);
+
+    uint8_t count = 1;
+    if (is_dual && n2 > 0) {
+        cmds[1].node_id       = (uint8_t)n2;
+        cmds[1].mode          = MOTOR_MODE_CSP;
+        cmds[1].enable        = true;
+        cmds[1].release_brake = true;
+        cmds[1].target1       = motor_deg_to_counts(deg2);
+        count = 2;
+    }
+
+    motor_hal_multi_ctrl(g_hal, cmds, count);
+
+    if (is_dual && n2 > 0) {
+        printf("✓ Motor %d+%d: PDO csp=%.2f,%.2f°\n", n1, n2, deg1, deg2);
+    } else {
+        printf("✓ Motor %d: PDO csp=%.2f°\n", n1, deg1);
+    }
+
+    return 0;
+}
+
+/* ================================================================
+ * SDO 速度控制 (PV) — 统一接口 (自动使能 + 切PV模式 + 设加减速 + 写目标速度)
+ * ================================================================ */
+
+static int _sdo_vel_single(uint8_t mid, int rpm)
+{
+    int ret;
+    ret = _ensure_enabled_single(mid);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); return -1; }
+    ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_PROFILE_VEL);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(PV) failed\n", mid); return -1; }
+    motor_hal_set_accel_decel(g_hal, mid, POS_DEFAULT_ACCEL, POS_DEFAULT_ACCEL);
+    ret = motor_hal_sdo_write(g_hal, mid, 0x60FF, 0, (uint32_t)(int32_t)rpm, 4);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d write vel target failed\n", mid); return -1; }
+    return 0;
+}
+
+int tool_sdo_vel(int n1, int n2, int rpm1, int rpm2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int errors = 0;
+    int ret = _sdo_vel_single((uint8_t)n1, rpm1);
+    if (ret == 0) { printf("✓ Motor %d: SDO vel=%dRPM (PV)\n", n1, rpm1); }
+    else errors++;
+    if (is_dual && n2 > 0) {
+        ret = _sdo_vel_single((uint8_t)n2, rpm2);
+        if (ret == 0) { printf("✓ Motor %d: SDO vel=%dRPM (PV)\n", n2, rpm2); }
+        else errors++;
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+/* ================================================================
+ * SDO 速度控制 (CSV) — 统一接口 (自动使能 + 切CSV模式 + 写目标速度)
+ * ================================================================ */
+
+static int _sdo_csv_single(uint8_t mid, int rpm)
+{
+    int ret;
+    ret = _ensure_enabled_single(mid);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d enable failed\n", mid); return -1; }
+    ret = motor_hal_set_mode(g_hal, mid, MOTOR_MODE_CSV);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d set_mode(CSV) failed\n", mid); return -1; }
+    ret = motor_hal_sdo_write(g_hal, mid, 0x60FF, 0, (uint32_t)(int32_t)rpm, 4);
+    if (ret != 0) { fprintf(stderr, "✗ Motor %d write vel target failed\n", mid); return -1; }
+    return 0;
+}
+
+int tool_sdo_csv(int n1, int n2, int rpm1, int rpm2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+    int errors = 0;
+    int ret = _sdo_csv_single((uint8_t)n1, rpm1);
+    if (ret == 0) { printf("✓ Motor %d: SDO csv=%dRPM\n", n1, rpm1); }
+    else errors++;
+    if (is_dual && n2 > 0) {
+        ret = _sdo_csv_single((uint8_t)n2, rpm2);
+        if (ret == 0) { printf("✓ Motor %d: SDO csv=%dRPM\n", n2, rpm2); }
+        else errors++;
+    }
+    return errors > 0 ? -1 : 0;
+}
+
+/* ================================================================
+ * PDO 速度控制 (PV) — 统一接口 (多轴广播 COB 0x200, 不触发 SDO)
+ *   target1=rpm, target2=accel (RPM/s)
+ * ================================================================ */
+
+int tool_pdo_vel(int n1, int n2, int rpm1, int rpm2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+
+    multi_axis_cmd_t cmds[2];
+    memset(cmds, 0, sizeof(cmds));
+    cmds[0].node_id       = (uint8_t)n1;
+    cmds[0].mode          = MOTOR_MODE_PROFILE_VEL;
+    cmds[0].enable        = true;
+    cmds[0].release_brake = true;
+    cmds[0].target1       = (int16_t)rpm1;
+    cmds[0].target2       = POS_DEFAULT_ACCEL;
+
+    uint8_t count = 1;
+    if (is_dual && n2 > 0) {
+        cmds[1].node_id       = (uint8_t)n2;
+        cmds[1].mode          = MOTOR_MODE_PROFILE_VEL;
+        cmds[1].enable        = true;
+        cmds[1].release_brake = true;
+        cmds[1].target1       = (int16_t)rpm2;
+        cmds[1].target2       = POS_DEFAULT_ACCEL;
+        count = 2;
+    }
+
+    motor_hal_multi_ctrl(g_hal, cmds, count);
+
+    if (is_dual && n2 > 0) {
+        printf("✓ Motor %d+%d: PDO vel=%d,%dRPM (PV)\n", n1, n2, rpm1, rpm2);
+    } else {
+        printf("✓ Motor %d: PDO vel=%dRPM (PV)\n", n1, rpm1);
+    }
+
+    return 0;
+}
+
+/* ================================================================
+ * PDO 速度控制 (CSV) — 统一接口 (多轴广播 COB 0x200, 不触发 SDO)
+ * ================================================================ */
+
+int tool_pdo_csv(int n1, int n2, int rpm1, int rpm2, int is_dual)
+{
+    if (!g_hal) { fprintf(stderr, "ERROR: daemon not initialized\n"); return -1; }
+
+    multi_axis_cmd_t cmds[2];
+    memset(cmds, 0, sizeof(cmds));
+    cmds[0].node_id       = (uint8_t)n1;
+    cmds[0].mode          = MOTOR_MODE_CSV;
+    cmds[0].enable        = true;
+    cmds[0].release_brake = true;
+    cmds[0].target1       = (int16_t)rpm1;
+
+    uint8_t count = 1;
+    if (is_dual && n2 > 0) {
+        cmds[1].node_id       = (uint8_t)n2;
+        cmds[1].mode          = MOTOR_MODE_CSV;
+        cmds[1].enable        = true;
+        cmds[1].release_brake = true;
+        cmds[1].target1       = (int16_t)rpm2;
+        count = 2;
+    }
+
+    motor_hal_multi_ctrl(g_hal, cmds, count);
+
+    if (is_dual && n2 > 0) {
+        printf("✓ Motor %d+%d: PDO csv=%d,%dRPM\n", n1, n2, rpm1, rpm2);
+    } else {
+        printf("✓ Motor %d: PDO csv=%dRPM\n", n1, rpm1);
+    }
+
+    return 0;
 }
 
 /* ================================================================

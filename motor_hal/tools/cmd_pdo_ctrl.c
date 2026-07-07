@@ -6,17 +6,17 @@
  * 不需要映射, 直接发帧。
  *
  * 用法:
- *   motor_tool pdo <id> pos <deg> [acc]            # 单轴位置
- *   motor_tool pdo <id> vel <rpm> [acc]            # 单轴速度
- *   motor_tool pdo <id> cur <mA>                       # 单轴电流
- *   motor_tool pdo <id> csp <cnt>                      # 单轴 CSP
+ *   motor_tool pdo cur <N> <mA>                   单轴电流
+ *   motor_tool pdo cur <N1> <N2> <mA>             双轴电流(同值)
+ *   motor_tool pdo cur <N1> <N2> <mA1> <mA2>      双轴电流(异值)
+ *   motor_tool pdo pos/csp/vel/csv 同理
  *
- *   motor_tool multi pos 1:45 2:-45                 # 多轴位置
- *   motor_tool multi vel 1:50 2:-30                 # 多轴速度
- *   motor_tool multi cur 1:1000 2:500                  # 多轴电流 (mA)
- *   motor_tool multi csp 1:16384 2:-16384             # 多轴 CSP
+ *   motor_tool multi pos 1:45 2:-45              多轴位置
+ *   motor_tool multi vel 1:50 2:-30               多轴速度
+ *   motor_tool multi cur 1:1000 2:500              多轴电流 (mA)
+ *   motor_tool multi csp 1:16384 2:-16384         多轴 CSP
  *
- *   motor_tool mit 1 <pos> <vel> <kp> <kd> <torque>   # MIT 阻抗控制
+ *   motor_tool mit 1 <pos> <vel> <kp> <kd> <torque>   MIT 阻抗控制
  */
 
 #include "command_registry.h"
@@ -58,6 +58,15 @@ int cmd_do_pdo(motor_hal_t *hal, int cmd_id, int argc, char **argv)
     if (argc < 5) {
         fprintf(stderr, "Usage: motor_tool pdo cur <N> <mA>\n");
         fprintf(stderr, "       motor_tool pdo cur <N1> <N2> <mA>\n");
+        fprintf(stderr, "       motor_tool pdo cur <N1> <N2> <mA1> <mA2>\n");
+        fprintf(stderr, "       motor_tool pdo vel <N> <rpm>\n");
+        fprintf(stderr, "       motor_tool pdo vel <N1> <N2> <rpm>\n");
+        fprintf(stderr, "       motor_tool pdo vel <N1> <N2> <rpm1> <rpm2>\n");
+        fprintf(stderr, "       motor_tool pdo pos <N> <deg>\n");
+        fprintf(stderr, "       motor_tool pdo pos <N1> <N2> <deg>\n");
+        fprintf(stderr, "       motor_tool pdo pos <N1> <N2> <deg1> <deg2>\n");
+        fprintf(stderr, "       motor_tool pdo csp <N> <deg>  (同理)\n");
+        fprintf(stderr, "       motor_tool pdo csv ...  (同理)\n");
         return -1;
     }
 
@@ -65,27 +74,92 @@ int cmd_do_pdo(motor_hal_t *hal, int cmd_id, int argc, char **argv)
 
     if (strcmp(mode_str, "cur") == 0) {
         int n1, n2, ma1, ma2, is_dual;
-
         if (argc == 5) {
-            /* pdo cur <N> <mA> */
-            n1 = atoi(argv[3]);
-            ma1 = atoi(argv[4]);
+            n1 = atoi(argv[3]); ma1 = atoi(argv[4]);
             n2 = 0; ma2 = 0; is_dual = 0;
         } else if (argc == 6) {
-            /* pdo cur <N1> <N2> <mA> */
-            n1 = atoi(argv[3]);
-            n2 = atoi(argv[4]);
-            ma1 = ma2 = atoi(argv[5]);
-            is_dual = 1;
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            ma1 = ma2 = atoi(argv[5]); is_dual = 1;
+        } else if (argc == 7) {
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            ma1 = atoi(argv[5]); ma2 = atoi(argv[6]); is_dual = 1;
         } else {
-            fprintf(stderr, "ERROR: too many args\n");
-            return -1;
+            fprintf(stderr, "ERROR: too many args\n"); return -1;
         }
-
         return tool_pdo_cur(n1, n2, ma1, ma2, is_dual);
     }
 
-    fprintf(stderr, "Unsupported mode: %s (use: cur)\n", mode_str);
+    if (strcmp(mode_str, "pos") == 0) {
+        int n1, n2, is_dual;
+        float deg1, deg2;
+        if (argc == 5) {
+            n1 = atoi(argv[3]); deg1 = (float)atof(argv[4]);
+            n2 = 0; deg2 = 0; is_dual = 0;
+        } else if (argc == 6) {
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            deg1 = deg2 = (float)atof(argv[5]); is_dual = 1;
+        } else if (argc == 7) {
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            deg1 = (float)atof(argv[5]); deg2 = (float)atof(argv[6]); is_dual = 1;
+        } else {
+            fprintf(stderr, "ERROR: too many args\n"); return -1;
+        }
+        return tool_pdo_pos(n1, n2, deg1, deg2, is_dual);
+    }
+
+    if (strcmp(mode_str, "csp") == 0) {
+        int n1, n2, is_dual;
+        float deg1, deg2;
+        if (argc == 5) {
+            n1 = atoi(argv[3]); deg1 = (float)atof(argv[4]);
+            n2 = 0; deg2 = 0; is_dual = 0;
+        } else if (argc == 6) {
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            deg1 = deg2 = (float)atof(argv[5]); is_dual = 1;
+        } else if (argc == 7) {
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            deg1 = (float)atof(argv[5]); deg2 = (float)atof(argv[6]); is_dual = 1;
+        } else {
+            fprintf(stderr, "ERROR: too many args\n"); return -1;
+        }
+        return tool_pdo_csp(n1, n2, deg1, deg2, is_dual);
+    }
+
+    if (strcmp(mode_str, "vel") == 0) {
+        int n1, n2, rpm1, rpm2, is_dual;
+        if (argc == 5) {
+            n1 = atoi(argv[3]); rpm1 = atoi(argv[4]);
+            n2 = 0; rpm2 = 0; is_dual = 0;
+        } else if (argc == 6) {
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            rpm1 = rpm2 = atoi(argv[5]); is_dual = 1;
+        } else if (argc == 7) {
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            rpm1 = atoi(argv[5]); rpm2 = atoi(argv[6]); is_dual = 1;
+        } else {
+            fprintf(stderr, "ERROR: too many args\n"); return -1;
+        }
+        return tool_pdo_vel(n1, n2, rpm1, rpm2, is_dual);
+    }
+
+    if (strcmp(mode_str, "csv") == 0) {
+        int n1, n2, rpm1, rpm2, is_dual;
+        if (argc == 5) {
+            n1 = atoi(argv[3]); rpm1 = atoi(argv[4]);
+            n2 = 0; rpm2 = 0; is_dual = 0;
+        } else if (argc == 6) {
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            rpm1 = rpm2 = atoi(argv[5]); is_dual = 1;
+        } else if (argc == 7) {
+            n1 = atoi(argv[3]); n2 = atoi(argv[4]);
+            rpm1 = atoi(argv[5]); rpm2 = atoi(argv[6]); is_dual = 1;
+        } else {
+            fprintf(stderr, "ERROR: too many args\n"); return -1;
+        }
+        return tool_pdo_csv(n1, n2, rpm1, rpm2, is_dual);
+    }
+
+    fprintf(stderr, "Unsupported mode: %s (use: cur / pos / csp / vel / csv)\n", mode_str);
     return -1;
 }
 

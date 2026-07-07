@@ -50,10 +50,16 @@ static void print_help(void)
     printf("  sensor stop <id>      停止透传\n\n");
 
     printf("── 控制命令 (自动使能) ────────────────────\n");
-    printf("  sdo cur <N> <mA>              SDO电流控制(单电机)\n");
-    printf("  sdo cur <N1> <N2> <mA>        SDO电流控制(双电机同值)\n");
-    printf("  pdo cur <N> <mA>              PDO电流控制(单电机,多轴广播)\n");
-    printf("  pdo cur <N1> <N2> <mA>        PDO电流控制(双电机同值)\n\n");
+    printf("  sdo cur <N> <mA>              SDO 电流控制\n");
+    printf("  sdo cur <N1> <N2> <mA>        双电机电流(同值)\n");
+    printf("  sdo cur <N1> <N2> <mA1> <mA2> 双电机电流(异值)\n");
+    printf("  sdo pos <N> <deg>             SDO 位置控制 (PP)\n");
+    printf("  sdo csp <N> <deg>             SDO 位置控制 (CSP)\n");
+    printf("  sdo vel <N> <rpm>             SDO 速度控制 (PV)\n");
+    printf("  sdo csv <N> <rpm>             SDO 速度控制 (CSV)\n");
+    printf("  双电机: sdo pos <N1> <N2> <deg>      同角度\n");
+    printf("  双电机: sdo pos <N1> <N2> <deg1> <deg2> 不同角度\n");
+    printf("  pdo cur|pos|csp|vel|csv        参数同 SDO (多轴广播, 不发 SDO)\n\n");
 
     printf("── 配置命令 ──────────────────────────────────────\n");
     printf("  limit_pos <id> <deg>       正限位 (失能, 写, Flash)\n");
@@ -63,12 +69,7 @@ static void print_help(void)
 
     printf("── 调试命令 ──────────────────────────────────────\n");
     printf("  sdoread <id> <0xIndex> [subidx]   通用 SDO 读\n");
-    printf("  sdowrite <id> <0xIndex> <sub> <val> <size>  通用 SDO 写\n");
-    printf("  tpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...   TPDO 映射\n");
-    printf("  rpdo_map <id> <cob> <ttype> <idx> <sub> <bits> ...   RPDO 映射\n");
-    printf("  tpdo <id> <sync> <item> ...                TPDO 快捷映射\n");
-    printf("  rpdo <id> <ttype> <item> ...               RPDO 快捷映射\n");
-    printf("  rpdo_send <id> <hex_bytes...>             RPDO 发送\n\n");
+    printf("  sdowrite <id> <0xIndex> <sub> <val> <size>  通用 SDO 写\n\n");
 
     printf("── 读取命令 ──────────────────────────────────────\n");
     printf("  read angle <id>      角度\n");
@@ -80,9 +81,7 @@ static void print_help(void)
     printf("  read version <id>    固件版本\n");
     printf("  read mode <id>       运行模式\n");
     printf("  read pid <id>        PID参数\n");
-    printf("  read all <id>        全部信息\n");
-    printf("  read_limit_pos <id>  读正限位\n");
-    printf("  read_limit_neg <id>  读负限位\n\n");
+    printf("  read all <id>        全部信息\n\n");
 
     printf("── 持续监控 ─────────────────────────────────────\n");
     printf("  watch <period_ms>    持续轮询反馈 (Ctrl+C 退出)\n");
@@ -91,9 +90,10 @@ static void print_help(void)
     printf("── 框架工作流 ────────────────────────────────────\n");
     printf("  ① motor_tool daemon can0 &        # 启动守护进程 (auto-startup + 零位校准)\n");
     printf("  ② motor_tool sdo cur 1 500        # SDO 电流控制电机1 (自动使能)\n");
-    printf("  ③ motor_tool pdo cur 1 500        # PDO 电流控制电机1 (自动使能,多轴广播)\n");
-    printf("  ④ motor_tool sdo cur 1 2 500      # 双电机 SDO 电流控制\n");
-    printf("  ⑤ motor_tool disable 1            # 脱使能电机1\n");
+    printf("  ③ motor_tool sdo pos 1 45         # SDO 位置控制 (PP, 转到45°)\n");
+    printf("  ④ motor_tool pdo cur 1 2 500      # 双电机 PDO 电流控制\n");
+    printf("  ⑤ motor_tool pdo vel 1 2 30       # 双电机 PDO 速度控制 (PV)\n");
+    printf("  ⑥ motor_tool disable 1            # 脱使能电机1\n");
     printf("     motor_tool stop                 # 停止 daemon\n\n");
 }
 
