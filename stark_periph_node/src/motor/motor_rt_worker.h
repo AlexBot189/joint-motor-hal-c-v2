@@ -2,13 +2,15 @@
  * stark_rt_worker.h — RT 工作线程
  * Copyright (c) 2026 zhiqiang.yang
  *
- * 三合一: 控制下发 + 反馈上报 + 安全监控
+ * 二合一: 控制下发 + 反馈上报
  * 周期 1KHz, SCHED_FIFO prio=90
  *
  * 单周期流程:
  *   ① ProcessMailbox()   ,  读 SHM mailbox ,  PDO multi_ctrl
  *   ② PublishFeedback()  ,  fb_cache + IMU ,  SHM double buffer
- *   ③ SafetyCheck()      , 心跳超时脱使能
+ *
+ * 注: 已移除算法心跳握手/安全脱使能逻辑 (SafetyCheck), 电机使能状态
+ *     完全由控制命令 (mailbox/mgmt) 驱动, 不再因算法静默自动脱使能.
  */
 #pragma once
 
@@ -65,9 +67,6 @@ public:
     /** @brief 获取 RT 线程请求的状态切换 (主循环读取后清零, atomic exchange) */
     stark_state_t GetPendingState();
 
-    /** @brief 算法握手是否已完成 (用于 ENABLED, RUNNING 自动推进) */
-    bool IsHandshakeDone() const { return m_handshake_done.load(std::memory_order_acquire); }
-
     /** @brief 获取延迟追踪器 (外部填充 SHM stats) */
     StarkLatencyTracer* GetTracer() { return &m_tracer; }
 
@@ -81,12 +80,8 @@ public:
     void ProcessMgmt();
     void ProcessMailbox();
     void PublishFeedback();
-    void SafetyCheck();
 
     void SetThreadRt();
-
-    /* 双电机 torque=0 (PDO, RT安全) */
-    void _safe_disable_all();
 
     motor_hal_t*    m_hal;
     stark_shm_t*      m_shm;
@@ -103,10 +98,6 @@ public:
     uint64_t m_can_last_frame_us;
     uint64_t m_latency_history[64];     /* 最近64次闭环延迟 (T8-T0) */
     uint32_t m_latency_idx;
-
-    /* 心跳检测 */
-    uint32_t m_last_heartbeat;
-    uint64_t m_heartbeat_lost_us;
 
     /* 周期控制 */
     int      m_report_divider;
@@ -132,8 +123,10 @@ public:
 
     /* 去重标志 */
     bool     m_fault_triggered = false;
-    std::atomic<bool> m_handshake_done{false};   /* 首次算法握手, 解耦 SHM 残留 seq */
-    std::atomic<bool> m_active{false};           /* 校准完成后激活, 控制 ProcessMailbox/SafetyCheck */
+    std::atomic<bool> m_active{false};           /* 校准完成后激活, 控制 ProcessMailbox */
+
+    /* PDO 模式追踪: 检测模式切换, 首帧双发 */
+    motor_mode_t m_last_pdo_mode[STARK_MAX_MOTORS];
 
     /* 延迟追踪 (STARK_LATENCY_TRACE=0 时零开销) */
     StarkLatencyTracer m_tracer;

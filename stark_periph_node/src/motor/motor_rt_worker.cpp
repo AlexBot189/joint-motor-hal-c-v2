@@ -52,6 +52,8 @@ StarkRtWorker::StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
     memset(m_pos_stall_us, 0, sizeof(m_pos_stall_us));
     memset(m_sensor_notified, 0, sizeof(m_sensor_notified));
     memset(m_latency_history, 0, sizeof(m_latency_history));
+    /* 初始: 无效模式 (0xFF), 确保首帧触发 _pdo_send_with_switch 双发, 防首帧丢失 */
+    for (int i = 0; i < STARK_MAX_MOTORS; i++) m_last_pdo_mode[i] = (motor_mode_t)0xFF;
     m_imu_notified = false;
 }
 
@@ -115,7 +117,6 @@ void StarkRtWorker::Run()
         ProcessMgmt();
         ProcessMailbox();
         PublishFeedback();
-        SafetyCheck();
 
         /* ⑤ 提交延迟样本 */
         m_tracer.commit_sample();
@@ -219,10 +220,19 @@ void StarkRtWorker::ProcessMgmt()
  */
 
 /*
- * 下发调试打印: 环境变量 STARK_TX_DEBUG=1 开启, 输出到 stderr.
- * 默认关, 不影响正式运行. 库日志走 stdout, 调试可用
- * `STARK_TX_DEBUG=1 ./stark_periph_manager_node 1>/dev/null` 屏蔽库噪音.
+ * 辅助: PDO multi_ctrl 发送, 模式切换时双帧防首帧丢失
  */
+static inline void _pdo_send_with_switch(motor_hal_t* hal, multi_axis_cmd_t* cmd,
+                                          motor_mode_t* last_mode, motor_mode_t new_mode)
+{
+    bool mode_changed = (*last_mode != new_mode);
+    *last_mode = new_mode;
+    motor_hal_multi_ctrl(hal, cmd, 1);
+    if (mode_changed) {
+        usleep(2000);
+        motor_hal_multi_ctrl(hal, cmd, 1);
+    }
+}
 static int _stark_tx_dbg(void)
 {
     static int e = -1;
@@ -250,6 +260,9 @@ static const char* _stark_cmd_name(uint8_t cmd)
     case STARK_CMD_RECOVER:     return "RECOVER";
     case STARK_CMD_SET_MODE:    return "SET_MODE";
     case STARK_CMD_CLEAR_FAULT: return "CLEAR_FAULT";
+    case STARK_CMD_SDO_CUR:    return "SDO_CUR";
+    case STARK_CMD_SDO_POS:    return "SDO_POS";
+    case STARK_CMD_SDO_VEL:    return "SDO_VEL";
     default:                    return "?";
     }
 }
@@ -277,11 +290,6 @@ void StarkRtWorker::ProcessMailbox()
     uint64_t w = __atomic_load_n(&m_shm->mailbox.seq_write, __ATOMIC_ACQUIRE);
 
     if (r >= w) return;  /* 无新数据 */
-
-    /* 首次收到算法命令: 握手 */
-    if (!m_handshake_done.load(std::memory_order_acquire) && w > 0) {
-        m_handshake_done.store(true, std::memory_order_release);
-    }
 
     /* 消费所有待处理帧 */
     uint64_t count = w - r;
@@ -363,21 +371,79 @@ void StarkRtWorker::ProcessMailbox()
 
                 switch (c.cmd) {
                 case STARK_CMD_TORQUE:
-                    motor_hal_set_torque(m_hal, mid, (int16_t)c.value); break;
+                    {
+                        int32_t ma = c.value;
+                        uint8_t si = mid - 1;
+                        multi_axis_cmd_t mcmd = {};
+                        mcmd.node_id       = mid;
+                        mcmd.mode          = MOTOR_MODE_CURRENT;
+                        mcmd.enable        = true;
+                        mcmd.release_brake = true;
+                        mcmd.target1       = (int16_t)ma;
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_CURRENT);
+                    }
+                    break;
                 case STARK_CMD_SPEED:
-                    motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f); break;
                 case STARK_CMD_CSV:
-                    motor_hal_set_velocity(m_hal, mid, (float)c.value / 100.0f); break;
+                    {
+                        int32_t rpm = c.value / 100;
+                        uint8_t si = mid - 1;
+                        multi_axis_cmd_t mcmd = {};
+                        mcmd.node_id       = mid;
+                        mcmd.mode          = MOTOR_MODE_CSV;
+                        mcmd.enable        = true;
+                        mcmd.release_brake = true;
+                        mcmd.target1       = (int16_t)rpm;
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_CSV);
+                    }
+                    break;
                 case STARK_CMD_PV:
-                    motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_PROFILE_VEL,
-                                       (int16_t)(c.value / 100),
-                                       (uint16_t)(c.value2 / 100), 0); break;
+                    {
+                        int32_t rpm = c.value / 100;
+                        uint16_t accel = (c.value2 > 0) ? (uint16_t)(c.value2 / 100) : (uint16_t)500;
+                        uint8_t si = mid - 1;
+                        multi_axis_cmd_t mcmd = {};
+                        mcmd.node_id       = mid;
+                        mcmd.mode          = MOTOR_MODE_PROFILE_VEL;
+                        mcmd.enable        = true;
+                        mcmd.release_brake = true;
+                        mcmd.target1       = (int16_t)rpm;
+                        mcmd.target2       = accel;
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_PROFILE_VEL);
+                    }
+                    break;
                 case STARK_CMD_POS:
-                    motor_hal_set_position(m_hal, mid, (float)c.value / 100.0f); break;
+                    {
+                        float deg = (float)c.value / 100.0f;
+                        int32_t cnt = motor_deg_to_counts(deg);
+                        uint8_t si = mid - 1;
+                        multi_axis_cmd_t mcmd = {};
+                        mcmd.node_id       = mid;
+                        mcmd.mode          = MOTOR_MODE_CSP;
+                        mcmd.enable        = true;
+                        mcmd.release_brake = true;
+                        mcmd.target1       = (int16_t)cnt;
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_CSP);
+                    }
+                    break;
                 case STARK_CMD_PP:
-                    motor_hal_ctrl_raw(m_hal, mid, MOTOR_MODE_PROFILE_POS,
-                                       (int16_t)c.value, (uint16_t)c.value2,
-                                       (int16_t)c.feedforward); break;
+                    {
+                        float deg = (float)c.value / 100.0f;
+                        int32_t cnt = motor_deg_to_counts(deg);
+                        uint16_t accel = (c.value2 > 0) ? (uint16_t)(c.value2 / 100) : (uint16_t)500;
+                        int16_t vel = (int16_t)(c.feedforward / 100);
+                        uint8_t si = mid - 1;
+                        multi_axis_cmd_t mcmd = {};
+                        mcmd.node_id       = mid;
+                        mcmd.mode          = MOTOR_MODE_PROFILE_POS;
+                        mcmd.enable        = true;
+                        mcmd.release_brake = true;
+                        mcmd.target1       = (int16_t)cnt;
+                        mcmd.target2       = accel;
+                        mcmd.feedforward   = vel;
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_PROFILE_POS);
+                    }
+                    break;
                 case STARK_CMD_MIT:
                     motor_hal_mit_control(m_hal, mid,
                         (float)c.mit_pos * (360.0f / 65535.0f) - 180.0f,
@@ -385,6 +451,23 @@ void StarkRtWorker::ProcessMailbox()
                         (float)c.mit_kp / 100.0f,
                         (float)c.mit_kd / 100.0f,
                         (float)((int16_t)(c.mit_torque << 4)) / 16.0f); break;
+                /* SDO 命令: 转发到 sdo_cmds, 主循环处理 */
+                case STARK_CMD_SDO_CUR:
+                case STARK_CMD_SDO_POS:
+                case STARK_CMD_SDO_VEL:
+                    {
+                        int si = (int)(mid - 1);
+                        if (si >= 0 && si < STARK_MAX_MOTORS) {
+                            m_shm->sdo_cmds[si].motor_id    = mid;
+                            m_shm->sdo_cmds[si].cmd         = c.cmd;
+                            m_shm->sdo_cmds[si].value       = c.value;
+                            m_shm->sdo_cmds[si].value2      = c.value2;
+                            m_shm->sdo_cmds[si].feedforward = c.feedforward;
+                            __atomic_thread_fence(__ATOMIC_RELEASE);
+                            __atomic_add_fetch(&m_shm->sdo_seq[si], 1, __ATOMIC_RELEASE);
+                        }
+                    }
+                    break;
                 default: break;
                 }
             }
@@ -635,60 +718,12 @@ void StarkRtWorker::PublishFeedback()
 }
 
 /*
- * SafetyCheck() — 安全监控
- *
- * 检查项:
- *   1. 算法心跳超时 → PDO disable 双电机 (不发 FAULT)
- *   2. (TODO) 编码器停滞
- *   3. (TODO) 过温检测
- *   4. (TODO) CAN 断线
+ * 安全监控 (SafetyCheck) 与算法心跳握手/超时脱使能逻辑已移除.
+ * 电机使能状态完全由控制命令 (mailbox 控制帧 / mgmt 通道) 驱动,
+ * 不再因算法侧静默 (无心跳) 而自动脱使能.
+ * 如需重新引入过温/编码器停滞/CAN断线等硬件级保护, 应基于反馈帧
+ * 独立实现, 不要复用算法心跳机制.
  */
-
-void StarkRtWorker::SafetyCheck()
-{
-    if (!m_active.load(std::memory_order_acquire)) return;
-    if (!m_shm) return;
-
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    uint64_t now_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-
-    /* 算法心跳检测 (替代 seq 超时) */
-    uint32_t heartbeat = __atomic_load_n(&m_shm->algo_heartbeat, __ATOMIC_ACQUIRE);
-    uint32_t timeout   = m_shm->algo_heartbeat_timeout_ms;
-    if (timeout == 0) timeout = m_safety.heartbeat_timeout_ms;
-    if (timeout == 0) return;   /* heartbeat_timeout_ms=0 => 禁用心跳超时脱使能 (调试用) */
-
-    if (heartbeat != m_last_heartbeat) {
-        m_last_heartbeat   = heartbeat;
-        m_heartbeat_lost_us = 0;
-    } else if (m_handshake_done.load(std::memory_order_acquire)) {
-        if (m_heartbeat_lost_us == 0) {
-            m_heartbeat_lost_us = now_us;
-        }
-        uint64_t lost_ms = (now_us - m_heartbeat_lost_us) / 1000ULL;
-        if (lost_ms > timeout) {
-            _safe_disable_all();
-        }
-    }
-}
-
-/* _safe_disable_all — PDO 路径 enable=false + torque=0 */
-
-void StarkRtWorker::_safe_disable_all()
-{
-    if (!m_hal) return;
-
-    multi_axis_cmd_t cmds[STARK_MAX_MOTORS] = {};
-    for (int i = 0; i < m_motor_count; i++) {
-        cmds[i].node_id       = (uint8_t)(i + 1);
-        cmds[i].mode          = MOTOR_MODE_CURRENT;
-        cmds[i].enable        = false;
-        cmds[i].release_brake = false;
-        cmds[i].target1       = 0;
-    }
-    motor_hal_multi_ctrl(m_hal, cmds, (uint8_t)m_motor_count);
-}
 
 /* SetThreadRt() — RT 线程属性 */
 
