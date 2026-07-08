@@ -15,7 +15,7 @@ namespace stark_periph_manager_node {
 
 StarkMotorCtrl::StarkMotorCtrl(motor_hal_t* hal)
     : m_hal(hal)
-    , m_abs_accel(2000)
+    , m_abs_accel(500)
     , m_abs_speed(10)
 {
     memset(m_mode_cache, 0xFF, sizeof(m_mode_cache));
@@ -39,6 +39,24 @@ int StarkMotorCtrl::_set_mode_cached(uint8_t id, motor_mode_t mode)
         m_mode_cache[id] = target;
     }
     return ret;
+}
+
+/*
+ * 内部: Halt 当前运动 — 写 CW 0x010F + 轮询 statusword bit10
+ */
+
+void StarkMotorCtrl::_halt_motion(uint8_t id)
+{
+    motor_state_t st = motor_hal_get_state(m_hal, id);
+    if (st != MOTOR_STATE_OP_ENABLED) return;
+
+    motor_hal_sdo_write(m_hal, id, 0x6040, 0, 0x010F, 2);
+
+    for (int i = 0; i < 25; i++) {
+        usleep(20000);
+        uint16_t sw = motor_hal_get_statusword(m_hal, id);
+        if (sw & 0x0400) return;
+    }
 }
 
 /* 系统命令 */
@@ -128,6 +146,18 @@ int StarkMotorCtrl::Torque(uint8_t id, int32_t ma)
 
     int ret;
 
+    /* 使能 (幂等: 检查状态, 避免每次调用重新走 shutdown→switchOn→enableOp) */
+    motor_state_t st = motor_hal_get_state(m_hal, id);
+    if (st != MOTOR_STATE_OP_ENABLED) {
+        ret = motor_hal_enable(m_hal, id);
+        if (ret != 0) {
+            ECO_ERROR_NEW("[StarkMotorCtrl] motor {} enable failed: {}", id, ret);
+            return ret;
+        }
+        /* enable 后重置模式缓存 (状态机重新走了) */
+        memset(m_mode_cache, 0xFF, sizeof(m_mode_cache));
+    }
+
     /* 切电流模式 */
     ret = _set_mode_cached(id, MOTOR_MODE_CURRENT);
     if (ret != 0) {
@@ -159,6 +189,20 @@ int StarkMotorCtrl::Speed(uint8_t id, int32_t rpm,
 
     int ret;
 
+    /* 使能 (幂等) */
+    motor_state_t st = motor_hal_get_state(m_hal, id);
+    if (st != MOTOR_STATE_OP_ENABLED) {
+        ret = motor_hal_enable(m_hal, id);
+        if (ret != 0) {
+            ECO_ERROR_NEW("[StarkMotorCtrl] motor {} enable failed: {}", id, ret);
+            return ret;
+        }
+        memset(m_mode_cache, 0xFF, sizeof(m_mode_cache));
+    }
+
+    /* Halt 当前运动 */
+    _halt_motion(id);
+
     /* 切 PV 模式 */
     ret = _set_mode_cached(id, MOTOR_MODE_PROFILE_VEL);
     if (ret != 0) {
@@ -173,6 +217,9 @@ int StarkMotorCtrl::Speed(uint8_t id, int32_t rpm,
         return ret;
     }
 
+    /* Profile velocity 0x6081 */
+    motor_hal_set_profile_velocity(m_hal, id, m_abs_speed);
+
     /* 目标速度 0x60FF (4 字节) */
     ret = motor_hal_sdo_write(m_hal, id, 0x60FF, 0, (uint32_t)rpm, 4);
     if (ret != 0) {
@@ -182,6 +229,38 @@ int StarkMotorCtrl::Speed(uint8_t id, int32_t rpm,
 
     ECO_INFO_NEW("[StarkMotorCtrl] motor {}: speed={}RPM accel={} decel={} (PV mode)",
                  id, rpm, accel, decel);
+    return 0;
+}
+
+int StarkMotorCtrl::SpeedEx(uint8_t id, int32_t rpm, int32_t accel, int32_t decel)
+{
+    uint16_t a = (accel > 0) ? (uint16_t)accel : m_abs_accel;
+    uint16_t d = (decel > 0) ? (uint16_t)decel : m_abs_accel;
+
+    if (a > 10000 || d > 10000) {
+        ECO_ERROR_NEW("[StarkMotorCtrl] accel/decel out of range: {}/{}", a, d);
+        return -EINVAL;
+    }
+
+    motor_state_t st = motor_hal_get_state(m_hal, id);
+    if (st != MOTOR_STATE_OP_ENABLED) {
+        int ret = motor_hal_enable(m_hal, id);
+        if (ret != 0) { ECO_ERROR_NEW("[StarkMotorCtrl] motor {} enable failed: {}", id, ret); return ret; }
+        memset(m_mode_cache, 0xFF, sizeof(m_mode_cache));
+    }
+
+    _halt_motion(id);
+
+    _set_mode_cached(id, MOTOR_MODE_PROFILE_VEL);
+
+    motor_hal_set_accel_decel(m_hal, id, a, d);
+    motor_hal_set_profile_velocity(m_hal, id, m_abs_speed);
+
+    int ret = motor_hal_sdo_write(m_hal, id, 0x60FF, 0, (uint32_t)rpm, 4);
+    if (ret != 0) { ECO_ERROR_NEW("[StarkMotorCtrl] motor {} write 0x60FF failed: {}", id, ret); return ret; }
+
+    ECO_INFO_NEW("[StarkMotorCtrl] motor {}: speed={}RPM accel={} decel={} (PV mode)",
+                 id, rpm, a, d);
     return 0;
 }
 
@@ -195,6 +274,20 @@ int StarkMotorCtrl::AbsPosition(uint8_t id, float deg)
     }
 
     int ret;
+
+    /* 使能 (幂等) */
+    motor_state_t st = motor_hal_get_state(m_hal, id);
+    if (st != MOTOR_STATE_OP_ENABLED) {
+        ret = motor_hal_enable(m_hal, id);
+        if (ret != 0) {
+            ECO_ERROR_NEW("[StarkMotorCtrl] motor {} enable failed: {}", id, ret);
+            return ret;
+        }
+        memset(m_mode_cache, 0xFF, sizeof(m_mode_cache));
+    }
+
+    /* Halt 当前运动 */
+    _halt_motion(id);
 
     /* 切 PP 模式 */
     ret = _set_mode_cached(id, MOTOR_MODE_PROFILE_POS);
@@ -223,8 +316,44 @@ int StarkMotorCtrl::AbsPosition(uint8_t id, float deg)
         return ret;
     }
 
-    ECO_INFO_NEW("[StarkMotorCtrl] motor {}: abs {:.2f}° (counts={}, accel={}, vel={})",
+    ECO_INFO_NEW("[StarkMotorCtrl] motor {}: abs {:.2f}deg (counts={}, accel={}, vel={})",
                  id, deg, counts, m_abs_accel, m_abs_speed);
+    return 0;
+}
+
+int StarkMotorCtrl::AbsPositionEx(uint8_t id, float deg, uint16_t accel, uint16_t vel)
+{
+    int32_t counts = motor_deg_to_counts(deg);
+    if (counts < -32767 || counts > 32768) {
+        ECO_ERROR_NEW("[StarkMotorCtrl] position {} counts out of range", counts);
+        return -EINVAL;
+    }
+
+    motor_state_t st = motor_hal_get_state(m_hal, id);
+    if (st != MOTOR_STATE_OP_ENABLED) {
+        int ret = motor_hal_enable(m_hal, id);
+        if (ret != 0) { ECO_ERROR_NEW("[StarkMotorCtrl] motor {} enable failed: {}", id, ret); return ret; }
+        memset(m_mode_cache, 0xFF, sizeof(m_mode_cache));
+    }
+
+    _halt_motion(id);
+
+    int ret = _set_mode_cached(id, MOTOR_MODE_PROFILE_POS);
+    if (ret != 0) { ECO_ERROR_NEW("[StarkMotorCtrl] motor {} set_mode(PP) failed: {}", id, ret); return ret; }
+
+    uint16_t a = (accel > 0) ? accel : m_abs_accel;
+    uint16_t v = (vel > 0)   ? vel   : m_abs_speed;
+
+    motor_hal_set_accel_decel(m_hal, id, a, a);
+    motor_hal_set_profile_velocity(m_hal, id, v);
+
+    ret = motor_hal_sdo_write(m_hal, id, 0x607A, 0, (uint32_t)counts, 4);
+    if (ret != 0) { ECO_ERROR_NEW("[StarkMotorCtrl] motor {} write 0x607A failed: {}", id, ret); return ret; }
+
+    ret = motor_hal_sdo_write(m_hal, id, 0x6040, 0, 0x004F, 2);
+    if (ret != 0) { ECO_ERROR_NEW("[StarkMotorCtrl] motor {} start motion failed: {}", id, ret); return ret; }
+
+    ECO_INFO_NEW("[StarkMotorCtrl] motor {}: abs {:.2f}deg accel={} vel={}", id, deg, a, v);
     return 0;
 }
 

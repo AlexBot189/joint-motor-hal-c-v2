@@ -13,7 +13,7 @@
       "profile_decel": 5000,
       "profile_velocity": 20,
       "disable_watchdog": true,
-      "auto_enable": true,
+      "auto_enable": false,
       "tpdo_sync_count": 1
     },
     {
@@ -24,7 +24,7 @@
       "profile_decel": 5000,
       "profile_velocity": 20,
       "disable_watchdog": true,
-      "auto_enable": true,
+      "auto_enable": false,
       "tpdo_sync_count": 1
     }
   ],
@@ -47,7 +47,7 @@
     "cpu_affinity": [3]
   },
   "calib": {
-    "auto_calib": false,
+    "auto_calib": true,
     "timeout_ms": 10000,
     "threshold_deg": 1.0
   },

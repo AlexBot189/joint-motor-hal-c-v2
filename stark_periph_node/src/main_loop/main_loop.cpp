@@ -170,7 +170,7 @@ static void poll_booting(stark_shm_t* shm, int motor_count,
     if (!sync_started) {
         motor_hal_t* hal = g_ctx->hal;
         if (hal) {
-            int ret = motor_hal_sync_start(hal, 5000);
+            int ret = motor_hal_sync_start(hal, 1000);  /* 1ms = 1KHz, 对齐用户要求 */
             if (ret == 0) {
                 sync_started = true;
                 if (!g_sdo_telemetry_started) {
@@ -178,11 +178,19 @@ static void poll_booting(stark_shm_t* shm, int motor_count,
                     g_sdo_telemetry_started = true;
                     ECO_INFO_NEW("[main] SDO telemetry thread started (temp+pos @5ms)");
                 }
-                ECO_INFO_NEW("[main] SYNC thread started");
+                ECO_INFO_NEW("[main] SYNC thread started (1KHz)");
             } else {
                 ECO_WARN_NEW("[main] SYNC start failed (ret={}), will retry", ret);
             }
         }
+    }
+
+    /* RT + SYNC 就绪后立即激活 mailbox 处理 (对齐 daemon 行为),
+     *   不等待校准 — 电机使能由控制接口内部自动处理 */
+    if (g_rt_worker && g_rt_worker->IsRunning() && sync_started &&
+        !g_rt_worker->IsActive()) {
+        g_rt_worker->SetActive(true);
+        ECO_INFO_NEW("[main] mailbox processing activated (pre-calib)");
     }
 
     if (all_motors_online(shm, motor_count)) {
@@ -194,28 +202,21 @@ static void poll_booting(stark_shm_t* shm, int motor_count,
 
 /*
  * poll_ready — READY 状态逻辑
- *   校准触发 / 校准轮询 / 校准完成+握手, 进入 RUNNING
+ *   上电自动复杂校准 (motor_calib) → RUNNING
+ *   也支持按键/SHM calib_requested 手动重新触发
  */
 
 static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
 {
-    /* 未启用自动校准时直接标记完成, 跳过校准流程 */
-    if (!g_ctx->auto_calib && !g_ctx->calib_done) {
-        ECO_INFO_NEW("[main] auto_calib disabled, skipping calibration");
-        g_ctx->calib_done = true;
-        if (g_rt_worker) g_rt_worker->SetActive(true);
-        if (shm) shm->calib_state = 2;
-    }
+    /* 触发复杂校准: 上电自动 (!calib_done) 或 外部按键触发 (calib_requested) */
+    bool need_calib = (!g_ctx->calib_done || g_ctx->calib_requested)
+                      && !g_ctx->calib_running;
 
-    /* 启动校准 */
-    bool need_calib = !g_ctx->calib_done &&
-                      (g_ctx->calib_requested || g_ctx->auto_calib);
-
-    if (need_calib && !g_calib_triggered && !g_ctx->calib_running) {
+    if (need_calib && !g_calib_triggered) {
         g_calib_triggered = true;
-        g_ctx->calib_requested = false;
+        g_ctx->calib_requested = false;  /* 消费请求 */
 
-        ECO_INFO_NEW("[main] starting calibration (auto=%d)", g_ctx->auto_calib);
+        ECO_INFO_NEW("[main] starting complex calibration (auto=%d)", g_ctx->auto_calib);
 
         if (!g_ctx->calib_ctx) {
             g_ctx->calib_ctx = motor_calib_create(hal);
@@ -228,7 +229,7 @@ static void poll_ready(motor_hal_t* hal, stark_shm_t* shm, int motor_count)
             calib_cfg.timeout_ms = g_ctx->calib_timeout_ms;
             calib_cfg.angle_threshold_deg = 1.0f;
             calib_cfg.ctrl_mode = MOTOR_MODE_CURRENT;
-            calib_cfg.enable_after_done = g_ctx->calib_enable_after;
+            calib_cfg.enable_after_done = true;  /* 校准后必须 SDO 使能 (DS402 OP_ENABLED), PDO 控制的前提 */
 
             int ret = motor_calib_start((motor_calib_t*)g_ctx->calib_ctx, &calib_cfg);
             if (ret == 0) {
@@ -328,6 +329,54 @@ static void poll_rt_pending(stark_shm_t* shm)
 }
 
 /*
+ * poll_sdo_commands — 处理算法端 SDO 控制请求 (非 RT, 主循环中)
+ *   检查 sdo_seq != sdo_ack, 调用 StarkMotorCtrl 处理
+ */
+
+static void poll_sdo_commands(stark_shm_t* shm)
+{
+    if (!shm || !g_dispatcher) return;
+    auto* ctrl = g_dispatcher->GetCtrl();
+    if (!ctrl) return;
+
+    for (int i = 0; i < STARK_MAX_MOTORS; i++) {
+        uint8_t seq = __atomic_load_n(&shm->sdo_seq[i], __ATOMIC_ACQUIRE);
+        uint8_t ack = __atomic_load_n(&shm->sdo_ack[i], __ATOMIC_RELAXED);
+        if (seq == ack) continue;
+
+        sdo_cmd_slot_t* s = &shm->sdo_cmds[i];
+        uint8_t id = s->motor_id;
+        if (id < 1) { __atomic_store_n(&shm->sdo_ack[i], seq, __ATOMIC_RELEASE); continue; }
+
+        switch (s->cmd) {
+        case STARK_CMD_SDO_CUR:
+            ctrl->Torque(id, s->value);
+            ECO_INFO_NEW("[SDO] motor {}: cur={}mA", id, s->value);
+            break;
+        case STARK_CMD_SDO_POS:
+            ctrl->AbsPositionEx(id, (float)s->value / 100.0f,
+                                (uint16_t)(s->value2 / 100),
+                                (uint16_t)(s->feedforward / 100));
+            ECO_INFO_NEW("[SDO] motor {}: pos={:.2f}deg accel={} vel={}",
+                         id, (float)s->value / 100.0f,
+                         (int)(s->value2 / 100), (int)(s->feedforward / 100));
+            break;
+        case STARK_CMD_SDO_VEL:
+            ctrl->SpeedEx(id, (int32_t)(s->value / 100),
+                          (int32_t)(s->value2 / 100),
+                          (int32_t)(s->value2 / 100));
+            ECO_INFO_NEW("[SDO] motor {}: vel={}RPM accel={}",
+                         id, (int)(s->value / 100), (int)(s->value2 / 100));
+            break;
+        default:
+            break;
+        }
+
+        __atomic_store_n(&shm->sdo_ack[i], seq, __ATOMIC_RELEASE);
+    }
+}
+
+/*
  * main_loop_run() — 主循环 (非阻塞, 状态分发)
  */
 
@@ -368,9 +417,18 @@ void main_loop_run(motor_hal_t* hal, stark_shm_t* shm,
         /* RT 线程状态切换请求 */
         poll_rt_pending(shm);
 
+        /* SDO 控制命令 (算法写, 主循环处理) */
+        poll_sdo_commands(shm);
+
         /* 同步 SHM node_state */
         if (shm) {
             shm->node_state = g_stark_state;
+            /* 消费算法侧校准请求 (按键/命令触发) */
+            if (shm->calib_requested) {
+                g_ctx->calib_requested = true;
+                shm->calib_requested = 0;
+                ECO_INFO_NEW("[main] calib requested via SHM");
+            }
         }
 
         usleep(50000);  /* 50ms 轮询 */

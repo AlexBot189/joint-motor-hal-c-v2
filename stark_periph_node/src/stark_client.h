@@ -331,6 +331,57 @@ static inline void stark_mit(stark_client_t* c, int id,
     _stark_mbox_commit(c);
 }
 
+/* -- SDO 控制命令 (通过 mailbox, RT 转发到主循环) ----- */
+
+#define STARK_SDO_DEFAULT_ACCEL  500
+#define STARK_SDO_DEFAULT_VEL    10
+
+/* SDO 电流控制, 单位 mA */
+static inline void stark_sdo_cur(stark_client_t* c, int id, int32_t ma)
+{
+    if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
+    c->shm->mailbox.frames[slot].cmd[id - 1].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[id - 1].cmd      = STARK_CMD_SDO_CUR;
+    c->shm->mailbox.frames[slot].cmd[id - 1].value    = ma;
+    _stark_mbox_commit(c);
+}
+
+/* SDO 绝对位置 (PP), deg=角度° accel=加速度RPM/s vel=轮廓速度RPM */
+static inline void stark_sdo_pos(stark_client_t* c, int id, float deg,
+                                  float accel, float vel)
+{
+    if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
+    c->shm->mailbox.frames[slot].cmd[id - 1].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[id - 1].cmd      = STARK_CMD_SDO_POS;
+    c->shm->mailbox.frames[slot].cmd[id - 1].value    = (int32_t)(deg * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[id - 1].value2   = (int32_t)(accel * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[id - 1].feedforward = (int32_t)(vel * 100.0f);
+    _stark_mbox_commit(c);
+}
+
+/* SDO 轮廓位置 (PP, SDO 通过 mailbox → main_loop → StarkMotorCtrl) */
+static inline void stark_sdo_vel(stark_client_t* c, int id, int32_t rpm,
+                                  int32_t accel)
+{
+    if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
+    c->shm->mailbox.frames[slot].cmd[id - 1].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[id - 1].cmd      = STARK_CMD_SDO_VEL;
+    c->shm->mailbox.frames[slot].cmd[id - 1].value    = (int32_t)(rpm * 100);
+    c->shm->mailbox.frames[slot].cmd[id - 1].value2   = (int32_t)(accel * 100);
+    _stark_mbox_commit(c);
+}
+
+/* SDO 轮廓速度 (PV, SDO 通过 mailbox → main_loop → StarkMotorCtrl) */
+
 /*
  * 多轴广播, 一帧 64B CANFD 同时控制双电机.
  *
@@ -409,6 +460,13 @@ static inline void stark_recover(stark_client_t* c, int id)
  */
 static inline void stark_clear_fault(stark_client_t* c, int id)
     { _stark_mgmt_cmd(c, id, STARK_CMD_CLEAR_FAULT); }
+
+/* 请求复杂校准 (按键/命令触发, 由 stark_node 主循环处理) */
+static inline void stark_request_calib(stark_client_t* c)
+{
+    if (!c || !c->shm) return;
+    c->shm->calib_requested = 1;
+}
 
 /* 切换控制模式, mode 取值见 STARK_MODE_* 常量.
  * set_mode 在控制循环启动前调用, 无 stark_multi 竞争, 走 mailbox 即可. */

@@ -369,7 +369,7 @@ bool CanDispatcher::LoadMotorConfig()
     /* 配置文件不存在 ,  全部默认值 */
     ECO_INFO_NEW("[CanDispatcher] config not found, using hardcoded defaults");
 
-    /* 校准/透传默认值 */
+    /* 校准/透传默认值 (对齐 motor_tool daemon) */
     m_calib_auto       = true;
     m_calib_timeout_ms = 10000;
     m_sensor_period_ms = 1;
@@ -381,7 +381,7 @@ bool CanDispatcher::LoadMotorConfig()
     def.profile_decel     = 5000;
     def.profile_velocity  = 20;
     def.disable_watchdog  = true;
-    def.auto_enable       = false;
+    def.auto_enable       = false;   /* 对齐 motor_tool: 不自动使能, 零位校准后再由控制命令使能 */
     def.bootup_timeout_ms = 5000;
     def.tpdo_sync_count   = 1;
 

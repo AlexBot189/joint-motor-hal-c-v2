@@ -52,8 +52,14 @@ public:
     /** @brief 速度控制 (使能, 切PV模式, 设加减速, 写0x60FF), RPM */
     int  Speed(uint8_t id, int32_t rpm, int32_t acc = 1000, int32_t dec = 1000);
 
-    /** @brief 绝对位置控制 (使能, 切PP模式, 设参, 目标, 启动), ° */
+    /** @brief 速度控制扩展版 (使能, halt, 切PV, accel/decel/vel可配) */
+    int  SpeedEx(uint8_t id, int32_t rpm, int32_t accel, int32_t decel);
+
+    /** @brief 绝对位置控制 (使能, 切PP模式, 设参, 目标, 启动), deg=角度° */
     int  AbsPosition(uint8_t id, float deg);
+
+    /** @brief 绝对位置控制扩展版 (使能, halt, 切PP, accel/vel可配) */
+    int  AbsPositionEx(uint8_t id, float deg, uint16_t accel, uint16_t vel);
 
     /** @brief 停止位置运动 (CW=0x0F) */
     void AbsStop(uint8_t id);
@@ -172,6 +178,7 @@ private:
     uint8_t m_mode_cache[128];  /* 按 node_id 索引 */
 
     int _set_mode_cached(uint8_t id, motor_mode_t mode);
+    void _halt_motion(uint8_t id);
 };
 
 }  /* namespace stark_periph_manager_node */

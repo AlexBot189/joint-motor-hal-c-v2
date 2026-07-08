@@ -122,6 +122,11 @@ typedef enum {
     STARK_CMD_SET_MODE = 14,      /* 切换 PDO 控制模式 */
     /* PDO Byte0 bit5 清错 */
     STARK_CMD_CLEAR_FAULT = 15,
+
+    /* SDO 控制命令 (算法写, 主循环处理, 非 RT) */
+    STARK_CMD_SDO_CUR    = 20,      /* SDO 电流, value=mA                                    */
+    STARK_CMD_SDO_POS    = 21,      /* SDO 轮廓位置(PP), value=deg×100 value2=accel ff=vel  */
+    STARK_CMD_SDO_VEL    = 22,      /* SDO 轮廓速度(PV), value=RPM×100 value2=accel          */
 } stark_cmd_type_t;
 
 typedef struct {
@@ -142,6 +147,15 @@ typedef struct {
 
 /* Mailbox 环形缓冲 — 算法写, RT 读, SPSC 无锁, 不丢帧 */
 #define STARK_MBOX_DEPTH 8
+
+/* SDO 控制命令槽 (算法写, 主循环处理) */
+typedef struct {
+    uint8_t  motor_id;
+    uint8_t  cmd;               /* stark_cmd_type_t (SDO 命令) */
+    int32_t  value;
+    int32_t  value2;
+    int32_t  feedforward;
+} sdo_cmd_slot_t;
 
 typedef struct {
     motor_command_t cmd[STARK_MAX_MOTORS];
@@ -263,6 +277,8 @@ typedef struct {
     uint8_t   motor_severity;             /* 0=OK 1=WARN 2=FAULT                        */
     uint8_t   fault_reason;               /* fault_reason_t 枚举                         */
     uint8_t   node_state;                 /* stark_state_t                                 */
+    uint8_t   calib_requested;            /* 算法写: 1=请求复杂校准 (按键/命令触发)        */
+    uint8_t   _pad_state[1];              /* 对齐                                         */
 
     /* 耗时追踪 (μs) */
     /* 反馈路径 */
@@ -293,12 +309,17 @@ typedef struct {
     volatile uint8_t mgmt_seq[STARK_MAX_MOTORS];   /* 写入递增, RT 处理完拷贝到 ack */
     volatile uint8_t mgmt_ack[STARK_MAX_MOTORS];   /* RT 确认 */
 
+    /* SDO 控制通道 (算法写, 主循环处理, 每电机独立 slot) */
+    sdo_cmd_slot_t     sdo_cmds[STARK_MAX_MOTORS];
+    volatile uint8_t   sdo_seq[STARK_MAX_MOTORS];
+    volatile uint8_t   sdo_ack[STARK_MAX_MOTORS];
+
     /* 双向心跳 */
     volatile uint32_t algo_heartbeat;              /* 算法递增, RT 检测超时脱使能 */
     uint32_t          algo_heartbeat_timeout_ms;   /* stark_node 启动写入, 默认 1000 */
     volatile uint32_t rt_cycle;                    /* RT 每 1ms 递增, 算法检测存活 */
 
-    uint8_t   _pad[3132];             /* 对齐 64KB */
+    uint8_t   _pad[3130];             /* 对齐 64KB */
 } stark_shm_t;
 
 #ifdef __cplusplus
