@@ -347,9 +347,9 @@ static void run_report_loop(stark_client_t* c)
                d->key_landing_left, d->torque_valid_left);
 
         /* 0x6B0 力矩原始计数, 已并入 PeriodicUploadData, 直接从 d 取 */
-        printf("SPI  M1[force_s24=%d valid=%u err=%u]  M2[force_s24=%d valid=%u err=%u]  (0x6B0 SPI力矩)\n",
-               d->spi_force_raw_s24, d->spi_valid, d->spi_error,
-               d->spi_force_raw_s24_left, d->spi_valid_left, d->spi_error_left);
+        printf("SPI  M1[torque=%.2f valid=%u err=%u]  M2[torque=%.2f valid=%u err=%u]  (0x6B0 SPI力矩)\n",
+               d->spi_torque, d->spi_valid, d->spi_error,
+               d->spi_torque_left, d->spi_valid_left, d->spi_error_left);
 
         printf("\n");
     }

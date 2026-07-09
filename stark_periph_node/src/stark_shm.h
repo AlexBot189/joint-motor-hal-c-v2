@@ -259,12 +259,12 @@ typedef struct {
     uint32_t imu_ts_us;         /* IMU GAF output timestamp, μs */
     uint32_t sensor_ts_us;      /* 0x680 CAN RX timestamp, μs */
 
-    /* 0x6B0 力矩原始计数 (24bit 有符号, 未做物理换算) */
-    int32_t  spi_force_raw_s24;       /* 右 id=1 */
+    /* 0x6B0 力矩 (原始计数/100) */
+    float    spi_torque;              /* 右 id=1 */
     uint8_t  spi_valid;               /* 右 valid (byte4.bit0) */
     uint8_t  spi_error;               /* 右 error (byte5) */
     uint8_t  _pad_spi_r[2];
-    int32_t  spi_force_raw_s24_left;  /* 左 id=2 */
+    float    spi_torque_left;         /* 左 id=2 */
     uint8_t  spi_valid_left;
     uint8_t  spi_error_left;
     uint8_t  _pad_spi_l[2];

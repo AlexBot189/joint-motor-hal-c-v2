@@ -594,11 +594,11 @@ void StarkRtWorker::PublishFeedback()
                     }
                     /* 0x6B0 力矩并入 PeriodicUploadData (单一上报路径) */
                     if (is_right) {
-                        d.spi_force_raw_s24 = s.spi_force_raw_s24;
+                        d.spi_torque        = (float)s.spi_force_raw_s24 / 100.0f;
                         d.spi_valid         = s.spi_valid;
                         d.spi_error         = s.spi_error;
                     } else {
-                        d.spi_force_raw_s24_left = s.spi_force_raw_s24;
+                        d.spi_torque_left        = (float)s.spi_force_raw_s24 / 100.0f;
                         d.spi_valid_left         = s.spi_valid;
                         d.spi_error_left         = s.spi_error;
                     }
