@@ -1265,7 +1265,16 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
         s.timestamp_us = motor_utils_now_us();
 
         pthread_mutex_lock(&m->sensor_lock);
+        /* 保存 0x6B0 过来的 spi 字段, 防止被 0x680 帧的解析结果 (spi 全零) 覆盖 */
+        int32_t  prev_spi_force = m->cached_sensor.spi_force_raw_s24;
+        uint8_t  prev_spi_valid = m->cached_sensor.spi_valid;
+        uint8_t  prev_spi_error = m->cached_sensor.spi_error;
+        uint64_t prev_spi_ts    = m->cached_sensor.spi_timestamp_us;
         memcpy(&m->cached_sensor, &s, sizeof(s));
+        m->cached_sensor.spi_force_raw_s24 = prev_spi_force;
+        m->cached_sensor.spi_valid         = prev_spi_valid;
+        m->cached_sensor.spi_error         = prev_spi_error;
+        m->cached_sensor.spi_timestamp_us  = prev_spi_ts;
         m->last_sensor_us = s.timestamp_us;
         pthread_mutex_unlock(&m->sensor_lock);
 
