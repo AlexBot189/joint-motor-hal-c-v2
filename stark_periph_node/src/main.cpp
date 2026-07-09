@@ -123,7 +123,10 @@ int main(int argc, char** argv)
 
     /* 从 config.json 读取配置 */
     g_node_ctx.sensor_period_ms = g_dispatcher->GetSensorPeriodMs();
+    g_node_ctx.sensor_period_div = g_dispatcher->GetSensorPeriodDiv();
     g_node_ctx.sensor_bus_format = g_dispatcher->GetSensorBusFormat();
+    g_node_ctx.sensor_mode = g_dispatcher->GetSensorMode();
+    g_node_ctx.sensor_force_module = g_dispatcher->GetSensorForceModule();
     g_node_ctx.auto_calib       = g_dispatcher->GetCalibAuto();
     g_node_ctx.calib_timeout_ms = g_dispatcher->GetCalibTimeoutMs();
     g_node_ctx.report_auto_enable = g_dispatcher->GetReportAutoEnable();

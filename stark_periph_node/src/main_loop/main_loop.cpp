@@ -137,14 +137,17 @@ static void poll_common(motor_hal_t* hal, stark_shm_t* shm, uint8_t motor_count)
 
         motor_state_t st = motor_hal_get_state(hal, id);
         if (st >= MOTOR_STATE_SWITCH_ON_DIS && st != MOTOR_STATE_UNKNOWN) {
-            uint16_t period_div = (uint16_t)(g_ctx->sensor_period_ms * 4);
-            int ret = motor_hal_sensor_config(hal, id, period_div,
-                                              g_ctx->sensor_bus_format);
+            uint16_t period_div = g_ctx->sensor_period_div;  /* 直接用 period_div (0.5ms 基准) */
+            int ret = motor_hal_sensor_config_ex(hal, id, period_div,
+                                                 g_ctx->sensor_bus_format,
+                                                 g_ctx->sensor_mode,
+                                                 g_ctx->sensor_force_module);
             if (ret == 0) {
                 g_sensor_configured[id - 1] = true;
-                ECO_INFO_NEW("[main] sensor passthrough: motor {} period={}ms bus={}",
-                             id, g_ctx->sensor_period_ms,
-                             g_ctx->sensor_bus_format == 3 ? "CANFD BRS" : "Classic CAN");
+                ECO_INFO_NEW("[main] sensor passthrough: motor {} period_div={} bus={} mode={} force={}",
+                             id, period_div,
+                             g_ctx->sensor_bus_format == 3 ? "CANFD BRS" : "Classic CAN",
+                             g_ctx->sensor_mode, g_ctx->sensor_force_module);
             }
         }
     }

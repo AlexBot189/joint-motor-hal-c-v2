@@ -65,7 +65,10 @@ public:
     bool GetCalibAuto()      const { return m_calib_auto; }
     int  GetCalibTimeoutMs() const { return m_calib_timeout_ms; }
     uint16_t GetSensorPeriodMs()   const { return m_sensor_period_ms; }
+    uint16_t GetSensorPeriodDiv()  const { return m_sensor_period_div; }
     uint8_t  GetSensorBusFormat()  const { return m_sensor_bus_format; }
+    uint8_t  GetSensorMode()        const { return m_sensor_mode; }
+    uint8_t  GetSensorForceModule() const { return m_sensor_force_module; }
     bool     GetReportAutoEnable() const { return m_report_auto_enable; }
     uint32_t GetReportPeriodMs()   const { return m_report_period_ms; }
     bool     GetMotorAutoEnable()  const { return m_motor_auto_enable; }
@@ -111,7 +114,10 @@ private:
     bool         m_calib_auto       = false;
     int          m_calib_timeout_ms = 10000;
     uint16_t     m_sensor_period_ms = 1;
+    uint16_t     m_sensor_period_div = 1;   /* 0.5ms 基准分频, 默认 1 */
     uint8_t      m_sensor_bus_format = 3;  /* CANFD BRS */
+    uint8_t      m_sensor_mode = 2;         /* 0=关 1=仅传感器帧 2=全部帧 */
+    uint8_t      m_sensor_force_module = 1; /* 0=CAN力矩 1=SPI力矩 */
     bool         m_report_auto_enable = true;  /* 校准后自动开启周期上报 */
     uint32_t     m_report_period_ms   = 5;    /* 上报周期 ms */
     bool         m_motor_auto_enable  = false; /* 任意电机 auto_enable=true 则置 true */

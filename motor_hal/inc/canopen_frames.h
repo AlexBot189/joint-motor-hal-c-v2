@@ -139,6 +139,9 @@ void canopen_multi_ctrl_build(const multi_axis_cmd_t *cmds, uint8_t count,
  */
 void canopen_parse_feedback(const canfd_frame_t *f, motor_feedback_t *fb);
 
+/* 0x6B0 力矩帧解析 (帧内无 CRC) */
+void canopen_parse_spi_force(const canfd_frame_t *f, spi_force_frame_t *st);
+
 /* =====================================================
  * 帧识别工具
  * ===================================================== */

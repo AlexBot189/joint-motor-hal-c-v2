@@ -580,7 +580,7 @@ void StarkRtWorker::PublishFeedback()
                         d.hall_b_data  = s.hall_adc1;
                         d.hall_c_data  = s.hall_adc2;
                         d.df181_torque = s.force_raw;
-                        d.knee_angle   = (int16_t)s.knee_adc;
+                        d.knee_hall   = (int16_t)s.knee_hall;
                         d.key_landing  = s.hw_sw_pc9;
                         d.torque_valid = s.data_valid;
                     } else {
@@ -588,9 +588,19 @@ void StarkRtWorker::PublishFeedback()
                         d.hall_b_data_left  = s.hall_adc1;
                         d.hall_c_data_left  = s.hall_adc2;
                         d.df181_torque_left = s.force_raw;
-                        d.knee_angle_left   = (int16_t)s.knee_adc;
+                        d.knee_hall_left   = (int16_t)s.knee_hall;
                         d.key_landing_left  = s.hw_sw_pc9;
                         d.torque_valid_left = s.data_valid;
+                    }
+                    /* 0x6B0 力矩并入 PeriodicUploadData (单一上报路径) */
+                    if (is_right) {
+                        d.spi_force_raw_s24 = s.spi_force_raw_s24;
+                        d.spi_valid         = s.spi_valid;
+                        d.spi_error         = s.spi_error;
+                    } else {
+                        d.spi_force_raw_s24_left = s.spi_force_raw_s24;
+                        d.spi_valid_left         = s.spi_valid;
+                        d.spi_error_left         = s.spi_error;
                     }
                 }
             }
@@ -666,7 +676,7 @@ void StarkRtWorker::PublishFeedback()
             fb->sensor[idx].hall_adc1   = s.hall_adc1;
             fb->sensor[idx].hall_adc2   = s.hall_adc2;
             fb->sensor[idx].force_raw   = s.force_raw;
-            fb->sensor[idx].knee_adc    = s.knee_adc;
+            fb->sensor[idx].knee_hall    = s.knee_hall;
             fb->sensor[idx].key_landing = s.hw_sw_pc9;
             fb->sensor[idx].data_valid  = s.data_valid;
         } else if (!m_sensor_notified[id - 1]) {

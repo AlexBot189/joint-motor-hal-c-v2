@@ -320,3 +320,26 @@ void canopen_parse_feedback(const canfd_frame_t *f, motor_feedback_t *fb)
     /* Byte[11]: 状态字节 */
     fb->status_byte = f->data[11];
 }
+
+/* =====================================================
+ * 0x6B0 力矩帧解析
+ * byte0~2 = 力矩 24bit 有符号小端, byte4 = valid, byte5 = error, 其余保留
+ * 帧内无 CRC (设备侧已校验, 结果体现在 valid/error)
+ * ===================================================== */
+
+void canopen_parse_spi_force(const canfd_frame_t *f, spi_force_frame_t *st)
+{
+    if (!st) return;
+    memset(st, 0, sizeof(*st));
+    if (!f || f->dlc < 6) return;
+
+    /* byte0~2 小端 24bit 有符号, 符号扩展到 int32 */
+    int32_t raw = (int32_t)f->data[0]
+                | ((int32_t)f->data[1] << 8)
+                | ((int32_t)f->data[2] << 16);
+    if (raw & 0x00800000) raw |= (int32_t)0xFF000000;  /* bit23 符号扩展 */
+    st->force_raw_s24 = raw;
+
+    st->valid = (uint8_t)(f->data[4] & 0x01U);  /* byte4.bit0 */
+    st->error = f->data[5];                      /* byte5 设备错误码 */
+}

@@ -62,8 +62,10 @@
     "period_ms": 5
   },
   "sensor": {
-    "period_ms": 1,
-    "bus_format": 3
+    "period_div": 1,
+    "bus_format": 3,
+    "mode": 2,
+    "force_module": 1
   },
   "ros": {
     "enabled": false,

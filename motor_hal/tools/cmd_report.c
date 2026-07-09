@@ -59,7 +59,7 @@ static void* _report_thread_fn(void *arg)
                 if (s_ok == 0) {
                     printf(" hall=%u/%u/%u force=%u knee=%u sw=%d valid=%d\n",
                            s.hall_adc0, s.hall_adc1, s.hall_adc2,
-                           s.force_raw, s.knee_adc, s.hw_sw_pc9, s.data_valid);
+                           s.force_raw, s.knee_hall, s.hw_sw_pc9, s.data_valid);
                 } else {
                     printf(" sn=N/A\n");
                 }

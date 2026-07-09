@@ -86,7 +86,7 @@ int cmd_do_sensor(motor_hal_t *hal, int cmd_id, int argc, char **argv)
                id,
                s.hall_adc0, s.hall_adc1, s.hall_adc2,
                s.force_raw, s.data_valid ? "" : "(INVALID)",
-               s.knee_adc, s.hw_sw_pc9);
+               s.knee_hall, s.hw_sw_pc9);
         return 0;
     }
 

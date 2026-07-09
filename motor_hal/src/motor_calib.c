@@ -165,9 +165,10 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
             if (id_r > 0) motor_hal_set_mode(cal->hal, id_r, cal->cfg.ctrl_mode);
             if (id_l > 0) motor_hal_set_mode(cal->hal, id_l, cal->cfg.ctrl_mode);
 
-            /* Step 5: 启动传感器透传 (1KHz) */
-            if (id_r > 0) motor_hal_sensor_config(cal->hal, id_r, 4, 3);
-            if (id_l > 0) motor_hal_sensor_config(cal->hal, id_l, 4, 3);
+            /* Step 5: 启动传感器透传, 0.5ms/2000Hz 最快周期,
+             * 与 main_loop 默认一致, 避免校准覆盖成慢周期 */
+            if (id_r > 0) motor_hal_sensor_config(cal->hal, id_r, 1, 3);
+            if (id_l > 0) motor_hal_sensor_config(cal->hal, id_l, 1, 3);
         }
 
         cal->state = MOTOR_CALIB_DONE;

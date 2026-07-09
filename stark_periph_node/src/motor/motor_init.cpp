@@ -345,6 +345,16 @@ bool CanDispatcher::LoadMotorConfig()
             auto& s = cfg["sensor"];
             m_sensor_period_ms = s.value("period_ms", 1u);
             m_sensor_bus_format = s.value("bus_format", 3u);  /* CANFD BRS */
+            m_sensor_mode = (uint8_t)s.value("mode", 2u);
+            m_sensor_force_module = (uint8_t)s.value("force_module", 1u);
+            /* 优先直接配 period_div (0.5ms 基准, 默认1=2000Hz);
+             * 兼容旧 period_ms (×2 换算到 0.5ms 基准) */
+            if (s.contains("period_div"))
+                m_sensor_period_div = s.value("period_div", 1u);
+            else if (s.contains("period_ms"))
+                m_sensor_period_div = (uint16_t)(m_sensor_period_ms * 2);
+            else
+                m_sensor_period_div = 1;
         }
 
         /* 解析 imu */
@@ -373,7 +383,10 @@ bool CanDispatcher::LoadMotorConfig()
     m_calib_auto       = true;
     m_calib_timeout_ms = 10000;
     m_sensor_period_ms = 1;
+    m_sensor_period_div = 1;
     m_sensor_bus_format = 3;  /* CANFD BRS */
+    m_sensor_mode = 2;
+    m_sensor_force_module = 1;
 
     motor_config_t def = {};
     def.heartbeat_ms      = 2000;

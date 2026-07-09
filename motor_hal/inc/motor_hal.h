@@ -609,6 +609,16 @@ bool motor_hal_recv_is_running(motor_hal_t *hal);
 int motor_hal_sensor_config(motor_hal_t *hal, uint8_t node_id,
                             uint16_t period_div, uint8_t bus_format);
 
+/**
+ * @brief 完整透传配置 (period_div + bus_format + mode + force_module)
+ * @param mode          0=关 1=仅0x680 2=全部(0x680+0x6B0)
+ * @param force_module  0=CAN(0x680力矩) 1=SPI(0x6B0力矩, 默认)
+ * 配置字: period_div[15:0]|bus_format[17:16]|mode[19:18]|force_module[21:20]
+ */
+int motor_hal_sensor_config_ex(motor_hal_t *hal, uint8_t node_id,
+                               uint16_t period_div, uint8_t bus_format,
+                               uint8_t mode, uint8_t force_module);
+
 /** @brief 停止传感器透传 (等价 sensor_config(node, 0, 0)) */
 int motor_hal_sensor_stop(motor_hal_t *hal, uint8_t node_id);
 

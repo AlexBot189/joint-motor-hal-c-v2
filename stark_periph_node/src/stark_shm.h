@@ -40,7 +40,7 @@ typedef struct {
     uint16_t hall_adc1;         /* 线性霍尔 B, 0~4095                                */
     uint16_t hall_adc2;         /* 线性霍尔 C, 0~4095                                */
     uint16_t force_raw;         /* DF181 力矩, 0~16383                              */
-    uint16_t knee_adc;          /* 膝关节电位器, 0~4095                              */
+    uint16_t knee_hall;          /* 膝关节霍尔, 0~4095                              */
     uint8_t  key_landing;       /* 着地开关, 0=低 1=高                               */
     uint8_t  data_valid;        /* 力矩数据有效标志                                    */
 } stark_sensor_data_t;
@@ -229,7 +229,7 @@ typedef struct {
     uint16_t hall_b_data;           /* 霍尔传感器 B                              */
     uint16_t hall_c_data;           /* 霍尔传感器 C                              */
     uint16_t df181_torque;          /* DF181 力矩                                */
-    int16_t  knee_angle;            /* 膝关节电位器                              */
+    int16_t  knee_hall;            /* 膝关节霍尔                              */
     uint8_t  key_landing;           /* 着地开关                                  */
     uint8_t  torque_valid;          /* 力矩数据有效                              */
 
@@ -246,7 +246,7 @@ typedef struct {
     uint16_t hall_b_data_left;
     uint16_t hall_c_data_left;
     uint16_t df181_torque_left;
-    int16_t  knee_angle_left;
+    int16_t  knee_hall_left;
     uint8_t  key_landing_left;
     uint8_t  torque_valid_left;
 
@@ -258,6 +258,16 @@ typedef struct {
     uint32_t motor_ts_us;       /* 0x300 CAN RX timestamp, μs (min of all motors) */
     uint32_t imu_ts_us;         /* IMU GAF output timestamp, μs */
     uint32_t sensor_ts_us;      /* 0x680 CAN RX timestamp, μs */
+
+    /* 0x6B0 力矩原始计数 (24bit 有符号, 未做物理换算) */
+    int32_t  spi_force_raw_s24;       /* 右 id=1 */
+    uint8_t  spi_valid;               /* 右 valid (byte4.bit0) */
+    uint8_t  spi_error;               /* 右 error (byte5) */
+    uint8_t  _pad_spi_r[2];
+    int32_t  spi_force_raw_s24_left;  /* 左 id=2 */
+    uint8_t  spi_valid_left;
+    uint8_t  spi_error_left;
+    uint8_t  _pad_spi_l[2];
 } PeriodicUploadData;
 
 /* 共享内存总结构 (64KB) */
@@ -302,7 +312,7 @@ typedef struct {
     uint32_t  periodic_period_ms;     /* 上报周期 ms, 默认 5 */
     uint32_t  periodic_version;       /* 写入版本号, 递增, 读者对比防撕裂 */
     PeriodicUploadData periodic_data;  /* 周期上报数据, 约 128B */
-    uint8_t   _pad_rpt[32];           /* 预留扩展 */
+    uint8_t   _pad_rpt[16];           /* 预留扩展 (吸收上方新增字段, 后续字段偏移不变) */
 
     /* 管理命令通道 (每电机独立 slot, 不和算法 mailbox 竞争) */
     volatile uint8_t mgmt_cmd[STARK_MAX_MOTORS];   /* stark_cmd_type_t, 0=idle */

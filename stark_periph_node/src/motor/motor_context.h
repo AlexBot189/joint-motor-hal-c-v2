@@ -28,8 +28,11 @@ struct StarkNodeContext {
     int          calib_timeout_ms = 10000;
 
     /* 传感器透传 */
-    uint16_t     sensor_period_ms = 1;        /* ms */
+    uint16_t     sensor_period_ms = 1;        /* ms (旧字段, 兼容显示用) */
+    uint16_t     sensor_period_div = 1;       /* 0.5ms 基准分频, 默认 1=2000Hz */
     uint8_t      sensor_bus_format = 3;       /* 3=CANFD BRS, 0=Classic CAN */
+    uint8_t      sensor_mode = 2;             /* 0=关 1=仅传感器帧 2=全部帧 */
+    uint8_t      sensor_force_module = 1;     /* 0=CAN力矩 1=SPI力矩 */
 
     /* 周期上报 */
     bool         report_auto_enable = true;   /* 校准后自动开启上报 */

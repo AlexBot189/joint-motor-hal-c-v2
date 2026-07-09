@@ -296,8 +296,24 @@ typedef struct {
 
 /* 外设传感器透传 COB-ID */
 #define COB_SENSOR_BASE       (0x680)   /* 透传数据: 0x680 + node_id */
+#define COB_SPI_TORQUE_BASE   (0x6B0)   /* SPI 力矩帧基址: 0x6B0 + node_id */
 #define OD_SENSOR_CONFIG      (0x5503)  /* 透传配置对象 */
 #define OD_SENSOR_CONFIG_SUB  (0x04)    /* 透传配置子索引 */
+
+/* 透传力矩来源模块 (配置字 bit20~21) */
+typedef enum {
+    FORCE_MODULE_CAN = 0,   /* 力矩走 0x680 force_raw */
+    FORCE_MODULE_SPI = 1,   /* 力矩走 0x6B0 高精度帧 (默认) */
+} force_module_t;
+
+/* 透传配置字位定义 (OD 0x5503:04, 32bit)
+ * cfg = period_div | (bus_format<<16) | (mode<<18) | (force_module<<20) */
+#define SENSOR_CFG_PERIOD_DIV_SHIFT   (0)    /* [15:0]  period_div, 0.5ms 基准 */
+#define SENSOR_CFG_BUS_FORMAT_SHIFT   (16)   /* [17:16] bus_format: 3=CANFD BRS 0=Classic (不变) */
+#define SENSOR_CFG_MODE_SHIFT         (18)   /* [19:18] mode: 0=关 1=仅0x680 2=全部 */
+#define SENSOR_CFG_FORCE_MODULE_SHIFT (20)   /* [21:20] force_module: 0=CAN 1=SPI */
+#define SENSOR_CFG_FIELD_MASK         (0x3U)
+#define SENSOR_MODE_ALL               (2)    /* SPI 力矩模式需 mode=2 (0x680+0x6B0 全发) */
 
 /* 透传数据 (8字节, 小端, bit-packed) */
 typedef struct {
@@ -305,11 +321,25 @@ typedef struct {
     uint16_t hall_adc1;        /* Hall 传感器 ADC1, U12 */
     uint16_t hall_adc2;        /* Hall 传感器 ADC2, U12 */
     uint16_t force_raw;        /* DF181 力/力矩原始值, U14, 0~16383 */
-    uint16_t knee_adc;         /* 膝关节 ADC, U12 */
+    uint16_t knee_hall;         /* 膝关节霍尔, U12 */
     uint8_t  hw_sw_pc9;        /* PC9 硬件开关, 0=低 1=高 */
-    uint8_t  data_valid;       /* Status1, 1=数据有效 */
-    uint64_t timestamp_us;     /* 接收时间戳 */
+    uint8_t  data_valid;       /* 1=数据有效 (SPI 力矩模式下固定 0) */
+    uint64_t timestamp_us;     /* 0x680 接收时间戳 */
+    /* --- 尾部追加字段 (保持现有偏移不变) --- */
+    int32_t  spi_force_raw_s24; /* 0x6B0 力矩原始计数, 24bit 有符号小端, 未做物理换算 */
+    uint8_t  spi_valid;         /* 0x6B0 数据有效标志 */
+    uint8_t  spi_error;         /* 0x6B0 错误码 (10=传感器校验失败等) */
+    uint8_t  _pad_spi[2];
+    uint64_t spi_timestamp_us;  /* 0x6B0 接收时间戳 */
 } motor_sensor_t;
+
+/* 0x6B0 力矩帧解析结果
+ * byte0~2: 力矩 24bit 有符号小端; byte4: valid; byte5: error; 帧内无 CRC */
+typedef struct {
+    int32_t  force_raw_s24;    /* byte0~2 小端 24bit 有符号, 符号扩展到 int32 */
+    uint8_t  valid;            /* byte4 bit0 */
+    uint8_t  error;            /* byte5 错误码 */
+} spi_force_frame_t;
 
 /* ============================================================================
  * 对象字典索引

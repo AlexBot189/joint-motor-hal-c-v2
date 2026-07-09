@@ -1102,7 +1102,7 @@ static void _parse_sensor_frame(const canfd_frame_t *f, motor_sensor_t *s)
     s->hall_adc1   = (uint16_t)((p >> 12) & 0x0FFFU);
     s->hall_adc2   = (uint16_t)((p >> 24) & 0x0FFFU);
     s->force_raw   = (uint16_t)((p >> 36) & 0x3FFFU);
-    s->knee_adc    = (uint16_t)((p >> 50) & 0x0FFFU);
+    s->knee_hall    = (uint16_t)((p >> 50) & 0x0FFFU);
     s->hw_sw_pc9   = (uint8_t)((p >> 62) & 0x01U);
     s->data_valid  = (uint8_t)((p >> 63) & 0x01U);
 }
@@ -1112,6 +1112,25 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
     uint32_t func = canopen_func_code(f->id);
 
     _dump_can_frame("recv", f);
+
+    /* 0x6B0 SPI 力矩帧: 与 0x680 系列在 CANopen func code (&0x780) 下同码,
+     * 必须在 switch 前用 0x7F0 掩码区分 (node_id < 16 成立, 当前双电机满足),
+     * 否则会落入 0x680 分支被丢弃. */
+    if ((f->id & 0x7F0U) == COB_SPI_TORQUE_BASE) {
+        uint8_t node = canopen_extract_node(f->id, COB_SPI_TORQUE_BASE);
+        motor_node_t *m = _find_motor(hal, node);
+        if (m) {
+            spi_force_frame_t st;
+            canopen_parse_spi_force(f, &st);
+            pthread_mutex_lock(&m->sensor_lock);
+            m->cached_sensor.spi_force_raw_s24 = st.force_raw_s24;
+            m->cached_sensor.spi_valid         = st.valid;
+            m->cached_sensor.spi_error         = st.error;
+            m->cached_sensor.spi_timestamp_us  = motor_utils_now_us();
+            pthread_mutex_unlock(&m->sensor_lock);
+        }
+        return;
+    }
 
     switch (func) {
     case 0x580: {  /* SDO 响应 ,  入队, 等待 sdo_client 消费 */
@@ -1649,21 +1668,36 @@ void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_
  * 公共 API: 传感器透传控制
  * ===================================================== */
 
-int motor_hal_sensor_config(motor_hal_t *hal, uint8_t node_id,
-                            uint16_t period_div, uint8_t bus_format)
+/* 完整透传配置: period_div + bus_format + mode + force_module
+ * 配置字 (OD 0x5503:04):
+ *   period_div[15:0] | bus_format[17:16] | mode[19:18] | force_module[21:20] */
+int motor_hal_sensor_config_ex(motor_hal_t *hal, uint8_t node_id,
+                               uint16_t period_div, uint8_t bus_format,
+                               uint8_t mode, uint8_t force_module)
 {
     if (!hal || !hal->drv) return -ENODEV;
 
-    uint32_t cfg = (uint32_t)(period_div & 0xFFFF)
-                 | ((uint32_t)(bus_format & 0x03) << 16);
+    uint32_t cfg = (uint32_t)period_div
+         | (((uint32_t)bus_format   & SENSOR_CFG_FIELD_MASK) << SENSOR_CFG_BUS_FORMAT_SHIFT)
+         | (((uint32_t)mode         & SENSOR_CFG_FIELD_MASK) << SENSOR_CFG_MODE_SHIFT)
+         | (((uint32_t)force_module & SENSOR_CFG_FIELD_MASK) << SENSOR_CFG_FORCE_MODULE_SHIFT);
 
     return sdo_write_simple(hal->drv, node_id, OD_SENSOR_CONFIG,
                             OD_SENSOR_CONFIG_SUB, cfg, 4);
 }
 
+/* 兼容旧签名: 默认 SPI 模式 (force_module=1) + mode=2 (0x680 + 0x6B0 全发),
+ * 周期由调用方传入 (0.5ms 基准分频, 默认 1=2000Hz). */
+int motor_hal_sensor_config(motor_hal_t *hal, uint8_t node_id,
+                            uint16_t period_div, uint8_t bus_format)
+{
+    return motor_hal_sensor_config_ex(hal, node_id, period_div, bus_format,
+                                      SENSOR_MODE_ALL, FORCE_MODULE_SPI);
+}
+
 int motor_hal_sensor_stop(motor_hal_t *hal, uint8_t node_id)
 {
-    return motor_hal_sensor_config(hal, node_id, 0, 0);
+    return motor_hal_sensor_config_ex(hal, node_id, 0, 0, 0, FORCE_MODULE_CAN);
 }
 
 int motor_hal_get_sensor(motor_hal_t *hal, uint8_t node_id, motor_sensor_t *s)

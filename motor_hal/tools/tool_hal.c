@@ -1053,7 +1053,7 @@ static void* _sensor_watch_thread_fn(void *arg)
                     (unsigned long long)s.timestamp_us,
                     s.hall_adc0, s.hall_adc1, s.hall_adc2,
                     s.force_raw, s.data_valid ? "" : " (inv)",
-                    s.knee_adc, s.hw_sw_pc9,
+                    s.knee_hall, s.hw_sw_pc9,
                     (long long)delta_us);
             if (g_sensor_watch_fd >= 0) {
                 char json[512];

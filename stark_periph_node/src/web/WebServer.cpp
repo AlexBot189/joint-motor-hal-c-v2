@@ -181,7 +181,7 @@ static std::string SerializeFrame(const feedback_frame_t* fb)
         j[prefix]["hall1"] = fb->sensor[i].hall_adc1;
         j[prefix]["hall2"] = fb->sensor[i].hall_adc2;
         j[prefix]["force"] = fb->sensor[i].force_raw;
-        j[prefix]["knee"]  = fb->sensor[i].knee_adc;
+        j[prefix]["knee"]  = fb->sensor[i].knee_hall;
         j[prefix]["land"]  = fb->sensor[i].key_landing;
         j[prefix]["valid"] = fb->sensor[i].data_valid;
     }

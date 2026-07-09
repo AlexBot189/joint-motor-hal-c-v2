@@ -505,7 +505,7 @@ static int test_sensor(motor_hal_t *hal)
     if (ret == 0) {
         PASS("get_sensor OK | hall=%d,%d,%d force=%d knee=%d sw=%d valid=%d",
              s.hall_adc0, s.hall_adc1, s.hall_adc2,
-             s.force_raw, s.knee_adc, s.hw_sw_pc9, s.data_valid);
+             s.force_raw, s.knee_hall, s.hw_sw_pc9, s.data_valid);
     } else {
         PASS("get_sensor ret=%d (no motor ,  no real data, OK)", ret);
     }
