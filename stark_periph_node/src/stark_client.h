@@ -273,21 +273,6 @@ static inline void stark_position(stark_client_t* c, int id, float deg)
     _stark_mbox_commit(c);
 }
 
-/* 相对位置控制, 自动读当前位置加偏移, 钳位到 [-180, 180] */
-static inline void stark_rel_position(stark_client_t* c, int id, float delta_deg)
-{
-    if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
-
-    motor_data_t fb = stark_fb(c, id);
-    float cur_deg  = (float)fb.position * (360.0f / 65536.0f);
-    float target   = cur_deg + delta_deg;
-
-    if (target > 180.0f)  target -= 360.0f;
-    if (target < -180.0f) target += 360.0f;
-
-    stark_position(c, id, target);
-}
-
 /* 轮廓位置 (PP), deg=目标角度 accel=加速度RPM/s vel=轮廓速度RPM */
 static inline void stark_pp(stark_client_t* c, int id,
                              float deg, float accel_rpm, float vel_rpm)
