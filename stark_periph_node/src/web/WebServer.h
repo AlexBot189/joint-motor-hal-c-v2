@@ -106,12 +106,16 @@ public:
         int32_t pos_m2 = 0;
         int32_t vel_m1 = 0;   /* RPM */
         int32_t vel_m2 = 0;
+        int32_t tq_m1  = 0;   /* 0.05N.m */
+        int32_t tq_m2  = 0;
         bool    cur_valid_m1 = false;
         bool    cur_valid_m2 = false;
         bool    pos_valid_m1 = false;
         bool    pos_valid_m2 = false;
         bool    vel_valid_m1 = false;
         bool    vel_valid_m2 = false;
+        bool    tq_valid_m1  = false;
+        bool    tq_valid_m2  = false;
     } m_last_cmd;
 
     /* ── candump RX ── */

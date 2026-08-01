@@ -349,7 +349,7 @@ bool CanDispatcher::LoadMotorConfig()
             auto& s = cfg["sensor"];
             m_sensor_period_ms = s.value("period_ms", 1u);
             m_sensor_bus_format = s.value("bus_format", 3u);  /* CANFD BRS */
-            m_sensor_mode = (uint8_t)s.value("mode", 2u);
+            m_sensor_mode = (uint8_t)s.value("mode", 3u);
             m_sensor_force_module = (uint8_t)s.value("force_module", 1u);
             /* 优先直接配 period_div (0.5ms 基准, 默认1=2000Hz);
              * 兼容旧 period_ms (×2 换算到 0.5ms 基准) */
@@ -418,7 +418,7 @@ bool CanDispatcher::LoadMotorConfig()
     m_sensor_period_ms = 1;
     m_sensor_period_div = 1;
     m_sensor_bus_format = 3;  /* CANFD BRS */
-    m_sensor_mode = 2;
+    m_sensor_mode = 3;
     m_sensor_force_module = 1;
 
     motor_config_t def = {};

@@ -68,7 +68,8 @@ typedef struct {
 #define COB_TPDO1_BASE       (0x180)   /* 标准 TPDO1 */
 #define COB_RPDO1_BASE       (0x200)   /* 标准 RPDO1 */
 #define COB_PDO_CTRL_BASE    (0x100)   /* 自定义单轴 PDO */
-#define COB_PDO_MIT_BASE     (0x110)   /* MIT 模式 PDO */
+#define COB_PDO_MIT_BASE     (0x110)   /* MIT 模式 PDO (单轴) */
+#define COB_MULTI_MIT        (0x210)   /* MIT 多轴广播 (64Byte, 最多6电机) */
 #define COB_MULTI_CTRL       (0x200)   /* 多轴广播 */
 #define COB_FEEDBACK_BASE    (0x300)   /* 反馈帧 */
 
@@ -148,7 +149,8 @@ typedef enum {
     MOTOR_MODE_CSP           = 3,  /* CSP: 循环同步位置 */
     MOTOR_MODE_CSV           = 4,  /* CSV: 循环同步速度 */
     MOTOR_MODE_CURRENT       = 5,  /* 电流环 */
-    MOTOR_MODE_MIT           = 6,  /* MIT: 阻抗控制 */
+    MOTOR_MODE_MIT           = 6,  /* MIT: 阻抗控制, 走 0x110 独立帧. 仅力矩环对外骨骼有效 */
+    MOTOR_MODE_TORQUE        = 7,  /* 力矩环, 走 0x100+mode=7. V1.1文档值有歧义(6/7), 暂用7 */
 } motor_mode_t;
 
 /* ============================================================================
@@ -292,13 +294,17 @@ typedef struct {
     uint8_t  mode;              /* 当前控制模式 */
     uint8_t  status_byte;       /* bit7:使能 bit6:抱闸 bit5:错误 bit4:到位 */
     uint64_t timestamp_us;      /* 接收时间戳 */
+    /* V2 扩展 (0x300 DLC=16 有力矩传感器版本) */
+    int16_t  torque_nm;         /* 力矩反馈, 单位 0.05N.m (Byte[10-11]) */
 } motor_feedback_t;
 
 /* 外设传感器透传 COB-ID */
 #define COB_SENSOR_BASE       (0x680)   /* 透传数据: 0x680 + node_id */
+#define COB_RUN_FB1_BASE      (0x6A0)   /* 运行反馈帧1: Iq/母线电流/温度/错误码 */
 #define COB_SPI_TORQUE_BASE   (0x6B0)   /* SPI 力矩帧基址: 0x6B0 + node_id */
 #define OD_SENSOR_CONFIG      (0x5503)  /* 透传配置对象 */
 #define OD_SENSOR_CONFIG_SUB  (0x04)    /* 透传配置子索引 */
+#define OD_LED_CTRL_SUB       (0x06)    /* RGB 灯控制子索引 */
 
 /* 透传力矩来源模块 (配置字 bit20~21) */
 typedef enum {
@@ -308,12 +314,16 @@ typedef enum {
 
 /* 透传配置字位定义 (OD 0x5503:04, 32bit)
  * cfg = period_div | (bus_format<<16) | (mode<<18) | (force_module<<20) */
-#define SENSOR_CFG_PERIOD_DIV_SHIFT   (0)    /* [15:0]  period_div, 0.5ms 基准 */
+#define SENSOR_CFG_PERIOD_DIV_SHIFT   (0)    /* [15:0]  period_div, 1tick=0.25ms (V1.2基准) */
 #define SENSOR_CFG_BUS_FORMAT_SHIFT   (16)   /* [17:16] bus_format: 3=CANFD BRS 0=Classic (不变) */
-#define SENSOR_CFG_MODE_SHIFT         (18)   /* [19:18] mode: 0=关 1=仅0x680 2=全部 */
+#define SENSOR_CFG_MODE_SHIFT         (18)   /* [19:18] mode: 0=兼容 1=运行反馈 2=全部 3=聚合 */
+#define SENSOR_MODE_AGGREGATED         (3)    /* mode=3: 32Byte CAN FD 聚合透传 (0x6C0) */
 #define SENSOR_CFG_FORCE_MODULE_SHIFT (20)   /* [21:20] force_module: 0=CAN 1=SPI */
 #define SENSOR_CFG_FIELD_MASK         (0x3U)
-#define SENSOR_MODE_ALL               (2)    /* SPI 力矩模式需 mode=2 (0x680+0x6B0 全发) */
+#define SENSOR_MODE_ALL               (2)    /* mode=2: 0x680+0x690+0x6A0+0x6B0 全发 */
+
+/* 聚合透传 COB-ID (mode=3) */
+#define COB_SENSOR_AGGR_BASE  (0x6C0)   /* 32Byte CAN FD 聚合帧: 0x6C0+NodeID */
 
 /* 透传数据 (8字节, 小端, bit-packed) */
 typedef struct {
@@ -331,6 +341,15 @@ typedef struct {
     uint8_t  spi_error;         /* 0x6B0 错误码 (10=传感器校验失败等) */
     uint8_t  _pad_spi[2];
     uint64_t spi_timestamp_us;  /* 0x6B0 接收时间戳 */
+    /* --- 0x6A0 运行反馈帧1 --- */
+    int16_t  motor_temp_x10;         /* 电机线圈温度, 0.1°C */
+    int16_t  iq_current;             /* Iq电流, mA (0x6A0 Byte0-1) */
+    int32_t  bus_current;            /* 母线电流, mA (0x6A0 Byte2-3, S16→S32扩展) */
+    uint16_t error_code;             /* 错误码 (0x6A0 Byte6-7, 与 0x603F 一致) */
+    uint64_t run_fb_timestamp_us;    /* 0x6A0 接收时间戳 */
+    /* --- 0x690 运行反馈帧0 --- */
+    int32_t  motor_pos_raw;          /* 电机端实际位置 S32 LE, cnt */
+    int32_t  motor_vel_raw;          /* 电机端实际速度 S32 LE, RPM */
 } motor_sensor_t;
 
 /* 0x6B0 力矩帧解析结果
@@ -453,6 +472,35 @@ typedef void (*motor_error_cb_t)(uint8_t node_id, uint16_t error_code, void *ctx
 typedef void (*motor_state_cb_t)(uint8_t node_id, motor_state_t old_state, motor_state_t new_state, void *ctx);
 typedef void (*motor_sensor_cb_t)(uint8_t node_id, const motor_sensor_t *s, void *ctx);
 typedef void (*motor_tpdo_raw_cb_t)(uint8_t node_id, const canfd_frame_t *f, void *ctx);
+
+/* ============================================================================
+ * LED 灯控制 (OD 0x5503:06, SDO 读写)
+ * ============================================================================ */
+
+/* 灯效模式 */
+typedef enum {
+    LED_STEADY = 0,   /* 常亮 */
+    LED_BLINK  = 1,   /* 闪烁 */
+    LED_BREATH = 2,   /* 呼吸 */
+    LED_CHASE  = 3,   /* 流水 */
+} led_mode_t;
+
+/* 使能掩码 (bit[7:4]) */
+#define LED1_MASK  0x10
+#define LED2_MASK  0x20
+#define LED3_MASK  0x40
+#define LED4_MASK  0x80
+#define LED_ALL     0xF0
+
+/* LED 配置 */
+#ifndef LED_CONFIG_T_DEFINED
+#define LED_CONFIG_T_DEFINED
+typedef struct {
+    uint8_t enable_mask;
+    uint8_t mode;         /* led_mode_t */
+    uint8_t r, g, b;      /* 0-255 */
+} led_config_t;
+#endif
 
 #ifdef __cplusplus
 }

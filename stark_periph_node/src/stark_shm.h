@@ -42,6 +42,8 @@ typedef struct {
     uint8_t  status_byte;       /* bit7:使能 bit6:抱闸 bit5:错误 bit4:到位             */
     uint8_t  mode;              /* 当前控制模式 (CiA 402)                              */
     uint8_t  error_code;        /* 故障码 (高4位=故障类型, 低4位=子码)                  */
+    /* V2 扩展 (0x300 DLC=16) */
+    int16_t  torque_nm;         /* 力矩反馈, 0.05N.m (Byte[10-11]) */
     uint8_t  _pad;
 } motor_data_t;
 
@@ -116,15 +118,16 @@ typedef struct {
 
 /* 电机控制命令 */
 typedef enum {
-    STARK_CMD_TORQUE   = 1,       /* 力矩模式, value=mA                                   */
+    STARK_CMD_TORQUE   = 1,       /* 电流控制 (CURRENT mode), value=mA                         */
     STARK_CMD_SPEED    = 2,       /* 速度模式, value=RPM×100                              */
     STARK_CMD_POS      = 3,       /* 位置模式, value=°×100                                */
-    STARK_CMD_MIT      = 4,       /* MIT 阻抗控制                                          */
+    STARK_CMD_MIT      = 4,       /* MIT 阻抗控制 (0x110 独立帧)                             */
     STARK_CMD_PP       = 5,       /* 轮廓位置模式 PP                                       */
     STARK_CMD_CSV      = 6,       /* 循环同步速度 CSV, value=RPM×100                          */
     /* 多轴广播: 两电机 cmd 都为 MULTI 时, 打包一帧 64B CANFD 发出 */
     STARK_CMD_MULTI    = 7,       /* 多轴广播, mode/value/value2/feedforward 字段有效            */
     STARK_CMD_PV       = 8,       /* 轮廓速度模式 PV, value=RPM×100 value2=accel×100         */
+    STARK_CMD_MIT_MULTI = 9,       /* MIT 多轴广播 (0x210, 64Byte), mit_* 字段有效               */
     /* PDO Byte0 位控制 (不发 target) */
     STARK_CMD_ENABLE   = 10,      /* PDO使能 (Byte0 bit7=1)                                */
     STARK_CMD_DISABLE  = 11,      /* PDO失能 (Byte0 bit7=0)                                */
@@ -133,6 +136,8 @@ typedef enum {
     STARK_CMD_SET_MODE = 14,      /* 切换 PDO 控制模式 */
     /* PDO Byte0 bit5 清错 */
     STARK_CMD_CLEAR_FAULT = 15,
+    /* 力矩环控制 (V2 新增, 0x100+mode=6), value=0.05N.m */
+    STARK_CMD_TORQUE_CTRL = 16,
 
     /* SDO 控制命令 (算法写, 主循环处理, 非 RT) */
     STARK_CMD_SDO_CUR    = 20,      /* SDO 电流, value=mA                                    */
@@ -243,6 +248,8 @@ typedef struct {
     int16_t  knee_hall;            /* 膝关节霍尔                              */
     uint8_t  key_landing;           /* 着地开关                                  */
     uint8_t  torque_valid;          /* 力矩数据有效                              */
+    int16_t  torque_feedback;       /* 力矩反馈, 0.05N.m (0x300 Byte[10-11])     */
+    uint8_t  _pad_motor_r[1];
 
     /* 左电机 (ID=2) */
     int32_t  RealtimeVelocity_left;
@@ -260,6 +267,8 @@ typedef struct {
     int16_t  knee_hall_left;
     uint8_t  key_landing_left;
     uint8_t  torque_valid_left;
+    int16_t  torque_feedback_left;   /* 力矩反馈, 0.05N.m */
+    uint8_t  _pad_motor_l[1];
 
     /* 时间戳 */
     uint32_t timestamp_ms;      /* CLOCK_REALTIME, ms since epoch */

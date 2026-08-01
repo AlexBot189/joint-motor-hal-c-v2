@@ -69,7 +69,13 @@ bool canopen_sdo_parse_response(const canfd_frame_t *f,
 
     uint8_t cmd = f->data[0];
 
+    /* 先提取索引/子索引, ABORT 也需要 */
+    uint16_t idx = (uint16_t)f->data[1] | ((uint16_t)f->data[2] << 8);
+    uint8_t  sub = f->data[3];
+
     if (cmd == SDO_CC_ABORT) {
+        if (out_index)  *out_index  = idx;
+        if (out_subidx) *out_subidx = sub;
         if (abort_code) {
             *abort_code = (uint32_t)f->data[4]
                         | ((uint32_t)f->data[5] << 8)
@@ -79,10 +85,8 @@ bool canopen_sdo_parse_response(const canfd_frame_t *f,
         return false;
     }
 
-    if (out_index)
-        *out_index = (uint16_t)f->data[1] | ((uint16_t)f->data[2] << 8);
-    if (out_subidx)
-        *out_subidx = f->data[3];
+    if (out_index)  *out_index  = idx;
+    if (out_subidx) *out_subidx = sub;
 
     switch (cmd) {
         case SDO_CC_UPLOAD_RSP_1B:  /* 0x4F */
@@ -248,7 +252,49 @@ void canopen_mit_pdo_build(uint8_t node, motor_mode_t mode,
 }
 
 /* =====================================================
- * 多轴广播
+ * MIT 多轴广播 (0x210, 64字节, 最多6电机)
+ * 每 slot 9 字节 = 控制字+pos(16b)+vel(12b)+kp(12b)+kd(12b)+tq(12b)
+ * ===================================================== */
+
+void canopen_mit_multi_build(const multi_mit_cmd_t *cmds, uint8_t count,
+                              canfd_frame_t *f)
+{
+    memset(f, 0, sizeof(*f));
+    f->id    = COB_MULTI_MIT;
+    f->dlc   = 64;
+    f->is_fd  = true;
+    f->use_brs = true;
+
+    if (count > 6) count = 6;
+
+    for (uint8_t i = 0; i < count; i++) {
+        uint8_t base = i * 9;
+
+        uint8_t flags = 0;
+        if (cmds[i].enable)        flags |= (1 << 7);
+        if (cmds[i].release_brake) flags |= (1 << 6);
+        if (cmds[i].clear_error)   flags |= (1 << 5);
+        flags |= ((uint8_t)6 & 0x0F) << 1;  /* mode=MIT */
+
+        f->data[base + 0] = flags;
+        f->data[base + 1] = (uint8_t)((cmds[i].position >> 8) & 0xFF);
+        f->data[base + 2] = (uint8_t)(cmds[i].position & 0xFF);
+        f->data[base + 3] = (uint8_t)((cmds[i].velocity >> 4) & 0xFF);
+        f->data[base + 4] = (uint8_t)(((cmds[i].velocity & 0x0F) << 4) | ((cmds[i].kp >> 8) & 0x0F));
+        f->data[base + 5] = (uint8_t)(cmds[i].kp & 0xFF);
+        f->data[base + 6] = (uint8_t)((cmds[i].kd >> 4) & 0xFF);
+        f->data[base + 7] = (uint8_t)(((cmds[i].kd & 0x0F) << 4) | ((cmds[i].torque >> 8) & 0x0F));
+        f->data[base + 8] = (uint8_t)(cmds[i].torque & 0xFF);
+    }
+
+    /* ID 映射: Byte[56-61] */
+    for (uint8_t i = 0; i < count; i++) {
+        f->data[56 + i] = cmds[i].node_id;
+    }
+}
+
+/* =====================================================
+ * 多轴广播 (0x200)
  * ===================================================== */
 
 void canopen_multi_ctrl_build(const multi_axis_cmd_t *cmds, uint8_t count,
@@ -314,11 +360,22 @@ void canopen_parse_feedback(const canfd_frame_t *f, motor_feedback_t *fb)
     /* Byte[8-9]: 温度 (int16, 0.1°C) */
     fb->temperature = (int16_t)(((uint16_t)f->data[8] << 8) | (uint16_t)f->data[9]);
 
-    /* Byte[10]: 控制模式 */
-    fb->mode = f->data[10];
-
-    /* Byte[11]: 状态字节 */
-    fb->status_byte = f->data[11];
+    /* V2 扩展: DLC=16 (带力矩传感器) vs DLC=12 (无力矩传感器) */
+    if (f->dlc >= 16) {
+        /* Byte[10-11]: 力矩反馈 (int16, 0.05N.m) */
+        fb->torque_nm = (int16_t)(((uint16_t)f->data[10] << 8) | (uint16_t)f->data[11]);
+        /* Byte[12-14]: 预留 (int24 电机端编码器位置), 跳过 */
+        /* Byte[15] bit7-4: 状态 
+           Byte[15] bit3-0: 控制模式反馈 */
+        fb->status_byte = f->data[15];
+        fb->mode        = f->data[15] & 0x0F;
+    } else {
+        /* DLC=12: 无力矩传感器版本 */
+        /* Byte[10]: 控制模式 */
+        fb->mode = f->data[10];
+        /* Byte[11]: 状态字节 */
+        fb->status_byte = f->data[11];
+    }
 }
 
 /* =====================================================

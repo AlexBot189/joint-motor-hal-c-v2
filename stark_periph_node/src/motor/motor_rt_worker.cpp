@@ -260,6 +260,7 @@ static const char* _stark_cmd_name(uint8_t cmd)
     case STARK_CMD_SPEED:       return "SPEED";
     case STARK_CMD_POS:         return "POS";
     case STARK_CMD_MIT:         return "MIT";
+    case STARK_CMD_MIT_MULTI: return "MIT_MULTI";
     case STARK_CMD_PP:          return "PP";
     case STARK_CMD_CSV:         return "CSV";
     case STARK_CMD_MULTI:       return "MULTI";
@@ -388,6 +389,19 @@ void StarkRtWorker::ProcessMailbox()
                 if (mid < 1 || mid > (uint8_t)m_motor_count) continue;
 
                 switch (c.cmd) {
+                case STARK_CMD_TORQUE_CTRL:
+                    {
+                        int16_t torque_target = (int16_t)c.value;
+                        uint8_t si = mid - 1;
+                        multi_axis_cmd_t mcmd = {};
+                        mcmd.node_id       = mid;
+                        mcmd.mode          = MOTOR_MODE_TORQUE;
+                        mcmd.enable        = true;
+                        mcmd.release_brake = true;
+                        mcmd.target1       = torque_target;
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_TORQUE, si, m_pending_retry);
+                    }
+                    break;
                 case STARK_CMD_TORQUE:
                     {
                         int32_t ma = c.value;
@@ -609,6 +623,7 @@ void StarkRtWorker::PublishFeedback()
                         d.motor_abs_angle  = ang_x10;
                         d.cal_Iq_current   = iq_x100;
                         d.motor_temp       = tmp_x100;
+                        d.cal_bus_current   = (int16_t)(s.bus_current / 10);
                         d.fault_code       = fcode;
                         d.motor_state      = mstate;
                     } else {
@@ -616,6 +631,7 @@ void StarkRtWorker::PublishFeedback()
                         d.motor_abs_angle_left  = ang_x10;
                         d.cal_Iq_current_left   = iq_x100;
                         d.motor_temp_left       = tmp_x100;
+                        d.cal_bus_current_left   = (int16_t)(s.bus_current / 10);
                         d.fault_code_left       = fcode;
                         d.motor_state_left      = mstate;
                     }
@@ -632,6 +648,7 @@ void StarkRtWorker::PublishFeedback()
                         d.knee_hall   = (int16_t)s.knee_hall;
                         d.key_landing  = s.hw_sw_pc9;
                         d.torque_valid = s.data_valid;
+                        d.torque_feedback = mfb.torque_nm;
                     } else {
                         d.hall_a_data_left  = s.hall_adc0;
                         d.hall_b_data_left  = s.hall_adc1;
@@ -640,6 +657,7 @@ void StarkRtWorker::PublishFeedback()
                         d.knee_hall_left   = (int16_t)s.knee_hall;
                         d.key_landing_left  = s.hw_sw_pc9;
                         d.torque_valid_left = s.data_valid;
+                        d.torque_feedback_left = mfb.torque_nm;
                     }
                     /* 0x6B0 力矩并入 PeriodicUploadData (单一上报路径) */
                     if (is_right) {

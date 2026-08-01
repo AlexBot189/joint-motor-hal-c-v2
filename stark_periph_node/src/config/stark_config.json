@@ -58,7 +58,7 @@
   "sensor": {
     "period_div": 4,
     "bus_format": 3,
-    "mode": 2,
+    "mode": 3,
     "force_module": 1
   },
   "led": {

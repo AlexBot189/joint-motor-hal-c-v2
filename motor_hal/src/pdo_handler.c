@@ -77,6 +77,14 @@ void pdo_multi_send(can_driver_t *drv, const multi_axis_cmd_t *cmds, uint8_t cou
     can_driver_send(drv, &f);
 }
 
+void pdo_mit_multi_send(can_driver_t *drv, const multi_mit_cmd_t *cmds, uint8_t count)
+{
+    canfd_frame_t f;
+    canopen_mit_multi_build(cmds, count, &f);
+    DUMP("TX", &f);
+    can_driver_send(drv, &f);
+}
+
 /* ---------- SYNC ---------- */
 
 void pdo_sync_send(can_driver_t *drv)

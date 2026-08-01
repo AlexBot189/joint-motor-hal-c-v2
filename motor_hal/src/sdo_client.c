@@ -186,57 +186,33 @@ static int _sdo_wait_response(can_driver_t *drv __attribute__((unused)),
 int sdo_write(can_driver_t *drv, uint8_t node,
               uint16_t index, uint8_t subidx,
               uint32_t value, uint8_t size_bytes,
-              int retry_count, int timeout_ms)
+              int retry_count __attribute__((unused)), int timeout_ms)
 {
-    int last_err = 0;
+    canfd_frame_t f;
+    canopen_sdo_write_build(node, index, subidx, value, size_bytes, &f);
+    _dump_hex("TX", &f);
 
-    for (int attempt = 0; attempt <= retry_count; attempt++) {
-        canfd_frame_t f;
-        canopen_sdo_write_build(node, index, subidx, value, size_bytes, &f);
-        _dump_hex("TX", &f);
+    if (can_driver_send(drv, &f) < 0)
+        return -errno;
 
-        if (can_driver_send(drv, &f) < 0) {
-            last_err = -errno;
-            if (attempt < retry_count) usleep(5000);
-            continue;
-        }
-
-        uint32_t resp = 0, abort_code = 0;
-        int ret = _sdo_wait_response(drv, node, index, &resp, &abort_code, timeout_ms);
-        if (ret == 0) return 0;
-        last_err = ret;
-
-        if (attempt < retry_count) usleep(10000);
-    }
-    return last_err;
+    uint32_t resp = 0, abort_code = 0;
+    return _sdo_wait_response(drv, node, index, &resp, &abort_code, timeout_ms);
 }
 
 int sdo_read(can_driver_t *drv, uint8_t node,
              uint16_t index, uint8_t subidx,
              uint32_t *value,
-             int retry_count, int timeout_ms)
+             int retry_count __attribute__((unused)), int timeout_ms)
 {
-    int last_err = 0;
+    canfd_frame_t f;
+    canopen_sdo_read_build(node, index, subidx, &f);
+    _dump_hex("TX", &f);
 
-    for (int attempt = 0; attempt <= retry_count; attempt++) {
-        canfd_frame_t f;
-        canopen_sdo_read_build(node, index, subidx, &f);
-        _dump_hex("TX", &f);
+    if (can_driver_send(drv, &f) < 0)
+        return -errno;
 
-        if (can_driver_send(drv, &f) < 0) {
-            last_err = -errno;
-            if (attempt < retry_count) usleep(5000);
-            continue;
-        }
-
-        uint32_t abort_code = 0;
-        int ret = _sdo_wait_response(drv, node, index, value, &abort_code, timeout_ms);
-        if (ret == 0) return 0;
-        last_err = ret;
-
-        if (attempt < retry_count) usleep(10000);
-    }
-    return last_err;
+    uint32_t abort_code = 0;
+    return _sdo_wait_response(drv, node, index, value, &abort_code, timeout_ms);
 }
 
 int sdo_write_simple(can_driver_t *drv, uint8_t node,

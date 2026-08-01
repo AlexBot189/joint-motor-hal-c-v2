@@ -197,7 +197,7 @@ static inline void _stark_mbox_commit(stark_client_t* c)
     __atomic_add_fetch(&c->shm->mailbox.seq_write, 1, __ATOMIC_RELEASE);
 }
 
-/* 力矩控制, 单位 mA */
+/* 电流控制, 单位 mA */
 static inline void stark_torque(stark_client_t* c, int id, int32_t ma)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
@@ -212,6 +212,21 @@ static inline void stark_torque(stark_client_t* c, int id, int32_t ma)
     c->shm->mailbox.frames[slot].cmd[idx].value    = ma;
     c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
+    _stark_mbox_commit(c);
+}
+
+/* 力矩环控制 (V2 新增), 单位 0.05N.m, 通过 0x100+mode=6 控制 */
+static inline void stark_torque_ctrl(stark_client_t* c, int id, int32_t torque_005nm)
+{
+    if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
+
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
+    c->shm->mailbox.frames[slot].cmd[id - 1].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[id - 1].cmd      = STARK_CMD_TORQUE_CTRL;
+    c->shm->mailbox.frames[slot].cmd[id - 1].value    = torque_005nm;
+    c->shm->mailbox.frames[slot].cmd[id - 1].timestamp_us = _stark_now_us();
     _stark_mbox_commit(c);
 }
 
@@ -344,6 +359,40 @@ static inline void stark_mit(stark_client_t* c, int id,
     c->shm->mailbox.frames[slot].cmd[idx].mit_kd     = (uint16_t)(kd * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].mit_torque = (uint16_t)(torque_ma);
     c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
+
+    _stark_mbox_commit(c);
+}
+
+/* MIT 多轴广播 (0x210, 64Byte CAN FD, 双电机一帧) */
+static inline void stark_mit_multi(stark_client_t* c,
+                                     float pos1, float vel1, float kp1, float kd1, float tq1,
+                                     float pos2, float vel2, float kp2, float kd2, float tq2)
+{
+    if (!c || !c->shm) return;
+
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
+
+    /* M1 */
+    c->shm->mailbox.frames[slot].cmd[0].motor_id   = 1;
+    c->shm->mailbox.frames[slot].cmd[0].cmd        = STARK_CMD_MIT_MULTI;
+    c->shm->mailbox.frames[slot].cmd[0].mit_pos    = (uint16_t)((pos1 + 180.0f) * 65535.0f / 360.0f);
+    c->shm->mailbox.frames[slot].cmd[0].mit_vel    = (uint16_t)(vel1);
+    c->shm->mailbox.frames[slot].cmd[0].mit_kp     = (uint16_t)(kp1 * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[0].mit_kd     = (uint16_t)(kd1 * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[0].mit_torque = (uint16_t)(tq1);
+    c->shm->mailbox.frames[slot].cmd[0].timestamp_us = _stark_now_us();
+
+    /* M2 */
+    c->shm->mailbox.frames[slot].cmd[1].motor_id   = 2;
+    c->shm->mailbox.frames[slot].cmd[1].cmd        = STARK_CMD_MIT_MULTI;
+    c->shm->mailbox.frames[slot].cmd[1].mit_pos    = (uint16_t)((pos2 + 180.0f) * 65535.0f / 360.0f);
+    c->shm->mailbox.frames[slot].cmd[1].mit_vel    = (uint16_t)(vel2);
+    c->shm->mailbox.frames[slot].cmd[1].mit_kp     = (uint16_t)(kp2 * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[1].mit_kd     = (uint16_t)(kd2 * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[1].mit_torque = (uint16_t)(tq2);
+    c->shm->mailbox.frames[slot].cmd[1].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
 }

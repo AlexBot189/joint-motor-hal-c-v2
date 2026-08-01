@@ -13,6 +13,7 @@
  *   ./demo_algo pv <rpm> [acc]         轮廓速度 PV, 梯形波
  *   ./demo_algo mit <kp> <kd>          MIT 阻抗控制
  *   ./demo_algo multi <ma1> <ma2>      多轴广播, 恒电流
+ *   ./demo_algo torque_ctrl <val>       力矩环控制, 正弦 (val=0.05N.m)
  *
  * SDO 单帧控制 (通过 mailbox → main_loop):
  *   ./demo_algo sdo cur <id> <mA>                    单电机电流
@@ -35,6 +36,8 @@
  *   ./demo_algo pdo vel <id> <rpm>                    单电机速度 (PV)
  *   ./demo_algo pdo vel <id1> <id2> <rpm>             双电机同值速度
  *   ./demo_algo pdo vel <id1> <id2> <rpm1> <rpm2>     双电机不同值速度
+ *   ./demo_algo pdo tq <id> <val>                       单电控力矩(0.05N.m)
+ *   ./demo_algo pdo tq <id1> <id2> <val>                双电机同值力矩
  *
  * 管理/状态:
  *   ./demo_algo enable/disable/estop/clearf <id>
@@ -296,6 +299,71 @@ static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
     }
 }
 
+/* 力矩环连续控制, val=0.05N.m 幅值, 正弦波 */
+static void run_torque_ctrl(stark_client_t* c, int32_t val)
+{
+    printf("[torque_ctrl] 力矩环正弦, 幅值=%d (%.1fN.m)\n", val, (float)val * 0.05f);
+    printf("  按 Ctrl+C 停止\n");
+
+    uint64_t t0 = now_ms();
+    uint64_t last = now_ms();
+    int cnt = 0;
+
+    while (g_running) {
+        uint64_t now = now_ms();
+        uint64_t elapsed = now - t0;
+        int32_t target = (int32_t)((float)val * sinf((float)(elapsed % 2000) / 2000.0f * 2.0f * M_PI));
+
+        if (stark_online(c, 1)) stark_torque_ctrl(c, 1, target);
+        if (stark_online(c, 2)) stark_torque_ctrl(c, 2, target);
+
+        if (now - last >= 500) {
+            motor_data_t fb1 = stark_fb(c, 1);
+            motor_data_t fb2 = stark_fb(c, 2);
+            printf("[%4lu] cmd=%.1fN.m  M1: tq=%.2fN.m Iq=%dmA  M2: tq=%.2fN.m Iq=%dmA\n",
+                   elapsed / 100, (float)target * 0.05f,
+                   (float)fb1.torque_nm * 0.05f, fb1.current_iq,
+                   (float)fb2.torque_nm * 0.05f, fb2.current_iq);
+            last = now;
+        }
+
+        if (++cnt % 200 == 0) stark_heartbeat(c);
+        usleep(1000);
+    }
+}
+
+
+/* MIT 多轴广播控制 (0x210, 双电机一帧) */
+static void run_mit_multi(stark_client_t* c, float kp, float kd)
+{
+    printf("[MIT multi] kp=%.0f, kd=%.0f, 双电机一帧广播\n", kp, kd);
+    printf("  按 Ctrl+C 停止\n");
+
+    uint64_t last = now_ms();
+
+    while (g_running) {
+        if (stark_online(c, 1) && stark_online(c, 2)) {
+            stark_mit_multi(c,
+                0.0f, 0.0f, kp, kd, 0.0f,   /* M1: pos,vel,kp,kd,tq */
+                0.0f, 0.0f, kp, kd, 0.0f);  /* M2: pos,vel,kp,kd,tq */
+        }
+
+        uint64_t now = now_ms();
+        if (now - last >= 500) {
+            motor_data_t fb1 = stark_fb(c, 1);
+            motor_data_t fb2 = stark_fb(c, 2);
+            printf("[MIT multi] M1: pos=%.1f cur=%dmA  M2: pos=%.1f cur=%dmA\n",
+                   counts_to_deg(fb1.position), fb1.current_iq,
+                   counts_to_deg(fb2.position), fb2.current_iq);
+            last = now;
+        }
+
+        static int cnt = 0;
+        if (++cnt % 200 == 0) stark_heartbeat(c);
+        usleep(1000);
+    }
+}
+
 /* PeriodicUploadData display */
 static void run_report_loop(stark_client_t* c)
 {
@@ -361,6 +429,10 @@ static void run_report_loop(stark_client_t* c)
                d->spi_torque, d->spi_valid, d->spi_error,
                d->spi_torque_left, d->spi_valid_left, d->spi_error_left);
 
+        printf("TQ   M1[tq=%.2fN.m]  M2[tq=%.2fN.m]  (0x300 力矩反馈)\n",
+               (float)d->torque_feedback * 0.05f,
+               (float)d->torque_feedback_left * 0.05f);
+
         printf("\n");
     }
 }
@@ -376,10 +448,11 @@ static void run_stat_loop(stark_client_t* c)
         imu_data_t imu = stark_imu(c);
 
         printf("[stat] M1: pos=%.1f deg vel=%d RPM cur=%d mA temp=%.1f C  "
-               "M2: pos=%.1f deg vel=%d RPM cur=%d mA  "
+               "M2: pos=%.1f deg vel=%d RPM cur=%d mA tq=%.2fN.m  "
                "IMU: yaw=%.1f pitch=%.1f roll=%.1f\n",
                counts_to_deg(fb1.position), fb1.velocity, fb1.current_iq, (float)fb1.temperature * 0.1f,
                counts_to_deg(fb2.position), fb2.velocity, fb2.current_iq,
+               (float)fb2.torque_nm * 0.05f,
                imu.yaw, imu.pitch, imu.roll);
 
         usleep(200000);  /* 5Hz */
@@ -428,6 +501,7 @@ static void usage(void)
     printf("  csp    <deg>          PP 位置 (同 pos)\n");
     printf("  pp     <deg> [acc] [v] 轮廓位置 PP, 方波\n");
     printf("  mit    <kp> <kd>      MIT 阻抗\n");
+    printf("  mit_multi <kp> <kd>      MIT 多轴广播\\n");
     printf("\nSDO 单帧控制 (sdo cur/pos/vel, 支持单/双电机):\n");
     printf("  sdo cur <id> <mA>                    单电机电流\n");
     printf("  sdo cur <id1> <id2> <mA>             双电机同值电流\n");
@@ -486,6 +560,8 @@ static void usage(void)
     printf("  ./demo_algo btn                    # 读取按键上报状态\n");
 }
 
+static void _sdo_hal_close(motor_hal_t *h) { if (h) motor_hal_destroy(h); }
+
 int main(int argc, char** argv)
 {
     signal(SIGINT,  sig_handler);
@@ -512,7 +588,9 @@ int main(int argc, char** argv)
     int need_calib = (strcmp(mode, "torque") == 0 || strcmp(mode, "speed") == 0 ||
                       strcmp(mode, "pos") == 0    || strcmp(mode, "pp") == 0 ||
                       strcmp(mode, "pv") == 0    || strcmp(mode, "mit") == 0 ||
-                      strcmp(mode, "multi") == 0);
+                      strcmp(mode, "multi") == 0 ||
+                      strcmp(mode, "torque_ctrl") == 0 ||
+                      strcmp(mode, "mit_multi") == 0);
 
     if (need_calib) {
         printf("[init] 等待校准完成...\n");
@@ -808,9 +886,91 @@ int main(int argc, char** argv)
             stark_close(&c); return 0;
         }
 
+        if (strcmp(sub, "tq") == 0) {
+            /* PDO 力矩环控制: pdo tq <id> <val> 或 pdo tq <id1> <id2> <val> */
+            int id1 = atoi(argv[3]);
+            int id2 = 0, dual = 0, val_idx = 4;
+            if (argc > 5) {
+                int m = atoi(argv[4]);
+                if ((m == 1 || m == 2) && m != id1) { id2 = m; dual = 1; val_idx = 5; }
+            }
+            if (argc < val_idx + 1) { printf("ERR: pdo tq <id> <val0.05N.m>\n"); stark_close(&c); return 1; }
+            int val = atoi(argv[val_idx]);
+            uint64_t t0 = now_us();
+            stark_torque_ctrl(&c, id1, val);
+            printf("PDO tq: M%d=%d(%.1fN.m)", id1, val, (float)val * 0.05f);
+            if (dual) { stark_torque_ctrl(&c, id2, val); printf(" M%d=%d", id2, val); }
+            printf("\n");
+
+            motor_data_t a1;
+            int ch1 = _wait_new_fb_frame(&c, id1, &a1, 1000, 500, 1);
+            printf("  M%d: tq=%.2fN.m Iq=%dmA [%s] %luus\n",
+                   id1, (float)a1.torque_nm * 0.05f, a1.current_iq,
+                   ch1 ? "ok" : "timeout", (unsigned long)(now_us() - t0));
+            if (dual) {
+                motor_data_t a2;
+                int ch2 = _wait_new_fb_frame(&c, id2, &a2, 1000, 500, 1);
+                printf("  M%d: tq=%.2fN.m Iq=%dmA [%s] %luus\n",
+                       id2, (float)a2.torque_nm * 0.05f, a2.current_iq,
+                       ch2 ? "ok" : "timeout", (unsigned long)(now_us() - t0));
+            }
+            stark_close(&c); return 0;
+        }
+
+        if (strcmp(sub, "mit") == 0) {
+            /* PDO MIT 单帧控制: pdo mit <id> <pos> <vel> <kp> <kd> <tq>
+               双电机: pdo mit <id1> <id2> <pos> <vel> <kp> <kd> <tq> */
+            int has_dual = 0, id1, id2;
+            {
+                id1 = atoi(argv[3]);
+                int v = atoi(argv[4]);
+                if ((v == 1 || v == 2) && v != id1) {
+                    has_dual = 1; id2 = v;
+                }
+            }
+            int off = has_dual ? 5 : 4;
+            if (argc < off + 4) {
+                printf("ERR: pdo mit <id> <pos_deg> <vel_rpm> <kp> <kd> [tq_ma]\n");
+                stark_close(&c); return 1;
+            }
+            float p = (float)atof(argv[off]);
+            float v = (float)atof(argv[off+1]);
+            float kp= (float)atof(argv[off+2]);
+            float kd= (float)atof(argv[off+3]);
+            float tq= (argc >= off+5) ? (float)atof(argv[off+4]) : 0.0f;
+            uint64_t t0 = now_us();
+
+            stark_mit(&c, id1, p, v, kp, kd, tq);
+            printf("PDO mit: M%d pos=%.1f vel=%.1f kp=%.1f kd=%.1f tq=%.1f",
+                   id1, p, v, kp, kd, tq);
+            if (has_dual) {
+                stark_mit(&c, id2, p, v, kp, kd, tq);
+                printf(" M%d pos=%.1f vel=%.1f", id2, p, v);
+            }
+            printf("\n");
+
+            /* 等反馈 */
+            motor_data_t a1;
+            int ch1 = _wait_new_fb_frame(&c, id1, &a1, 1000, 500, 1);
+            uint64_t t1 = now_us();
+            const char *rt = c.shm->rt_mode ? "RT" : "NRT";
+            printf("  M%d: pos=%.1f cur=%dmA [%s %s]  %luus\n",
+                   id1, counts_to_deg(a1.position), a1.current_iq,
+                   rt, ch1 ? "new_frame" : "timeout", t1 - t0);
+            if (has_dual) {
+                motor_data_t a2;
+                int ch2 = _wait_new_fb_frame(&c, id2, &a2, 1000, 500, 1);
+                printf("  M%d: pos=%.1f cur=%dmA [%s %s]  %luus\n",
+                       id2, counts_to_deg(a2.position), a2.current_iq,
+                       rt, ch2 ? "new_frame" : "timeout", (uint64_t)(now_us() - t0));
+            }
+            stark_close(&c); return 0;
+        }
+
         printf("ERR: unknown %s sub-command: %s\n", mode, sub);
         stark_close(&c); return 1;
     }
+
 
     /* 分发 PDO 连续控制模式 */
     if (strcmp(mode, "torque") == 0) {
@@ -846,6 +1006,12 @@ int main(int argc, char** argv)
         float kp = (float)atof(argv[2]);
         float kd = (float)atof(argv[3]);
         run_mit(&c, kp, kd);
+
+    } else if (strcmp(mode, "mit_multi") == 0) {
+        if (argc < 4) { printf("ERR: 需要 kp kd\n"); stark_close(&c); return 1; }
+        float kp_m = (float)atof(argv[2]);
+        float kd_m = (float)atof(argv[3]);
+        run_mit_multi(&c, kp_m, kd_m);
 
     } else if (strcmp(mode, "multi") == 0) {
         if (argc < 4) { printf("ERR: 需要 ma1 ma2\n"); stark_close(&c); return 1; }

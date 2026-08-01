@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <pthread.h>
+#include <sched.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -73,6 +74,7 @@ void pdo_mit_send_raw(can_driver_t *drv, uint8_t node, uint8_t byte0,
                        uint16_t position, uint16_t velocity,
                        uint16_t kp, uint16_t kd, int16_t torque);
 void pdo_multi_send(can_driver_t *drv, const multi_axis_cmd_t *cmds, uint8_t count);
+void pdo_mit_multi_send(can_driver_t *drv, const multi_mit_cmd_t *cmds, uint8_t count);
 void pdo_sync_send(can_driver_t *drv);
 void pdo_feedback_parse(const canfd_frame_t *f, motor_feedback_t *fb);
 
@@ -151,6 +153,8 @@ struct motor_hal {
     /* 接收线程 */
     pthread_t    recv_thread;
     bool         recv_running;
+    bool         recv_rt_enable;
+    int          recv_rt_priority;
 
     /* SYNC 定时器线程 */
     pthread_t    sync_thread;
@@ -1113,6 +1117,106 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
 
     _dump_can_frame("recv", f);
 
+    /* 0x6A0 运行反馈帧1: Iq(S16)+母线电流(S16)+温度(S16)+错误码(U16) */
+    if ((f->id & 0x7F0U) == COB_RUN_FB1_BASE) {
+        if (f->dlc >= 8) {
+            uint8_t node = f->id & 0x0FU;
+            motor_node_t *m = _find_motor(hal, node);
+            if (m) {
+                pthread_mutex_lock(&m->sensor_lock);
+                m->cached_sensor.iq_current  = (int16_t)((uint16_t)f->data[0] | ((uint16_t)f->data[1] << 8));
+                m->cached_sensor.bus_current = (int32_t)((int16_t)((uint16_t)f->data[2] | ((uint16_t)f->data[3] << 8)));
+                m->cached_sensor.motor_temp_x10 = (int16_t)((uint16_t)f->data[4] | ((uint16_t)f->data[5] << 8));
+                m->cached_sensor.error_code    = (uint16_t)((uint16_t)f->data[6] | ((uint16_t)f->data[7] << 8));
+                m->cached_sensor.run_fb_timestamp_us = motor_utils_now_us();
+                pthread_mutex_unlock(&m->sensor_lock);
+            }
+        }
+        return;
+    }
+
+    /* 0x690 运行反馈帧0: 位置 S32 LE + 速度 S32 LE (V1.1 §4.2) */
+    if ((f->id & 0x7F0U) == 0x690) {
+        if (f->dlc >= 8) {
+            uint8_t node = f->id & 0x0FU;
+            motor_node_t *m = _find_motor(hal, node);
+            if (m) {
+                /* 小端 S32: 实际位置 (cnt, -32768~32767 → -180°~180°) */
+                int32_t raw_pos = (int32_t)((uint32_t)f->data[0]
+                                  | ((uint32_t)f->data[1] << 8)
+                                  | ((uint32_t)f->data[2] << 16)
+                                  | ((uint32_t)f->data[3] << 24));
+                /* 小端 S32: 实际速度 (RPM) */
+                int32_t raw_vel = (int32_t)((uint32_t)f->data[4]
+                                  | ((uint32_t)f->data[5] << 8)
+                                  | ((uint32_t)f->data[6] << 16)
+                                  | ((uint32_t)f->data[7] << 24));
+                pthread_mutex_lock(&m->sensor_lock);
+                m->cached_sensor.motor_pos_raw = raw_pos;
+                m->cached_sensor.motor_vel_raw = raw_vel;
+                m->cached_sensor.run_fb_timestamp_us = motor_utils_now_us();
+                pthread_mutex_unlock(&m->sensor_lock);
+            }
+        }
+        return;
+    }
+
+    /* 0x6C0 32 Byte CAN FD 聚合透传帧 (V1.2 mode=3) */
+    if ((f->id & 0x7F0U) == COB_SENSOR_AGGR_BASE && f->dlc >= 32) {
+        uint8_t node = f->id & 0x0FU;
+        motor_node_t *m = _find_motor(hal, node);
+        if (m) {
+            pthread_mutex_lock(&m->sensor_lock);
+
+            /* 将 32Byte 聚合帧拆为 4段 8Byte, 复用现有解析逻辑 */
+            /* 段1: Byte 0-7  → 0x680 Hall+力矩 */
+            canfd_frame_t f680 = *f;
+            f680.dlc = 8;
+            _parse_sensor_frame(&f680, &m->cached_sensor);
+            m->cached_sensor.timestamp_us = motor_utils_now_us();
+
+            /* 段2: Byte 8-15 → 0x690 位置S32+速度S32 */
+            m->cached_sensor.motor_pos_raw = (int32_t)((uint32_t)f->data[8]
+                                              | ((uint32_t)f->data[9] << 8)
+                                              | ((uint32_t)f->data[10] << 16)
+                                              | ((uint32_t)f->data[11] << 24));
+            m->cached_sensor.motor_vel_raw = (int32_t)((uint32_t)f->data[12]
+                                              | ((uint32_t)f->data[13] << 8)
+                                              | ((uint32_t)f->data[14] << 16)
+                                              | ((uint32_t)f->data[15] << 24));
+
+            /* 段3: Byte 16-23 → 0x6A0 (V1.1 §4.3):
+             * [16-17]=iq_current S16, [18-19]=bus_current S16,
+             * [20-21]=motor_temp S16, [22-23]=error_code U16 */
+            m->cached_sensor.iq_current  = (int16_t)((uint16_t)f->data[16] | ((uint16_t)f->data[17] << 8));
+            m->cached_sensor.bus_current = (int32_t)((int16_t)((uint16_t)f->data[18] | ((uint16_t)f->data[19] << 8)));
+            m->cached_sensor.motor_temp_x10 = (int16_t)((uint16_t)f->data[20] | ((uint16_t)f->data[21] << 8));
+            m->cached_sensor.error_code    = (uint16_t)((uint16_t)f->data[22] | ((uint16_t)f->data[23] << 8));
+            m->cached_sensor.run_fb_timestamp_us = motor_utils_now_us();
+
+            /* 段4: Byte 24-31 → 0x6B0 SPI力矩 (复用 CMD_SPI 解析) */
+            {
+                spi_force_frame_t st;
+                canfd_frame_t f6b0 = *f;
+                f6b0.dlc = 8;
+                memcpy(f6b0.data, &f->data[24], 8);
+                canopen_parse_spi_force(&f6b0, &st);
+                m->cached_sensor.spi_force_raw_s24 = st.force_raw_s24;
+                m->cached_sensor.spi_valid         = st.valid;
+                m->cached_sensor.spi_error         = st.error;
+                m->cached_sensor.spi_timestamp_us  = motor_utils_now_us();
+            }
+
+            pthread_mutex_unlock(&m->sensor_lock);
+
+            /* 触发传感器回调 */
+            if (m->sensor_cb) {
+                m->sensor_cb(node, &m->cached_sensor, m->sensor_ctx);
+            }
+        }
+        return;
+    }
+
     /* 0x6B0 SPI 力矩帧: 与 0x680 系列在 CANopen func code (&0x780) 下同码,
      * 必须在 switch 前用 0x7F0 掩码区分 (node_id < 16 成立, 当前双电机满足),
      * 否则会落入 0x680 分支被丢弃. */
@@ -1297,6 +1401,12 @@ static void* _recv_thread_fn(void *arg)
 {
     motor_hal_t *hal = (motor_hal_t*)arg;
 
+    if (hal->recv_rt_enable) {
+        struct sched_param sp;
+        sp.sched_priority = hal->recv_rt_priority;
+        pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+    }
+
     while (hal->recv_running) {
         canfd_frame_t f;
         int ret = can_driver_recv(hal->drv, &f, 100);
@@ -1325,6 +1435,13 @@ int motor_hal_recv_start(motor_hal_t *hal)
     }
 
     return 0;
+}
+
+void motor_hal_recv_set_rt(motor_hal_t *hal, bool enable, int priority)
+{
+    if (!hal) return;
+    hal->recv_rt_enable   = enable;
+    hal->recv_rt_priority = priority;
 }
 
 int motor_hal_recv_stop(motor_hal_t *hal)
@@ -1673,6 +1790,12 @@ void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_
     pdo_multi_send(hal->drv, cmds, count);
 }
 
+void motor_hal_mit_multi_ctrl(motor_hal_t *hal, const multi_mit_cmd_t *cmds, uint8_t count)
+{
+    if (!hal || !hal->drv) return;
+    pdo_mit_multi_send(hal->drv, cmds, count);
+}
+
 /* =====================================================
  * 公共 API: 传感器透传控制
  * ===================================================== */
@@ -1709,6 +1832,75 @@ int motor_hal_sensor_stop(motor_hal_t *hal, uint8_t node_id)
     return motor_hal_sensor_config_ex(hal, node_id, 0, 0, 0, FORCE_MODULE_CAN);
 }
 
+/* =====================================================
+ * LED 灯控制 (OD 0x5503:06, SDO 读写)
+ * ===================================================== */
+
+int motor_hal_led_set(motor_hal_t *hal, uint8_t node_id, const led_config_t *cfg)
+{
+    if (!hal || !hal->drv || !cfg) return -ENODEV;
+
+    uint32_t val = (uint32_t)(cfg->enable_mask | (cfg->mode & 0x0F))
+                 | ((uint32_t)cfg->r << 8)
+                 | ((uint32_t)cfg->g << 16)
+                 | ((uint32_t)cfg->b << 24);
+
+    return sdo_write_simple(hal->drv, node_id, OD_SENSOR_CONFIG,
+                            OD_LED_CTRL_SUB, val, 4);
+}
+
+int motor_hal_led_get(motor_hal_t *hal, uint8_t node_id, led_config_t *cfg)
+{
+    if (!hal || !hal->drv || !cfg) return -ENODEV;
+
+    uint32_t val = 0;
+    int ret = sdo_read_simple(hal->drv, node_id, OD_SENSOR_CONFIG,
+                              OD_LED_CTRL_SUB, &val);
+    if (ret != 0) return ret;
+
+    cfg->enable_mask = (uint8_t)(val & 0xF0);
+    cfg->mode        = (uint8_t)(val & 0x0F);
+    cfg->r           = (uint8_t)((val >> 8)  & 0xFF);
+    cfg->g           = (uint8_t)((val >> 16) & 0xFF);
+    cfg->b           = (uint8_t)((val >> 24) & 0xFF);
+
+    return 0;
+}
+
+/* =====================================================
+ * V1.1 新增对象字典 SDO 接口
+ * ===================================================== */
+
+int motor_hal_get_torque_sensor(motor_hal_t *hal, uint8_t node_id, int16_t *torque_001nm)
+{
+    if (!hal || !hal->drv || !torque_001nm) return -ENODEV;
+    uint32_t val = 0;
+    int ret = sdo_read_simple(hal->drv, node_id, 0x6077, 0x00, &val);
+    *torque_001nm = (int16_t)(val & 0xFFFF);
+    return ret;
+}
+
+int motor_hal_get_bus_current(motor_hal_t *hal, uint8_t node_id, int32_t *bus_ma)
+{
+    if (!hal || !hal->drv || !bus_ma) return -ENODEV;
+    uint32_t val = 0;
+    int ret = sdo_read_simple(hal->drv, node_id, 0x2661, 0x00, &val);
+    *bus_ma = (int32_t)val;
+    return ret;
+}
+
+int motor_hal_store_params(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    return sdo_write_simple(hal->drv, node_id, 0x1010, 0x01, 1, 4);
+}
+
+int motor_hal_torque_zero_calib(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    return sdo_write_simple(hal->drv, node_id, 0x2531, 0x00, 2, 4);
+}
+
 int motor_hal_get_sensor(motor_hal_t *hal, uint8_t node_id, motor_sensor_t *s)
 {
     if (!hal || !s) return -EINVAL;
@@ -1734,12 +1926,12 @@ static int motor_hal_poll_sdo_telemetry(motor_hal_t *hal, uint8_t node_id);
 static void* _sdo_telemetry_thread_fn(void *arg)
 {
     motor_hal_t *hal = (motor_hal_t*)arg;
-
+    
     while (sdo_telemetry_running) {
         for (uint8_t id = 1; id <= hal->motor_count && sdo_telemetry_running; id++) {
             motor_hal_poll_sdo_telemetry(hal, id);
         }
-        usleep(5000);
+        usleep(500);
     }
     return NULL;
 }
@@ -1769,19 +1961,15 @@ int motor_hal_poll_sdo_telemetry(motor_hal_t *hal, uint8_t node_id)
     if (!hal || !hal->drv) return -ENODEV;
 
     uint32_t val = 0;
-    int32_t temp = -1, pos = 0;
+    int32_t pos = 0;
 
-    /* 0x2663 motor coil temperature, 0.1°C */
-    if (sdo_read_simple(hal->drv, node_id, 0x2663, 0x00, &val) == 0)
-        temp = (int32_t)val;
-
-    /* 0x6064 actual position, counts */
+    /* 0x6064 actual position, counts (温度由 0x6A0 透传帧提供) */
     if (sdo_read_simple(hal->drv, node_id, 0x6064, 0x00, &val) == 0)
-        pos = (int32_t)val;
+    pos = (int32_t)val;
 
     pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (m) { m->sdo_temp_01c = temp; m->sdo_position = pos; }
+    if (m) { m->sdo_position = pos; }
     pthread_mutex_unlock(&hal->lock);
 
     return 0;

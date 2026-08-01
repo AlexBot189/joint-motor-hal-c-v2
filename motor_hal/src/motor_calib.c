@@ -134,7 +134,24 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
         return MOTOR_CALIB_CHECKING;
     }
 
-    /* 所有已配置电机的数据通道就绪, 校准完成 */
+    /* 验证位置: set_zero 后位置需在 ±threshold 范围内 */
+    {
+        float thresh = cal->cfg.angle_threshold_deg;
+        if (need_r) {
+            float angle_r = (float)fb_r.position * 180.0f / 32768.0f;
+            if (angle_r < -thresh || angle_r > thresh) {
+                return MOTOR_CALIB_CHECKING;
+            }
+        }
+        if (need_l) {
+            float angle_l = (float)fb_l.position * 180.0f / 32768.0f;
+            if (angle_l < -thresh || angle_l > thresh) {
+                return MOTOR_CALIB_CHECKING;
+            }
+        }
+    }
+
+    /* 所有已配置电机位置在阈值内, 校准完成 */
     {
         CALIB_LOG("DONE: R=%d L=%d", need_r, need_l);
 
@@ -167,8 +184,8 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
 
             /* Step 5: 启动传感器透传, 0.5ms/2000Hz 最快周期,
              * 与 main_loop 默认一致, 避免校准覆盖成慢周期 */
-            if (id_r > 0) motor_hal_sensor_config(cal->hal, id_r, 1, 3);
-            if (id_l > 0) motor_hal_sensor_config(cal->hal, id_l, 1, 3);
+            if (id_r > 0) motor_hal_sensor_config(cal->hal, id_r, 4, 3);
+            if (id_l > 0) motor_hal_sensor_config(cal->hal, id_l, 4, 3);
         }
 
         cal->state = MOTOR_CALIB_DONE;

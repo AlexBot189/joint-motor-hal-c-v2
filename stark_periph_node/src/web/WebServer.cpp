@@ -338,6 +338,10 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         "\"imu_press\":%.1f,"
         "\"spi_torque\":%.1f,"
         "\"spi_valid\":%u,"
+        "\"spi_torque2\":%.1f,"
+        "\"spi_valid2\":%u,"
+        "\"tq_nm1\":%.2f,"
+        "\"tq_nm2\":%.2f,"
         /* 指令追踪 */
         "\"cmd_cur1\":%d,"
         "\"cmd_cur2\":%d,"
@@ -345,12 +349,16 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         "\"cmd_pos2\":%d,"
         "\"cmd_vel1\":%d,"
         "\"cmd_vel2\":%d,"
+        "\"cmd_tq1\":%d,"
+        "\"cmd_tq2\":%d,"
         "\"cmd_cur1_valid\":%d,"
         "\"cmd_cur2_valid\":%d,"
         "\"cmd_pos1_valid\":%d,"
         "\"cmd_pos2_valid\":%d,"
         "\"cmd_vel1_valid\":%d,"
         "\"cmd_vel2_valid\":%d,"
+        "\"cmd_tq1_valid\":%d,"
+        "\"cmd_tq2_valid\":%d,"
         "\"btn_state\":%u,"
         "\"btn_seq\":%u,"
         "\"fb_max\":%u,"
@@ -406,13 +414,19 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         d->air_pressure,
         d->spi_torque,
         d->spi_valid,
+        d->spi_torque_left,
+        d->spi_valid_left,
+        (float)d->torque_feedback * 0.05f,
+        (float)d->torque_feedback_left * 0.05f,
         /* 指令追踪 */
         track.cur_m1, track.cur_m2,
         track.pos_m1, track.pos_m2,
         track.vel_m1, track.vel_m2,
+        track.tq_m1, track.tq_m2,
         (int)track.cur_valid_m1, (int)track.cur_valid_m2,
         (int)track.pos_valid_m1, (int)track.pos_valid_m2,
         (int)track.vel_valid_m1, (int)track.vel_valid_m2,
+        (int)track.tq_valid_m1, (int)track.tq_valid_m2,
         (unsigned)__atomic_load_n(&shm->btn_report_state, __ATOMIC_ACQUIRE),
         (unsigned)__atomic_load_n(&shm->btn_report_seq, __ATOMIC_ACQUIRE),
         shm->fb_age_max_us,
@@ -623,10 +637,12 @@ static void dispatch_command(stark_shm_t *shm, motor_hal_t *hal,
                 if (cmd == "cur")       { track.cur_m1 = v; track.cur_valid_m1 = true; }
                 else if (cmd == "pos")  { track.pos_m1 = v; track.pos_valid_m1 = true; }
                 else if (cmd == "vel")  { track.vel_m1 = v; track.vel_valid_m1 = true; }
+                else if (cmd == "tq")   { track.tq_m1  = v; track.tq_valid_m1  = true; }
             } else if (id == 2) {
                 if (cmd == "cur")       { track.cur_m2 = v; track.cur_valid_m2 = true; }
                 else if (cmd == "pos")  { track.pos_m2 = v; track.pos_valid_m2 = true; }
                 else if (cmd == "vel")  { track.vel_m2 = v; track.vel_valid_m2 = true; }
+                else if (cmd == "tq")   { track.tq_m2  = v; track.tq_valid_m2  = true; }
             }
         }
 

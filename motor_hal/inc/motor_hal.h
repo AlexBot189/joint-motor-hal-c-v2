@@ -578,6 +578,19 @@ int motor_hal_get_feedback(motor_hal_t *hal, uint8_t node_id, motor_feedback_t *
 int motor_hal_recv_start(motor_hal_t *hal);
 
 /**
+ * @brief 设置接收线程实时优先级
+ *
+ * 必须在 motor_hal_recv_start 之前调用。
+ * 接收线程启动后内部调用 pthread_setschedparam 设置 SCHED_FIFO + 指定优先级。
+ * enable=false 时线程保持默认 SCHED_OTHER。
+ *
+ * @param hal      HAL 实例
+ * @param enable   是否启用实时调度
+ * @param priority SCHED_FIFO 优先级 (1-99), enable=false 时忽略
+ */
+void motor_hal_recv_set_rt(motor_hal_t *hal, bool enable, int priority);
+
+/**
  * @brief 停止接收线程
  *
  * 阻塞等待线程退出 (pthread_join)。
@@ -601,9 +614,9 @@ bool motor_hal_recv_is_running(motor_hal_t *hal);
  * 数据帧 COB-ID = 0x680 + node_id, DLC=8, 小端 bit-packed。
  *
  * @param node_id     电机 CAN 节点 ID
- * @param period_div  周期分频 N (周期 = 250us × N, 0=关闭)
- *                    例: 4=1ms/1KHz, 10=2.5ms/400Hz, 40=10ms/100Hz
- * @param bus_format  总线格式: 0=Classic CAN, 3=CANFD BRS
+ * @param period_div  周期分频 N (1tick=0.25ms, V1.2基准; 0=关闭)
+ *                    例: 4=1ms/1KHz, 16=4ms/250Hz
+ * @param bus_format  总线格式: 0=Classic CAN, 3=CANFD BRS (mode=3时忽略)
  * @return 0=成功; <0=SDO 失败
  */
 int motor_hal_sensor_config(motor_hal_t *hal, uint8_t node_id,
@@ -611,7 +624,7 @@ int motor_hal_sensor_config(motor_hal_t *hal, uint8_t node_id,
 
 /**
  * @brief 完整透传配置 (period_div + bus_format + mode + force_module)
- * @param mode          0=关 1=仅0x680 2=全部(0x680+0x6B0)
+ * @param mode          0=兼容 1=运行反馈 2=全部 3=聚合(V1.2 新增)
  * @param force_module  0=CAN(0x680力矩) 1=SPI(0x6B0力矩, 默认)
  * 配置字: period_div[15:0]|bus_format[17:16]|mode[19:18]|force_module[21:20]
  */
@@ -850,6 +863,9 @@ void motor_hal_set_tpdo_cb(motor_hal_t *hal, uint8_t node_id,
  */
 void motor_hal_multi_ctrl(motor_hal_t *hal, const multi_axis_cmd_t *cmds, uint8_t count);
 
+/** @brief MIT 多轴广播 (0x210, 64Byte CAN FD), 一帧同时控制最多6个电机 */
+void motor_hal_mit_multi_ctrl(motor_hal_t *hal, const multi_mit_cmd_t *cmds, uint8_t count);
+
 /* ============================================================================
  * 11b. 专用 SDO 控制接口 — 对应巨蟹协议 4.3 章每条指令
  *
@@ -894,6 +910,35 @@ int motor_hal_set_node_id(motor_hal_t *hal, uint8_t node_id, uint8_t new_id);
 /** @brief 设置 CANFD 数据段波特率 (OD 0x2540), 重启生效
  *  @param baud  1=5M, 2=4M, 3=2M, 4=1M */
 int motor_hal_set_canfd_baud(motor_hal_t *hal, uint8_t node_id, uint8_t baud);
+
+/* ============================================================================
+ * 13. LED 灯控制 (OD 0x5503:06, SDO 读写, 非 RT)
+ * ============================================================================ */
+
+/** @brief 设置电机 RGB LED 灯效.
+ *  control 字节: bit[7:4]=LED1~4使能掩码, bit[3:0]=led_mode_t.
+ *  值 = (enable_mask|mode) | (R<<8) | (G<<16) | (B<<24)
+ *  @param cfg  enable_mask + mode + R/G/B, 全零=全部熄灭 */
+int motor_hal_led_set(motor_hal_t *hal, uint8_t node_id, const led_config_t *cfg);
+
+/** @brief 读取电机当前 LED 配置 (OD 0x5503:06 SDO 回读) */
+int motor_hal_led_get(motor_hal_t *hal, uint8_t node_id, led_config_t *cfg);
+
+/* ============================================================================
+ * 14. V1.1 新增对象字典 SDO 接口 (非 RT)
+ * ============================================================================ */
+
+/** @brief 读力矩传感器当前值 (OD 0x6077, RO, S16, 0.01N.m) */
+int motor_hal_get_torque_sensor(motor_hal_t *hal, uint8_t node_id, int16_t *torque_001nm);
+
+/** @brief 读母线电流 (OD 0x2661, RO, INT32, mA) */
+int motor_hal_get_bus_current(motor_hal_t *hal, uint8_t node_id, int32_t *bus_ma);
+
+/** @brief Flash 保存参数 (OD 0x1010:01, 写入任意值触发保存) */
+int motor_hal_store_params(motor_hal_t *hal, uint8_t node_id);
+
+/** @brief 扭矩传感器零漂标定 (OD 0x2531:00, 写入值2) */
+int motor_hal_torque_zero_calib(motor_hal_t *hal, uint8_t node_id);
 
 /* ============================================================================
  * 12. 工具函数 — 单位换算 (inline, 零开销)

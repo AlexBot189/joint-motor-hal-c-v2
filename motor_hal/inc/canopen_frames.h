@@ -111,6 +111,27 @@ void canopen_mit_pdo_build_u8(uint8_t node, uint8_t byte0,
                                canfd_frame_t *f);
 
 /* =====================================================
+ * MIT 多轴广播 (64字节, COB=0x210)
+ * ===================================================== */
+
+/** @brief MIT 多轴命令结构 (与 multi_axis_cmd_t 区分) */
+typedef struct {
+    uint8_t  node_id;
+    bool     enable;
+    bool     release_brake;
+    bool     clear_error;
+    uint16_t position;      /* [0-65535] */
+    uint16_t velocity;      /* [0-4095] */
+    uint16_t kp;            /* [0-4095]→[0-500] */
+    uint16_t kd;            /* [0-4095]→[0-5] */
+    uint16_t torque;        /* [0-4095] */
+} multi_mit_cmd_t;
+
+/** @brief 构造 MIT 多轴广播帧 (0x210) */
+void canopen_mit_multi_build(const multi_mit_cmd_t *cmds, uint8_t count,
+                              canfd_frame_t *f);
+
+/* =====================================================
  * 多轴广播 (64字节, COB=0x200)
  * ===================================================== */
 
