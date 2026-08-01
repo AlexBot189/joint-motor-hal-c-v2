@@ -23,6 +23,7 @@
 #include <pthread.h>
 #include <sys/prctl.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 #include <sys/syscall.h>
 #include <linux/futex.h>
 #include <unistd.h>
@@ -52,8 +53,9 @@ StarkRtWorker::StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
     memset(m_pos_stall_us, 0, sizeof(m_pos_stall_us));
     memset(m_sensor_notified, 0, sizeof(m_sensor_notified));
     memset(m_latency_history, 0, sizeof(m_latency_history));
-    /* 初始: 无效模式 (0xFF), 确保首帧触发 _pdo_send_with_switch 双发, 防首帧丢失 */
+    /* 初始: 无效模式 (0xFF), 确保首帧触发模式切换双发, 防首帧丢失 */
     for (int i = 0; i < STARK_MAX_MOTORS; i++) m_last_pdo_mode[i] = (motor_mode_t)0xFF;
+    memset(m_pending_retry, 0, sizeof(m_pending_retry));
     m_imu_notified = false;
 }
 
@@ -106,6 +108,11 @@ void StarkRtWorker::SetReportEnabled(bool enabled, uint32_t period_ms)
 void StarkRtWorker::Run()
 {
     SetThreadRt();
+
+    if (m_shm) {
+        m_shm->rt_mode = m_rt.enable_rt ? 1 : 0;
+        m_shm->period_us = (uint16_t)m_rt.period_us;
+    }
 
     struct timespec next_wake;
     clock_gettime(CLOCK_MONOTONIC, &next_wake);
@@ -220,16 +227,19 @@ void StarkRtWorker::ProcessMgmt()
  */
 
 /*
- * 辅助: PDO multi_ctrl 发送, 模式切换时双帧防首帧丢失
+ * 辅助: PDO multi_ctrl 发送, 模式切换时异步补发 (不阻塞 RT 线程)
  */
-static inline void _pdo_send_with_switch(motor_hal_t* hal, multi_axis_cmd_t* cmd,
-                                          motor_mode_t* last_mode, motor_mode_t new_mode)
+inline void _pdo_send_with_switch(motor_hal_t* hal, multi_axis_cmd_t* cmd,
+                                   motor_mode_t* last_mode, motor_mode_t new_mode,
+                                   uint8_t si, bool* pending_retry)
 {
     bool mode_changed = (*last_mode != new_mode);
     *last_mode = new_mode;
     motor_hal_multi_ctrl(hal, cmd, 1);
     if (mode_changed) {
-        usleep(2000);
+        pending_retry[si] = true;
+    } else if (pending_retry[si]) {
+        pending_retry[si] = false;
         motor_hal_multi_ctrl(hal, cmd, 1);
     }
 }
@@ -290,6 +300,14 @@ void StarkRtWorker::ProcessMailbox()
     uint64_t w = __atomic_load_n(&m_shm->mailbox.seq_write, __ATOMIC_ACQUIRE);
 
     if (r >= w) return;  /* 无新数据 */
+
+    m_tracer.mark_mailbox_read();
+
+#if STARK_LATENCY_TRACE
+    struct timespec ts_mbox;
+    clock_gettime(CLOCK_MONOTONIC, &ts_mbox);
+    uint64_t mbox_read_us = (uint64_t)ts_mbox.tv_sec * 1000000ULL + (uint64_t)ts_mbox.tv_nsec / 1000ULL;
+#endif
 
     /* 消费所有待处理帧 */
     uint64_t count = w - r;
@@ -380,7 +398,7 @@ void StarkRtWorker::ProcessMailbox()
                         mcmd.enable        = true;
                         mcmd.release_brake = true;
                         mcmd.target1       = (int16_t)ma;
-                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_CURRENT);
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_CURRENT, si, m_pending_retry);
                     }
                     break;
                 case STARK_CMD_SPEED:
@@ -394,7 +412,7 @@ void StarkRtWorker::ProcessMailbox()
                         mcmd.enable        = true;
                         mcmd.release_brake = true;
                         mcmd.target1       = (int16_t)rpm;
-                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_CSV);
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_CSV, si, m_pending_retry);
                     }
                     break;
                 case STARK_CMD_PV:
@@ -409,7 +427,7 @@ void StarkRtWorker::ProcessMailbox()
                         mcmd.release_brake = true;
                         mcmd.target1       = (int16_t)rpm;
                         mcmd.target2       = accel;
-                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_PROFILE_VEL);
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_PROFILE_VEL, si, m_pending_retry);
                     }
                     break;
                 case STARK_CMD_POS:
@@ -423,7 +441,7 @@ void StarkRtWorker::ProcessMailbox()
                         mcmd.enable        = true;
                         mcmd.release_brake = true;
                         mcmd.target1       = (int16_t)cnt;
-                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_CSP);
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_CSP, si, m_pending_retry);
                     }
                     break;
                 case STARK_CMD_PP:
@@ -441,7 +459,7 @@ void StarkRtWorker::ProcessMailbox()
                         mcmd.target1       = (int16_t)cnt;
                         mcmd.target2       = accel;
                         mcmd.feedforward   = vel;
-                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_PROFILE_POS);
+                        _pdo_send_with_switch(m_hal, &mcmd, &m_last_pdo_mode[si], MOTOR_MODE_PROFILE_POS, si, m_pending_retry);
                     }
                     break;
                 case STARK_CMD_MIT:
@@ -477,7 +495,36 @@ void StarkRtWorker::ProcessMailbox()
     /* 确认消费 */
     __atomic_store_n(&m_shm->mailbox.seq_read, r + count, __ATOMIC_RELEASE);
 
-    m_tracer.mark_mailbox_read();
+#if STARK_LATENCY_TRACE
+    /* mbox_age: 算法写 mailbox → RT 读到 */
+    if (count > 0) {
+        uint64_t last_idx = (r + count - 1) % STARK_MBOX_DEPTH;
+        uint64_t min_ts = UINT64_MAX;
+        for (int i = 0; i < STARK_MAX_MOTORS; i++) {
+            uint64_t ts = m_shm->mailbox.frames[last_idx].cmd[i].timestamp_us;
+            if (ts > 0 && ts < min_ts) min_ts = ts;
+        }
+        uint32_t age = 0;
+        if (min_ts != UINT64_MAX && mbox_read_us > min_ts)
+            age = (uint32_t)(mbox_read_us - min_ts);
+
+        static uint32_t s_mbox_max = 0;
+        if (age > s_mbox_max) s_mbox_max = age;
+        m_shm->mbox_age_max_us = (uint16_t)(s_mbox_max > 65535 ? 65535 : s_mbox_max);
+
+        static uint32_t s_mbox_sum = 0, s_mbox_min_win = UINT32_MAX;
+        static uint16_t s_mbox_cnt = 0;
+        s_mbox_sum += age; s_mbox_cnt++;
+        if (age < s_mbox_min_win) s_mbox_min_win = age;
+        if (s_mbox_cnt >= 1000) {
+            s_mbox_sum = 0; s_mbox_cnt = 0;
+            s_mbox_min_win = UINT32_MAX;
+        }
+        m_shm->mbox_age_avg_us = (uint16_t)(s_mbox_cnt > 0 ? s_mbox_sum / s_mbox_cnt : 0);
+        m_shm->mbox_age_min_us = (uint16_t)(s_mbox_min_win != UINT32_MAX ? s_mbox_min_win : 0);
+    }
+#endif
+
     m_tracer.mark_pdo_sent();
 }
 
@@ -489,6 +536,14 @@ void StarkRtWorker::ProcessMailbox()
 
 void StarkRtWorker::PublishFeedback()
 {
+    /* 读 IMU 一次, feedback_frame_t 和 PeriodicUploadData 共用 */
+    imu_data_t imu_local;
+    bool imu_valid = false;
+    if (m_imu_sensor && m_imu_sensor->IsReady()) {
+        m_imu_sensor->Read(&imu_local);
+        imu_valid = true;
+    }
+
     /* 周期上报: 基于 RT 周期计数器, 不嵌套在 feedback_frame_t 分频内 */
     if (m_report_enabled && m_shm && m_hal) {
         uint64_t elapsed = m_cycle_count - m_periodic_last_cycle;
@@ -498,27 +553,20 @@ void StarkRtWorker::PublishFeedback()
             PeriodicUploadData d;
             memset(&d, 0, sizeof(d));
 
-            /* IMU */
-            imu_data_t imu_buf;
-            bool imu_ok = false;
-            if (m_imu_sensor && m_imu_sensor->IsReady()) {
-                m_imu_sensor->Read(&imu_buf);
-                imu_ok = true;
-            }
-            if (imu_ok) {
-                d.gyro_dps_x  = imu_buf.gyro_x;
-                d.gyro_dps_y  = imu_buf.gyro_y;
-                d.gyro_dps_z  = imu_buf.gyro_z;
-                d.quat_w      = imu_buf.quat_w;
-                d.quat_x      = imu_buf.quat_x;
-                d.quat_y      = imu_buf.quat_y;
-                d.quat_z      = imu_buf.quat_z;
-                d.gyro_roll   = imu_buf.roll;
-                d.gyro_pitch  = imu_buf.pitch;
-                d.gyro_yaw    = imu_buf.yaw;
-                d.acc_x       = imu_buf.acc_x;
-                d.acc_y       = imu_buf.acc_y;
-                d.acc_z       = imu_buf.acc_z;
+            if (imu_valid) {
+                d.gyro_dps_x  = imu_local.gyro_x;
+                d.gyro_dps_y  = imu_local.gyro_y;
+                d.gyro_dps_z  = imu_local.gyro_z;
+                d.quat_w      = imu_local.quat_w;
+                d.quat_x      = imu_local.quat_x;
+                d.quat_y      = imu_local.quat_y;
+                d.quat_z      = imu_local.quat_z;
+                d.gyro_roll   = imu_local.roll;
+                d.gyro_pitch  = imu_local.pitch;
+                d.gyro_yaw    = imu_local.yaw;
+                d.acc_x       = imu_local.acc_x;
+                d.acc_y       = imu_local.acc_y;
+                d.acc_z       = imu_local.acc_z;
             }
 
             /* 双电机 */
@@ -535,20 +583,21 @@ void StarkRtWorker::PublishFeedback()
                     if (ts < motor_ts_min) motor_ts_min = ts;
            //         int32_t vel_x10  = (int32_t)mfb.velocity * 10;
            //         int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
-	            int32_t vel_x10  = (int32_t)mfb.velocity;
-                    int16_t iq_x100  = (int16_t)(mfb.current_iq);
+	            int32_t vel_x10  = (int32_t)mfb.velocity * 10;
+                    int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
            
 	   	    int16_t fcode    = (int16_t)mfb.error_code;
                     int16_t mstate   = (int16_t)mfb.status_byte;
 
-                    /* SDO telemetry: 0x300 frame has only Iq valid on RV1126B */
-                    int32_t sdo_val = 0;
+                    /* 温度: 优先 0x6A0 透传帧, 回退 0x300 */
                     int32_t tmp_x100;
-                    if (motor_hal_get_sdo_temperature(m_hal, id, &sdo_val) == 0)
-                        tmp_x100 = sdo_val * 10;  /* 0.1°C -> °C×100 */
+                    (void)motor_hal_get_sensor(m_hal, id, &s);
+                    if (s.motor_temp_x10 != 0)
+                        tmp_x100 = (int32_t)s.motor_temp_x10 * 10;
                     else
                         tmp_x100 = (int32_t)mfb.temperature * 10;
 
+                    int32_t sdo_val = 0;
                     int16_t ang_x10;
                     if (motor_hal_get_sdo_position(m_hal, id, &sdo_val) == 0)
                         ang_x10 = (int16_t)(sdo_val * 3600 / 65536);
@@ -611,7 +660,7 @@ void StarkRtWorker::PublishFeedback()
                                           now_ts.tv_nsec / 1000000ULL);
             d.frame_cycle   = (uint32_t)m_cycle_count;
             d.motor_ts_us   = (motor_ts_min != 0xFFFFFFFF) ? motor_ts_min : 0;
-            d.imu_ts_us     = (uint32_t)(imu_buf.timestamp_us & 0xFFFFFFFF);
+            d.imu_ts_us     = (uint32_t)(imu_local.timestamp_us & 0xFFFFFFFF);
             d.sensor_ts_us  = (sensor_ts_min != 0xFFFFFFFF) ? sensor_ts_min : 0;
 
             memcpy(&m_shm->periodic_data, &d, sizeof(d));
@@ -629,14 +678,6 @@ void StarkRtWorker::PublishFeedback()
     if (!m_hal || !m_shm) return;
     if (!m_active.load(std::memory_order_acquire)) return;
 
-    /* 读 IMU 一次, feedback_frame_t 和 PeriodicUploadData 共用 */
-    imu_data_t imu_local;
-    bool imu_valid = false;
-    if (m_imu_sensor && m_imu_sensor->IsReady()) {
-        m_imu_sensor->Read(&imu_local);
-        imu_valid = true;
-    }
-
     uint32_t active    = __atomic_load_n(&m_shm->active_idx, __ATOMIC_ACQUIRE);
     uint32_t write_idx = active ^ 1;
 
@@ -648,10 +689,21 @@ void StarkRtWorker::PublishFeedback()
     /* T1: 开始读 fb_cache */
     m_tracer.mark_fb_read_start();
 
+#if STARK_LATENCY_TRACE
+    struct timeval tv_rt;
+    gettimeofday(&tv_rt, NULL);
+    uint64_t read_rt_us = tv_rt.tv_sec * 1000000ULL + tv_rt.tv_usec;
+#endif
+    uint64_t min_fb_ts = UINT64_MAX;
+
     /* 填充电机反馈 (从 HAL 反馈缓存) */
     for (uint8_t id = 1; id <= (uint8_t)m_motor_count; ++id) {
         motor_feedback_t mfb;
         if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
+#if STARK_LATENCY_TRACE
+            if (mfb.timestamp_us > 0 && mfb.timestamp_us < read_rt_us && (read_rt_us - mfb.timestamp_us) < 10000 && mfb.timestamp_us < min_fb_ts)
+                min_fb_ts = mfb.timestamp_us;
+#endif
             uint8_t idx = id - 1;
             fb->motor[idx].position    = mfb.position;
             fb->motor[idx].velocity    = mfb.velocity;
@@ -718,8 +770,40 @@ void StarkRtWorker::PublishFeedback()
         m_shm->fb_read_max_us    = (uint16_t)st.fb_read_max;
         m_shm->fb_total_avg_us   = (uint16_t)st.fb_total_avg;
         m_shm->fb_total_max_us   = (uint16_t)st.fb_total_max;
+        m_shm->fb_total_min_us   = (uint16_t)st.fb_total_min;
         m_shm->ctrl_total_avg_us = (uint16_t)st.ctrl_total_avg;
-        m_shm->ctrl_total_max_us = (uint16_t)st.ctrl_total_max;
+        m_shm->ctrl_total_min_us = (uint16_t)st.ctrl_total_min;
+        {
+            static uint32_t s_ctrl_max = 0;
+            if (st.ctrl_total_max > s_ctrl_max) s_ctrl_max = st.ctrl_total_max;
+            m_shm->ctrl_total_max_us = (uint16_t)(s_ctrl_max > 65535 ? 65535 : s_ctrl_max);
+        }
+
+#if STARK_LATENCY_TRACE
+        /* 反馈数据年龄 (CAN 收帧 → RT worker 读到) */
+        {
+            uint32_t fb_age = 0;
+            if (min_fb_ts != UINT64_MAX && read_rt_us > min_fb_ts)
+                fb_age = (uint32_t)(read_rt_us - min_fb_ts);
+
+            static uint32_t s_age_max = 0;
+            if (fb_age > s_age_max) s_age_max = fb_age;
+            m_shm->fb_age_max_us = (uint16_t)(s_age_max > 65535 ? 65535 : s_age_max);
+
+            static uint32_t s_age_sum = 0, s_age_min_win = UINT32_MAX;
+            static uint16_t s_age_cnt = 0;
+            s_age_sum += fb_age;
+            s_age_cnt++;
+            if (fb_age < s_age_min_win) s_age_min_win = fb_age;
+            if (s_age_cnt >= 1000) {
+                s_age_sum = 0;
+                s_age_cnt = 0;
+                s_age_min_win = UINT32_MAX;
+            }
+            m_shm->fb_age_avg_us = (uint16_t)(s_age_cnt > 0 ? s_age_sum / s_age_cnt : 0);
+            m_shm->fb_age_min_us = (uint16_t)(s_age_min_win != UINT32_MAX ? s_age_min_win : 0);
+        }
+#endif
         m_shm->trace_cycle_count = st.cycle_count;
         m_shm->shm_write_avg_us  = (uint16_t)st.shm_write_avg;
     }

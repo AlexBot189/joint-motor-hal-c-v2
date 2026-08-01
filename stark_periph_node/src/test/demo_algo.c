@@ -2,7 +2,10 @@
  * demo_algo.c -- 外骨骼算法控制示例
  * Copyright (c) 2026 zhiqiang.yang
  *
- * 用法 (PDO 连续控制, 算法无需 enable/set_mode):
+ * 用法:
+ *   ./demo_algo help / -h / --help  帮助信息
+ *
+ * PDO 连续控制 (算法无需 enable/set_mode):
  *   ./demo_algo torque <mA>            电流控制, 正弦波
  *   ./demo_algo speed <rpm>            速度控制 (CSV), 梯形波
  *   ./demo_algo pos <deg>              位置控制 (CSP), 方波
@@ -64,6 +67,13 @@ static uint64_t now_ms(void)
     return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
 }
 
+static uint64_t now_us(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+}
+
 static float counts_to_deg(int16_t counts)
 {
     return (float)counts * 360.0f / 65536.0f;
@@ -83,8 +93,8 @@ static void run_torque(stark_client_t* c, int32_t amplitude_ma)
         float phase = (float)(t % 2000) / 2000.0f * 2.0f * M_PI;
         int32_t ma = (int32_t)((float)amplitude_ma * sinf(phase));
 
-        stark_torque(c, 1, ma);
-        stark_torque(c, 2, ma);
+        if (stark_online(c, 1)) stark_torque(c, 1, ma);
+        if (stark_online(c, 2)) stark_torque(c, 2, ma);
 
         if (ma != last) {
             motor_data_t fb = stark_fb(c, 1);
@@ -143,8 +153,8 @@ static void run_speed(stark_client_t* c, float max_rpm)
             rpm = 0.0f - max_rpm * (float)(phase - 3000) / 1000.0f;
         }
 
-        stark_speed(c, 1, rpm);
-        stark_speed(c, 2, rpm);
+        if (stark_online(c, 1)) stark_speed(c, 1, rpm);
+        if (stark_online(c, 2)) stark_speed(c, 2, rpm);
 
         if (t % 200 < 10) {
             motor_data_t fb = stark_fb(c, 1);
@@ -169,8 +179,8 @@ static void run_position(stark_client_t* c, float amplitude_deg)
         uint64_t t = now_ms() - t0;
         float target = ((t / 2000) % 2 == 0) ? amplitude_deg : -amplitude_deg;
 
-        stark_pp(c, 1,  target, accel, vel);
-        stark_pp(c, 2, -target, accel, vel);
+        if (stark_online(c, 1)) stark_pp(c, 1,  target, accel, vel);
+        if (stark_online(c, 2)) stark_pp(c, 2, -target, accel, vel);
 
         if (t % 500 < 10) {
             motor_data_t fb = stark_fb(c, 1);
@@ -189,8 +199,8 @@ static void run_mit(stark_client_t* c, float kp, float kd)
     printf("[MIT] kp=%.0f, kd=%.0f, 零目标位置\n", kp, kd);
 
     while (g_running) {
-        stark_mit(c, 1, 0.0f, 0.0f, kp, kd, 0.0f);
-        stark_mit(c, 2, 0.0f, 0.0f, kp, kd, 0.0f);
+        if (stark_online(c, 1)) stark_mit(c, 1, 0.0f, 0.0f, kp, kd, 0.0f);
+        if (stark_online(c, 2)) stark_mit(c, 2, 0.0f, 0.0f, kp, kd, 0.0f);
 
         static int cnt = 0;
         if (++cnt % 50 == 0) {
@@ -215,8 +225,8 @@ static void run_pp(stark_client_t* c, float amplitude_deg, float accel, float ve
         uint64_t t = now_ms() - t0;
         float target = ((t / 2000) % 2 == 0) ? amplitude_deg : -amplitude_deg;
 
-        stark_pp(c, 1,  target, accel, vel);
-        stark_pp(c, 2, -target, accel, vel);
+        if (stark_online(c, 1)) stark_pp(c, 1,  target, accel, vel);
+        if (stark_online(c, 2)) stark_pp(c, 2, -target, accel, vel);
 
         if (t % 500 < 10) {
             motor_data_t fb = stark_fb(c, 1);
@@ -248,8 +258,8 @@ static void run_pv(stark_client_t* c, float max_rpm, float accel)
         else
             rpm = 0.0f - max_rpm * (float)(phase - 3000) / 1000.0f;
 
-        stark_pv(c, 1,  rpm, accel);
-        stark_pv(c, 2, -rpm, accel);
+        if (stark_online(c, 1)) stark_pv(c, 1,  rpm, accel);
+        if (stark_online(c, 2)) stark_pv(c, 2, -rpm, accel);
 
         if (t % 200 < 10) {
             motor_data_t fb = stark_fb(c, 1);
@@ -267,8 +277,8 @@ static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
     printf("[multi] 恒电流: M1=%d mA, M2=%d mA\n", ma1, ma2);
 
     while (g_running) {
-        stark_torque(c, 1, ma1);
-        stark_torque(c, 2, ma2);
+        if (stark_online(c, 1)) stark_torque(c, 1, ma1);
+        if (stark_online(c, 2)) stark_torque(c, 2, ma2);
 
         static int cnt = 0;
         if (++cnt % 200 == 0) {
@@ -376,6 +386,35 @@ static void run_stat_loop(stark_client_t* c)
     }
 }
 
+/* 等待 SHM active_idx 翻转 min_flips 次后读取反馈
+ * 等多次翻转 = 电机电流/位置/速度有时间稳定到目标值
+ * 返回 1=等到, 0=超时; out 始终填充最新反馈 */
+static int _wait_new_fb_frame(stark_client_t* c, int id, motor_data_t* out,
+                               int max_ms, int interval_us, int min_flips)
+{
+    uint32_t idx_old = __atomic_load_n(&c->shm->active_idx, __ATOMIC_ACQUIRE);
+    int flips = 0;
+    motor_data_t last = {0};
+
+    int loops = max_ms * 1000 / interval_us;
+    for (int i = 0; i < loops; i++) {
+        usleep(interval_us);
+        uint32_t idx = __atomic_load_n(&c->shm->active_idx, __ATOMIC_ACQUIRE);
+        if (idx != idx_old) {
+            flips++;
+            idx_old = idx;
+            last = c->shm->fb_buffer[idx].motor[id - 1];
+            if (flips >= min_flips) {
+                *out = last;
+                return 1;
+            }
+        }
+    }
+    uint32_t idx = __atomic_load_n(&c->shm->active_idx, __ATOMIC_ACQUIRE);
+    *out = c->shm->fb_buffer[idx].motor[id - 1];
+    return 0;
+}
+
 static void usage(void)
 {
     printf("用法: ./demo_algo <mode> [args...]\n\n");
@@ -415,6 +454,8 @@ static void usage(void)
     printf("  estop   <id>          急停\n");
     printf("  clearf  <id>          清故障\n");
     printf("  calib                 触发复杂校准 (按键/命令)\n");
+    printf("  led  <id> <mask> <mode> [r] [g] [b]  LED 灯控制\n");
+    printf("  btn                   读取按键上报状态\n");
     printf("\n状态:\n");
     printf("  stat                  只读反馈\n");
     printf("  report                周期上报数据\n");
@@ -439,6 +480,10 @@ static void usage(void)
     printf("  ./demo_algo pdo vel 1 10 500      # PDO M1=10RPM acc=500\n");
     printf("  ./demo_algo report                # 周期上报\n");
     printf("  ./demo_algo stat                  # 只读反馈\n");
+    printf("  ./demo_algo led 1 0xF0 0 255 0 0  # M1 红灯全亮常亮\n");
+    printf("  ./demo_algo led 1 0x10 1 0 0 255  # M1 LED1 蓝色闪烁\n");
+    printf("  ./demo_algo led 1 0 0 0 0 0 0     # M1 全灭\n");
+    printf("  ./demo_algo btn                    # 读取按键上报状态\n");
 }
 
 int main(int argc, char** argv)
@@ -450,6 +495,11 @@ int main(int argc, char** argv)
 
     const char* mode = argv[1];
 
+    if (strcmp(mode, "help") == 0 || strcmp(mode, "-h") == 0 || strcmp(mode, "--help") == 0) {
+        usage();
+        return 0;
+    }
+
     /* 连接 SHM (允许 stark_node 后启动) */
     stark_client_t c;
     printf("[init] 等待 stark_node...\n");
@@ -458,19 +508,36 @@ int main(int argc, char** argv)
     }
     printf("[init] SHM 已连接\n");
 
-    /* 等待就绪 */
-    printf("[init] 等待电机就绪...\n");
-    while (!stark_ready(&c)) {
-        if (stark_state(&c) == 3) {
-            printf("ERR: FAULT 状态, 退出\n");
-            stark_close(&c);
-            return 1;
-        }
-        usleep(100000);
-    }
-    printf("[init] 就绪, 电机在线: %d %d\n", stark_online(&c, 1), stark_online(&c, 2));
+    /* stat/report/btn/led/mgmt 模式不需要校准, 等电机在线即可 */
+    int need_calib = (strcmp(mode, "torque") == 0 || strcmp(mode, "speed") == 0 ||
+                      strcmp(mode, "pos") == 0    || strcmp(mode, "pp") == 0 ||
+                      strcmp(mode, "pv") == 0    || strcmp(mode, "mit") == 0 ||
+                      strcmp(mode, "multi") == 0);
 
-    /* stat/report/mgmt 模式不需要使能 */
+    if (need_calib) {
+        printf("[init] 等待校准完成...\n");
+        while (!stark_ready(&c)) {
+            if (stark_state(&c) == 3) {
+                printf("ERR: FAULT 状态, 退出\n");
+                stark_close(&c);
+                return 1;
+            }
+            usleep(100000);
+        }
+        printf("[init] 校准完成, 电机在线: %d %d\n", stark_online(&c, 1), stark_online(&c, 2));
+    } else {
+        printf("[init] 等待电机在线...\n");
+        while (!stark_online(&c, 1) && !stark_online(&c, 2)) {
+            if (stark_state(&c) == 3) {
+                printf("ERR: FAULT 状态, 退出\n");
+                stark_close(&c);
+                return 1;
+            }
+            usleep(100000);
+        }
+        printf("[init] 电机在线: %d %d\n", stark_online(&c, 1), stark_online(&c, 2));
+    }
+
     if (strcmp(mode, "stat") == 0) {
         run_stat_loop(&c);
         stark_close(&c);
@@ -516,15 +583,68 @@ int main(int argc, char** argv)
         return 0;
     }
     if (strcmp(mode, "calib") == 0) {
-        printf("Requesting complex calibration...\n");
+        int prev = stark_calib(&c);
+        const char* prev_name = (prev == 0) ? "IDLE" : (prev == 1) ? "CALIBRATING" :
+                                (prev == 2) ? "READY" : "TIMEOUT";
+        printf("Calib toggle: prev=%s, toggling...\n", prev_name);
+
         stark_request_calib(&c);
-        printf("Calibration request sent. Waiting for completion...\n");
-        while (!stark_ready(&c)) {
-            int cs = stark_calib(&c);
-            printf("  calib_state=%d (1=calibrating 2=done 3=timeout)\n", cs);
+
+        /* 等待状态变化 */
+        int cs = prev;
+        for (int i = 0; i < 60; i++) {
+            cs = stark_calib(&c);
+            if (cs != prev) break;
             usleep(500000);
         }
-        printf("Calibration complete!\n");
+
+        if (cs == 1) {
+            /* 校准进行中, 等待完成 */
+            printf("Calibrating...\n");
+            while (stark_is_calibrating(&c)) {
+                usleep(200000);
+            }
+            cs = stark_calib(&c);
+        }
+
+        if (cs == 0)      printf("Calibration cancelled (IDLE).\n");
+        else if (cs == 2) printf("Calibration complete (READY).\n");
+        else if (cs == 3) printf("Calibration timeout!\n");
+        else              printf("Calib state=%d\n", cs);
+
+        stark_close(&c);
+        return 0;
+    }
+
+    /* LED 灯控制 */
+    if (strcmp(mode, "btn") == 0) {
+        uint8_t  st = stark_btn_state(&c);
+        uint32_t sq = stark_btn_seq(&c);
+        printf("BTN report: state=%u (%s) seq=%u\n",
+               st, st ? "按下" : "松开", sq);
+        stark_close(&c);
+        return 0;
+    }
+
+    /* LED 灯控制 */
+    if (strcmp(mode, "led") == 0) {
+        if (argc < 4) {
+            printf("usage: led <motor_id> <mask> <mode> [r] [g] [b]\n");
+            printf("  mask: 0x10=LED1 0x20=LED2 0x40=LED3 0x80=LED4 0xF0=ALL 0=off\n");
+            printf("  mode: 0=常亮 1=闪烁 2=呼吸 3=流水\n");
+            stark_close(&c); return 1;
+        }
+        int id   = atoi(argv[2]);
+        int mask = (int)strtol(argv[3], NULL, 0);
+        int mode_led = (argc >= 5) ? atoi(argv[4]) : 0;
+        int r = (argc >= 6) ? atoi(argv[5]) : 0;
+        int g = (argc >= 7) ? atoi(argv[6]) : 0;
+        int b = (argc >= 8) ? atoi(argv[7]) : 0;
+        stark_led_ctrl(&c, id, (uint8_t)mask, (uint8_t)mode_led,
+                       (uint8_t)r, (uint8_t)g, (uint8_t)b);
+        printf("LED M%d: mask=0x%02X mode=%d R=%d G=%d B=%d\n",
+               id, mask, mode_led, r, g, b);
+        usleep(100000);
         stark_close(&c);
         return 0;
     }
@@ -560,6 +680,10 @@ int main(int argc, char** argv)
             int ma1 = atoi(argv[val_idx]);
             int ma2 = (dual && argc >= val_idx + 2) ? atoi(argv[val_idx + 1]) : ma1;
 
+            motor_data_t b1 = stark_fb(&c, id1);
+            motor_data_t b2; if (dual) b2 = stark_fb(&c, id2);
+
+            uint64_t t0 = now_us();
             if (is_pdo) {
                 stark_torque(&c, id1, ma1);
                 if (dual) stark_torque(&c, id2, ma2);
@@ -571,16 +695,24 @@ int main(int argc, char** argv)
             }
             if (dual) printf(" M%d=%dmA", id2, ma2);
             printf("\n");
-            if (!is_pdo) {
-                usleep(500000);  /* SDO: 等 enable(160ms) + mode + target + fb */
-                motor_data_t fb = stark_fb(&c, id1);
-                printf("  fb: pos=%.1fdeg cur=%dmA vel=%dRPM\n",
-                       counts_to_deg(fb.position), fb.current_iq, fb.velocity);
-            } else {
-                usleep(100000);  /* PDO: 等 motor 使能 + 执行 + 反馈到达 */
-                motor_data_t fb = stark_fb(&c, id1);
-                printf("  fb: pos=%.1fdeg cur=%dmA vel=%dRPM\n",
-                       counts_to_deg(fb.position), fb.current_iq, fb.velocity);
+
+            motor_data_t a1, a2;
+            int ch1 = _wait_new_fb_frame(&c, id1, &a1,
+                                          is_pdo ? 200 : 500, is_pdo ? 500 : 5000,
+                                          1);
+            uint64_t t1 = now_us();
+            const char *rt = c.shm->rt_mode ? "RT" : "NRT";
+            printf("  M%d: I %d : %dmA (cmd=%dmA) [%s %s]  %luus\n",
+                   id1, b1.current_iq, a1.current_iq, ma1,
+                   rt, ch1 ? "new_frame" : "timeout", t1 - t0);
+            if (dual) {
+                int ch2 = _wait_new_fb_frame(&c, id2, &a2,
+                                              is_pdo ? 200 : 500, is_pdo ? 500 : 5000,
+                                              1);
+                uint64_t t2 = now_us();
+                printf("  M%d: I %d : %dmA (cmd=%dmA) [%s %s]  %luus\n",
+                       id2, b2.current_iq, a2.current_iq, ma2,
+                       rt, ch2 ? "new_frame" : "timeout", t2 - t0);
             }
             stark_close(&c); return 0;
         }
@@ -595,6 +727,10 @@ int main(int argc, char** argv)
             float acc = (argc > opt_idx) ? (float)atof(argv[opt_idx]) : 500.0f;
             float vel = (argc > opt_idx + 1) ? (float)atof(argv[opt_idx + 1]) : 10.0f;
 
+            motor_data_t b1 = stark_fb(&c, id1);
+            motor_data_t b2; if (dual) b2 = stark_fb(&c, id2);
+
+            uint64_t t0 = now_us();
             if (is_pdo) {
                 stark_pp(&c, id1, deg1, acc, vel);
                 if (dual) stark_pp(&c, id2, deg2, acc, vel);
@@ -606,16 +742,24 @@ int main(int argc, char** argv)
             }
             if (dual) printf(" M%d=%.2f°", id2, deg2);
             printf(" accel=%.0f vel=%.0f\n", acc, vel);
-            if (!is_pdo) {
-                usleep(500000);  /* SDO: 等 enable(160ms) + mode + trajectory + fb */
-                motor_data_t fb = stark_fb(&c, id1);
-                printf("  fb: pos=%.1fdeg cur=%dmA vel=%dRPM\n",
-                       counts_to_deg(fb.position), fb.current_iq, fb.velocity);
-            } else {
-                usleep(100000);  /* PDO: 等 motor 使能 + 执行 + 反馈到达 */
-                motor_data_t fb = stark_fb(&c, id1);
-                printf("  fb: pos=%.1fdeg cur=%dmA vel=%dRPM\n",
-                       counts_to_deg(fb.position), fb.current_iq, fb.velocity);
+
+            motor_data_t a1, a2;
+            int ch1 = _wait_new_fb_frame(&c, id1, &a1,
+                                          is_pdo ? 1000 : 2000, is_pdo ? 500 : 5000,
+                                          1);
+            uint64_t t1 = now_us();
+            const char *rt = c.shm->rt_mode ? "RT" : "NRT";
+            printf("  M%d: pos %.1f : %.1f° (cmd=%.1f°) [%s %s]  %luus\n",
+                   id1, counts_to_deg(b1.position), counts_to_deg(a1.position),
+                   deg1, rt, ch1 ? "new_frame" : "timeout", t1 - t0);
+            if (dual) {
+                int ch2 = _wait_new_fb_frame(&c, id2, &a2,
+                                              is_pdo ? 1000 : 2000, is_pdo ? 500 : 5000,
+                                              1);
+                uint64_t t2 = now_us();
+                printf("  M%d: pos %.1f : %.1f° (cmd=%.1f°) [%s %s]  %luus\n",
+                       id2, counts_to_deg(b2.position), counts_to_deg(a2.position),
+                       deg2, rt, ch2 ? "new_frame" : "timeout", t2 - t0);
             }
             stark_close(&c); return 0;
         }
@@ -627,6 +771,10 @@ int main(int argc, char** argv)
             int opt_idx = dual ? val_idx + 2 : val_idx + 1;
             int acc = (argc > opt_idx) ? atoi(argv[opt_idx]) : 500;
 
+            motor_data_t b1 = stark_fb(&c, id1);
+            motor_data_t b2; if (dual) b2 = stark_fb(&c, id2);
+
+            uint64_t t0 = now_us();
             if (is_pdo) {
                 stark_pv(&c, id1, (float)rpm1, (float)acc);
                 if (dual) stark_pv(&c, id2, (float)rpm2, (float)acc);
@@ -638,16 +786,24 @@ int main(int argc, char** argv)
             }
             if (dual) printf(" M%d=%dRPM", id2, rpm2);
             printf(" accel=%d\n", acc);
-            if (!is_pdo) {
-                usleep(500000);  /* SDO: 等 enable(160ms) + mode + accel + vel + fb */
-                motor_data_t fb = stark_fb(&c, id1);
-                printf("  fb: pos=%.1fdeg cur=%dmA vel=%dRPM\n",
-                       counts_to_deg(fb.position), fb.current_iq, fb.velocity);
-            } else {
-                usleep(100000);  /* PDO: 等 motor 使能 + 执行 + 反馈到达 */
-                motor_data_t fb = stark_fb(&c, id1);
-                printf("  fb: pos=%.1fdeg cur=%dmA vel=%dRPM\n",
-                       counts_to_deg(fb.position), fb.current_iq, fb.velocity);
+
+            motor_data_t a1, a2;
+            int ch1 = _wait_new_fb_frame(&c, id1, &a1,
+                                          is_pdo ? 1000 : 2000, is_pdo ? 500 : 5000,
+                                          1);
+            uint64_t t1 = now_us();
+            const char *rt = c.shm->rt_mode ? "RT" : "NRT";
+            printf("  M%d: vel %d : %dRPM (cmd=%dRPM) [%s %s]  %luus\n",
+                   id1, b1.velocity, a1.velocity, rpm1,
+                   rt, ch1 ? "new_frame" : "timeout", t1 - t0);
+            if (dual) {
+                int ch2 = _wait_new_fb_frame(&c, id2, &a2,
+                                              is_pdo ? 1000 : 2000, is_pdo ? 500 : 5000,
+                                              1);
+                uint64_t t2 = now_us();
+                printf("  M%d: vel %d : %dRPM (cmd=%dRPM) [%s %s]  %luus\n",
+                       id2, b2.velocity, a2.velocity, rpm2,
+                       rt, ch2 ? "new_frame" : "timeout", t2 - t0);
             }
             stark_close(&c); return 0;
         }
@@ -703,8 +859,8 @@ int main(int argc, char** argv)
     }
 
     printf("\n[done] 停止, 失能电机...\n");
-    stark_estop(&c, 1);
-    stark_estop(&c, 2);
+    if (stark_online(&c, 1)) stark_estop(&c, 1);
+    if (stark_online(&c, 2)) stark_estop(&c, 2);
     usleep(10000);
     stark_close(&c);
     return 0;

@@ -21,13 +21,16 @@ namespace stark_periph_manager_node {
 ImuHALSensor::ImuHALSensor()
 {
     pthread_mutex_init(&m_raw_mutex, NULL);
+    pthread_mutex_init(&m_fused_mutex, NULL);
     memset(&m_cached_raw, 0, sizeof(m_cached_raw));
+    memset(&m_cached_fused, 0, sizeof(m_cached_fused));
 }
 
 ImuHALSensor::~ImuHALSensor()
 {
     Deinit();
     pthread_mutex_destroy(&m_raw_mutex);
+    pthread_mutex_destroy(&m_fused_mutex);
 }
 
 void ImuHALSensor::_RawDataCb(const emd_raw_sensor_t *data, void *user_data)
@@ -114,8 +117,22 @@ void ImuHALSensor::Read(imu_data_t* out) const
     emd_output_t imu;
     int ret = emd_gaf_get_output((emd_gaf_t*)m_handle, &imu);
 
-    if (ret != 0) {
-        return; /* 无新数据, accel/gyro 已从回调缓冲填充 */
+    if (ret == 0) {
+        /* 有新融合数据, 更新缓存 */
+        pthread_mutex_lock(&m_fused_mutex);
+        m_cached_fused = imu;
+        m_fused_valid = true;
+        pthread_mutex_unlock(&m_fused_mutex);
+    } else {
+        /* 无新数据, 从缓存返回上次有效值 */
+        pthread_mutex_lock(&m_fused_mutex);
+        if (m_fused_valid) {
+            imu = m_cached_fused;
+            pthread_mutex_unlock(&m_fused_mutex);
+        } else {
+            pthread_mutex_unlock(&m_fused_mutex);
+            return; /* 从未收到融合数据, accel/gyro 已填充 */
+        }
     }
 
     /* 9轴融合输出 */

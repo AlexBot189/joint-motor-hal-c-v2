@@ -22,6 +22,8 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shm
     ${CMAKE_CURRENT_SOURCE_DIR}/src/imu
     ${CMAKE_CURRENT_SOURCE_DIR}/src/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/button
+    ${IMU_HAL_DIR}/src/hal/gpiod/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/log_helper
     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rd_party
     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rd_party/usr/include
@@ -50,6 +52,9 @@ set(SOURCES
     src/utils/latency_trace.cpp
     src/utils/factory.cpp
     src/shm/shm_mgr.cpp
+
+    src/button/GPIOMonitor.cpp
+    src/button/button_handler.cpp
 )
 
 set(HEADERS
@@ -72,9 +77,25 @@ set(HEADERS
     src/interface/Defines.hpp
     src/interface/IListener.hpp
     src/interface/IMsgInternalDispatcher.hpp
+
+    src/button/GPIOMonitor.hpp
+    src/button/button_handler.hpp
 )
 
 add_executable(stark_periph_manager_node ${SOURCES} ${HEADERS})
+
+# gpiod: 优先系统库, 交叉编译时用 imu_hal 附带的 bundled 版本
+set(GPIOD_DIR "${IMU_HAL_DIR}/src/hal/gpiod")
+find_library(GPIOD_LIB gpiod)
+if(GPIOD_LIB)
+    message(STATUS "gpiod: ${GPIOD_LIB}")
+elseif(EXISTS "${GPIOD_DIR}/lib/libgpiod.so")
+    set(GPIOD_LIB "${GPIOD_DIR}/lib/libgpiod.so")
+    message(STATUS "gpiod (cross): bundled ${GPIOD_LIB}")
+else()
+    set(GPIOD_LIB gpiod)
+    message(WARNING "gpiod not found, linking will fail if libgpiod-dev is not installed")
+endif()
 
 target_link_libraries(stark_periph_manager_node
     motor_hal
@@ -82,6 +103,7 @@ target_link_libraries(stark_periph_manager_node
     log_helper
     pthread
     rt
+    ${GPIOD_LIB}
 )
 
 if(ENABLE_ROS)

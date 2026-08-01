@@ -79,6 +79,9 @@ bool state_transition_allowed(stark_state_t from, stark_state_t to)
     if (from == STATE_BOOTING && to == STATE_READY)   return true;
     if (from == STATE_READY   && to == STATE_RUNNING) return true;
 
+    /* 校准取消/重校准: RUNNING ,  READY */
+    if (from == STATE_RUNNING && to == STATE_READY) return true;
+
     /* RUNNING ,  FAULT (已在上面 FAULT 通用规则中覆盖) */
 
     /* FAULT ,  READY (恢复) */

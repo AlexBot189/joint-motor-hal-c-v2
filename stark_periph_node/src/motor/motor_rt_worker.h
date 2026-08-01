@@ -39,6 +39,7 @@ struct SafetyConfig {
 
 struct RtConfig {
     int      priority         = 90;
+    int      recv_priority    = 85;
     uint32_t period_us        = 1000;
     int      report_divider   = 5;     /* 5周期 ,  200Hz */
     int      cpu_affinity[2]  = {3, -1}; /* 只绑 core 3, core 2 留给算法进程 */
@@ -127,6 +128,7 @@ public:
 
     /* PDO 模式追踪: 检测模式切换, 首帧双发 */
     motor_mode_t m_last_pdo_mode[STARK_MAX_MOTORS];
+    bool         m_pending_retry[STARK_MAX_MOTORS];  /* 异步补发标记 */
 
     /* 延迟追踪 (STARK_LATENCY_TRACE=0 时零开销) */
     StarkLatencyTracer m_tracer;

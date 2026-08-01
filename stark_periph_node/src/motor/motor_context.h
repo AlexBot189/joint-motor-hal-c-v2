@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include <string>
+
 extern "C" {
 #include "motor_hal.h"
 #include "stark_shm.h"
@@ -21,7 +23,7 @@ struct StarkNodeContext {
 
     /* 校准相关 */
     bool         calib_done       = false;   /* 校准是否已完成 */
-    bool         auto_calib       = false;
+    bool         calib_toggle     = false;   /* 按键校准开关: 每次按键翻转, false=校准, true=取消 */
     void*        calib_ctx        = nullptr;  /* motor_calib_t* opaque */
     bool         calib_running    = false;
     bool         calib_requested  = false;   /* 按键或外部触发校准请求 */
@@ -37,6 +39,15 @@ struct StarkNodeContext {
     /* 周期上报 */
     bool         report_auto_enable = true;   /* 校准后自动开启上报 */
     uint32_t     report_period_ms   = 5;      /* 上报周期 ms */
+
+    /* LED 灯显 */
+    int          led_motor_id = 0;            /* 0=禁用, 1=右电机, 2=左电机 */
+
+    /* 按键 */
+    std::string  btn_calib_chip;
+    int          btn_calib_line  = -1;
+    std::string  btn_report_chip;
+    int          btn_report_line = -1;
 
     /* 校准后使能 */
     bool         calib_enable_after = false;  /* 校准完成后使能电机, 跟随 auto_enable */

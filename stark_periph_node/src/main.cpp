@@ -31,6 +31,10 @@ extern "C" {
 #include "main_loop/main_loop.h"
 #include "stark_shm.h"
 
+#ifdef ENABLE_WEBSERVER
+#include "web/WebServer.h"
+#endif
+
 using namespace stark_periph_manager_node;
 
 /* 全局状态 */
@@ -65,12 +69,9 @@ int main(int argc, char** argv)
 
     /* 解析参数 */
     std::string config_path = "/data/config/stark/stark_config.json";
-    bool enable_rt = true;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-c") == 0 && i + 1 < argc) {
             config_path = argv[++i];
-        } else if (strcmp(argv[i], "--no-rt") == 0) {
-            enable_rt = false;
         }
     }
 
@@ -103,9 +104,6 @@ int main(int argc, char** argv)
     shm->algo_heartbeat_timeout_ms = g_dispatcher->GetSafetyConfig().heartbeat_timeout_ms;
 
     RtConfig rt_cfg = g_dispatcher->GetRtConfig();
-    if (!enable_rt) {
-        rt_cfg.enable_rt = false;
-    }
     g_rt_worker->SetRtConfig(rt_cfg);
 
     ECO_INFO_NEW("[main] RT worker created (not started yet)");
@@ -127,15 +125,19 @@ int main(int argc, char** argv)
     g_node_ctx.sensor_bus_format = g_dispatcher->GetSensorBusFormat();
     g_node_ctx.sensor_mode = g_dispatcher->GetSensorMode();
     g_node_ctx.sensor_force_module = g_dispatcher->GetSensorForceModule();
-    g_node_ctx.auto_calib       = g_dispatcher->GetCalibAuto();
     g_node_ctx.calib_timeout_ms = g_dispatcher->GetCalibTimeoutMs();
     g_node_ctx.report_auto_enable = g_dispatcher->GetReportAutoEnable();
     g_node_ctx.report_period_ms   = g_dispatcher->GetReportPeriodMs();
+    g_node_ctx.led_motor_id       = g_dispatcher->GetLedMotorId();
+    g_node_ctx.btn_calib_chip     = g_dispatcher->GetBtnCalibChip();
+    g_node_ctx.btn_calib_line     = g_dispatcher->GetBtnCalibLine();
+    g_node_ctx.btn_report_chip    = g_dispatcher->GetBtnReportChip();
+    g_node_ctx.btn_report_line    = g_dispatcher->GetBtnReportLine();
     g_node_ctx.calib_enable_after = g_dispatcher->GetMotorAutoEnable();
 
-    ECO_INFO_NEW("[main] config: motor_count={} sensor_period={}ms bus_fmt={} auto_calib={} motor_auto_enable={}",
+    ECO_INFO_NEW("[main] config: motor_count={} sensor_period={}ms bus_fmt={} motor_auto_enable={}",
                  motor_count, g_node_ctx.sensor_period_ms,
-                 g_node_ctx.sensor_bus_format, g_node_ctx.auto_calib, g_node_ctx.calib_enable_after);
+                 g_node_ctx.sensor_bus_format, g_node_ctx.calib_enable_after);
 
     /* 步骤 4: 初始化 ROS (编译可选) */
 
@@ -149,9 +151,29 @@ int main(int argc, char** argv)
     ECO_INFO_NEW("[main] ROS adapter enabled");
 #endif
 
+    /* 步骤 4.5: 启动 WebSocket 调试服务器 (编译可选) */
+
+#ifdef ENABLE_WEBSERVER
+    {
+        bool   ws_enabled = g_dispatcher->GetWebEnabled();
+        uint16_t ws_port  = g_dispatcher->GetWebPort();
+        uint32_t ws_pp    = g_dispatcher->GetWebPushPeriodMs();
+        if (ws_enabled) {
+            static WebServer* g_ws = new WebServer(shm, ws_port, ws_pp);
+            g_ws->SetMotorHal(hal);
+            g_ws->Start();
+            ECO_INFO_NEW("[main] WebServer enabled on :{}", ws_port);
+            ECO_INFO_NEW("[main]   open browser -> stark_node_debug.html");
+        } else {
+            ECO_INFO_NEW("[main] WebServer disabled (web.enabled=false in config)");
+        }
+    }
+#endif
+
     /* 步骤 5: 主循环 (非阻塞, 状态分发) */
 
-    main_loop_run(hal, shm, motor_count, g_dispatcher, g_rt_worker, enable_rt);
+    main_loop_run(hal, shm, motor_count, g_dispatcher, g_rt_worker,
+                  g_dispatcher->GetRtConfig().enable_rt);
 
     /* 步骤 6: 清理 */
 

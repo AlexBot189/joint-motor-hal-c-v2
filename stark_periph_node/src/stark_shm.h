@@ -1,5 +1,6 @@
 /*
  * stark_shm.h — 共享内存布局
+ * 版本: V2.3 | 日期: 2026-07-13 | 维护: zhiqiang.yang
  * Copyright (c) 2026 zhiqiang.yang
  *
  * 数据方向: motor_node ,  fb_buffer ,  算法/ROS/Web
@@ -13,6 +14,16 @@
 #pragma once
 
 #include <stdint.h>
+
+/* LED 配置 */
+#ifndef LED_CONFIG_T_DEFINED
+#define LED_CONFIG_T_DEFINED
+typedef struct {
+    uint8_t enable_mask;
+    uint8_t mode;
+    uint8_t r, g, b;
+} led_config_t;
+#endif
 
 #define STARK_SHM_NAME    "/stark_shm"
 #define STARK_SHM_SIZE    (64 * 1024)
@@ -296,23 +307,31 @@ typedef struct {
     uint16_t  fb_read_max_us;
     uint16_t  fb_total_avg_us;       /* T1, T4 反馈总延迟 */
     uint16_t  fb_total_max_us;
+    uint16_t  fb_total_min_us;
+    uint16_t  fb_age_max_us;        /* 反馈数据年龄 (CAN收帧→RT读) */
+    uint16_t  fb_age_avg_us;
+    uint16_t  fb_age_min_us;
     /* 控制路径 */
     uint16_t  ctrl_total_avg_us;     /* T5, T6 控制总延迟 */
     uint16_t  ctrl_total_max_us;
+    uint16_t  ctrl_total_min_us;
+    /* 命令通道 */
+    uint16_t  mbox_age_max_us;       /* 算法写 mailbox → RT 读到 */
+    uint16_t  mbox_age_avg_us;
+    uint16_t  mbox_age_min_us;
     /* 统计 */
     uint32_t  trace_cycle_count;     /* 已采样周期数 */
     uint32_t  shm_write_avg_us;      /* SHM 写入耗时 */
     uint16_t  cycle_overrun_count;   /* 周期超限次数 */
-    uint8_t   _pad_latency[2];
-    uint16_t  _pad2[3];                   /* 对齐                                         */
 
     /* 周期上报区 (motor_node 写, 算法/Web 读) */
     uint8_t   periodic_enabled;       /* 上报总开关: 0=关 1=开 */
-    uint8_t   _pad_rpt_ctrl[3];
+    uint8_t   rt_mode;               /* 0=SCHED_OTHER 1=SCHED_FIFO */
+    uint16_t  period_us;             /* RT 周期 (us) */
     uint32_t  periodic_period_ms;     /* 上报周期 ms, 默认 5 */
-    uint32_t  periodic_version;       /* 写入版本号, 递增, 读者对比防撕裂 */
-    PeriodicUploadData periodic_data;  /* 周期上报数据, 约 128B */
-    uint8_t   _pad_rpt[16];           /* 预留扩展 (吸收上方新增字段, 后续字段偏移不变) */
+    uint32_t  periodic_version;       /* 写入版本号, 递增 */
+    PeriodicUploadData periodic_data;  /* 周期上报数据 */
+    uint8_t   _pad_rpt[16];           /* 预留扩展 */
 
     /* 管理命令通道 (每电机独立 slot, 不和算法 mailbox 竞争) */
     volatile uint8_t mgmt_cmd[STARK_MAX_MOTORS];   /* stark_cmd_type_t, 0=idle */
@@ -324,12 +343,21 @@ typedef struct {
     volatile uint8_t   sdo_seq[STARK_MAX_MOTORS];
     volatile uint8_t   sdo_ack[STARK_MAX_MOTORS];
 
+    /* LED 灯控制 (算法写, 主循环处理, 每电机独立) */
+    led_config_t       led_cfg[STARK_MAX_MOTORS];
+    volatile uint8_t   led_seq[STARK_MAX_MOTORS];  /* 算法递增, 触发主循环处理 */
+    volatile uint8_t   led_ack[STARK_MAX_MOTORS];  /* 主循环确认, =seq 表示已处理 */
+
     /* 双向心跳 */
     volatile uint32_t algo_heartbeat;              /* 算法递增, RT 检测超时脱使能 */
     uint32_t          algo_heartbeat_timeout_ms;   /* stark_node 启动写入, 默认 1000 */
     volatile uint32_t rt_cycle;                    /* RT 每 1ms 递增, 算法检测存活 */
 
-    uint8_t   _pad[3130];             /* 对齐 64KB */
+    /* 按键 B 上报 (GPIO 线程写, 算法只读) */
+    volatile uint8_t  btn_report_state;            /* 0=松开 1=按下 */
+    volatile uint32_t btn_report_seq;              /* 每次按下递增, 算法比对检测边沿 */
+
+    uint8_t   _pad[3117];             /* 对齐 64KB */
 } stark_shm_t;
 
 #ifdef __cplusplus

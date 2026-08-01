@@ -1,5 +1,6 @@
 /*
  * stark_client.h -- 算法控制接口 (Header-Only)
+ * 版本: V2.3 | 日期: 2026-07-13 | 维护: zhiqiang.yang
  * Copyright (c) 2026 zhiqiang.yang
  *
  * 依赖: stark_shm.h (共享内存布局)
@@ -10,21 +11,10 @@
  *   算法        -- mailbox  -->  motor_node
  *
  * 使用流程:
- *   1. stark_open   - 连接 SHM
- *   2. stark_ready  - 等待校准完成 (阻塞轮询)
- *   3. stark_enable - 使能电机
- *   4. 控制循环     - 读 stark_fb/imu, 写 stark_multi/torque/speed/position
- *   5. stark_estop  - 安全停机
- *   6. stark_close  - 断开
- *
- * 规则:
- *   - 管理命令 (enable/disable/estop/set_mode/clear_fault) 和实时控制命令
- *     不要在同一周期混合发送, 管理命令后至少间隔 5ms 再发控制命令
- *   - 双电机推荐 stark_multi, 一帧 CANFD 同时下发, 同步更好
- *   - 外骨骼场景: 算法不发命令时反馈正常, 关节自由
- *   - 定期调 stark_heartbeat + stark_rt_alive (建议 200ms)
- *   - stark_node 后启动时 stark_open 可重试等待
- *   - root 权限运行 (SHM 由 stark_periph_manager_node 以 root 创建)
+ *   1. stark_open    - 连接 SHM
+ *   2. stark_enable  - 使能电机
+ *   3. 控制循环      - 读 stark_fb/imu, 写 stark_multi/torque/speed/position
+ *   4. stark_disable - 失能电机
  */
 #pragma once
 
@@ -52,6 +42,18 @@ extern "C" {
 #define STARK_MODE_CSV      4   /* 循环同步速度, SYNC 触发 */
 #define STARK_MODE_CURRENT  5   /* Q轴电流直控 */
 #define STARK_MODE_MIT      6   /* MIT 阻抗控制 */
+
+/* 时间戳辅助 */
+static inline uint64_t _stark_now_us(void)
+{
+#if STARK_LATENCY_TRACE
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+#else
+    return 0;
+#endif
+}
 
 /* 客户端句柄 */
 typedef struct {
@@ -91,6 +93,7 @@ static inline void stark_close(stark_client_t* c)
 
 /* -- 状态查询 ---------------------------------------------------- */
 
+/* 电机就绪: calib_state==2 表示可控制.*/
 static inline int stark_ready(stark_client_t* c)
 {
     if (!c || !c->shm) return 0;
@@ -113,6 +116,13 @@ static inline int stark_calib(stark_client_t* c)
 {
     if (!c || !c->shm) return 0;
     return c->shm->calib_state;
+}
+
+/* 校准进行中: calib_state==1 */
+static inline int stark_is_calibrating(stark_client_t* c)
+{
+    if (!c || !c->shm) return 0;
+    return (c->shm->calib_state == 1);
 }
 
 static inline int stark_severity(stark_client_t* c)
@@ -200,6 +210,7 @@ static inline void stark_torque(stark_client_t* c, int id, int32_t ma)
     c->shm->mailbox.frames[slot].cmd[idx].motor_id = (uint8_t)id;
     c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_TORQUE;
     c->shm->mailbox.frames[slot].cmd[idx].value    = ma;
+    c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
 }
@@ -217,6 +228,7 @@ static inline void stark_speed(stark_client_t* c, int id, float rpm)
     c->shm->mailbox.frames[slot].cmd[idx].motor_id = (uint8_t)id;
     c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_SPEED;
     c->shm->mailbox.frames[slot].cmd[idx].value    = (int32_t)(rpm * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
 }
@@ -235,6 +247,7 @@ static inline void stark_pv(stark_client_t* c, int id, float rpm, float accel)
     c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_PV;
     c->shm->mailbox.frames[slot].cmd[idx].value    = (int32_t)(rpm * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].value2   = (int32_t)(accel * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
 }
@@ -252,6 +265,7 @@ static inline void stark_csv(stark_client_t* c, int id, float rpm)
     c->shm->mailbox.frames[slot].cmd[idx].motor_id = (uint8_t)id;
     c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_CSV;
     c->shm->mailbox.frames[slot].cmd[idx].value    = (int32_t)(rpm * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
 }
@@ -269,8 +283,24 @@ static inline void stark_position(stark_client_t* c, int id, float deg)
     c->shm->mailbox.frames[slot].cmd[idx].motor_id = (uint8_t)id;
     c->shm->mailbox.frames[slot].cmd[idx].cmd      = STARK_CMD_POS;
     c->shm->mailbox.frames[slot].cmd[idx].value    = (int32_t)(deg * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
+}
+
+/* 相对位置控制, 自动读当前位置加偏移, 钳位到 [-180, 180] */
+static inline void stark_rel_position(stark_client_t* c, int id, float delta_deg)
+{
+    if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
+
+    motor_data_t fb = stark_fb(c, id);
+    float cur_deg  = (float)fb.position * (360.0f / 65536.0f);
+    float target   = cur_deg + delta_deg;
+
+    if (target > 180.0f)  target -= 360.0f;
+    if (target < -180.0f) target += 360.0f;
+
+    stark_position(c, id, target);
 }
 
 /* 轮廓位置 (PP), deg=目标角度 accel=加速度RPM/s vel=轮廓速度RPM */
@@ -289,6 +319,7 @@ static inline void stark_pp(stark_client_t* c, int id,
     c->shm->mailbox.frames[slot].cmd[idx].value       = (int32_t)(deg * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].value2      = (int32_t)(accel_rpm * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].feedforward = (int32_t)(vel_rpm * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
 }
@@ -312,6 +343,7 @@ static inline void stark_mit(stark_client_t* c, int id,
     c->shm->mailbox.frames[slot].cmd[idx].mit_kp     = (uint16_t)(kp * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].mit_kd     = (uint16_t)(kd * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].mit_torque = (uint16_t)(torque_ma);
+    c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
 }
@@ -331,6 +363,7 @@ static inline void stark_sdo_cur(stark_client_t* c, int id, int32_t ma)
     c->shm->mailbox.frames[slot].cmd[id - 1].motor_id = (uint8_t)id;
     c->shm->mailbox.frames[slot].cmd[id - 1].cmd      = STARK_CMD_SDO_CUR;
     c->shm->mailbox.frames[slot].cmd[id - 1].value    = ma;
+    c->shm->mailbox.frames[slot].cmd[id - 1].timestamp_us = _stark_now_us();
     _stark_mbox_commit(c);
 }
 
@@ -347,6 +380,7 @@ static inline void stark_sdo_pos(stark_client_t* c, int id, float deg,
     c->shm->mailbox.frames[slot].cmd[id - 1].value    = (int32_t)(deg * 100.0f);
     c->shm->mailbox.frames[slot].cmd[id - 1].value2   = (int32_t)(accel * 100.0f);
     c->shm->mailbox.frames[slot].cmd[id - 1].feedforward = (int32_t)(vel * 100.0f);
+    c->shm->mailbox.frames[slot].cmd[id - 1].timestamp_us = _stark_now_us();
     _stark_mbox_commit(c);
 }
 
@@ -362,6 +396,7 @@ static inline void stark_sdo_vel(stark_client_t* c, int id, int32_t rpm,
     c->shm->mailbox.frames[slot].cmd[id - 1].cmd      = STARK_CMD_SDO_VEL;
     c->shm->mailbox.frames[slot].cmd[id - 1].value    = (int32_t)(rpm * 100);
     c->shm->mailbox.frames[slot].cmd[id - 1].value2   = (int32_t)(accel * 100);
+    c->shm->mailbox.frames[slot].cmd[id - 1].timestamp_us = _stark_now_us();
     _stark_mbox_commit(c);
 }
 
@@ -396,6 +431,12 @@ static inline void stark_multi(stark_client_t* c,
     c->shm->mailbox.frames[slot].cmd[1].value       = t2;
     c->shm->mailbox.frames[slot].cmd[1].value2      = v2;
     c->shm->mailbox.frames[slot].cmd[1].feedforward = p2;
+
+    {
+        uint64_t ts = _stark_now_us();
+        c->shm->mailbox.frames[slot].cmd[0].timestamp_us = ts;
+        c->shm->mailbox.frames[slot].cmd[1].timestamp_us = ts;
+    }
 
     _stark_mbox_commit(c);
 }
@@ -446,11 +487,11 @@ static inline void stark_recover(stark_client_t* c, int id)
 static inline void stark_clear_fault(stark_client_t* c, int id)
     { _stark_mgmt_cmd(c, id, STARK_CMD_CLEAR_FAULT); }
 
-/* 请求复杂校准 (按键/命令触发, 由 stark_node 主循环处理) */
+/* 按键 3连击等效. 调用后轮询 stark_ready/stark_is_calibrating 获取状态. */
 static inline void stark_request_calib(stark_client_t* c)
 {
     if (!c || !c->shm) return;
-    c->shm->calib_requested = 1;
+    __atomic_store_n(&c->shm->calib_requested, 1, __ATOMIC_RELEASE);
 }
 
 /* 切换控制模式, mode 取值见 STARK_MODE_* 常量.
@@ -465,6 +506,7 @@ static inline void stark_set_mode(stark_client_t* c, int id, int mode)
     c->shm->mailbox.frames[slot].cmd[id - 1].motor_id = (uint8_t)id;
     c->shm->mailbox.frames[slot].cmd[id - 1].cmd      = STARK_CMD_SET_MODE;
     c->shm->mailbox.frames[slot].cmd[id - 1].value    = mode;
+    c->shm->mailbox.frames[slot].cmd[id - 1].timestamp_us = _stark_now_us();
     _stark_mbox_commit(c);
 }
 
@@ -486,6 +528,70 @@ static inline int stark_rt_alive(stark_client_t* c, uint32_t *last_cycle)
     if (cur == *last_cycle) return 0;
     *last_cycle = cur;
     return 1;
+}
+
+/* -- LED 灯控制 (非 RT, 主循环处理) --------------------------------- */
+
+/*
+ * LED 灯效控制. mask: LED1~4 掩码, mode: 灯效模式, r/g/b: 0-255.
+ *
+       # 全灭            mask  mode  R  G  B
+       ./demo_algo led 2 0x00  0     0  0  0
+
+       # 四灯全亮常亮 RGB
+       ./demo_algo led 2 0xF0 0 255 0 0    # 红
+       ./demo_algo led 2 0xF0 0 0 255 0    # 绿
+       ./demo_algo led 2 0xF0 0 0 0 255    # 蓝
+       ./demo_algo led 2 0xF0 0 255 255 0  # 黄
+       ./demo_algo led 2 0xF0 0 255 0 255  # 紫
+
+       # 单灯 test（常亮红）
+       ./demo_algo led 2 0x10 0 255 0 0    # LED1
+       ./demo_algo led 2 0x20 0 255 0 0    # LED2
+       ./demo_algo led 2 0x40 0 255 0 0    # LED3
+       ./demo_algo led 2 0x80 0 255 0 0    # LED4
+
+       # 四灯全亮，各模式对比  ./demo_algo led 2 0xF0 0 0 255 0    # 常亮 绿
+       ./demo_algo led 2 0xF0 1 0 255 0    # 闪烁 绿
+       ./demo_algo led 2 0xF0 2 0 255 0    # 呼吸 绿
+       ./demo_algo led 2 0xF0 3 0 255 0    # 流水 绿
+*/
+
+static inline void stark_led_ctrl(stark_client_t* c, int motor_id,
+                                   uint8_t mask, uint8_t mode,
+                                   uint8_t r, uint8_t g, uint8_t b)
+{
+    if (!c || !c->shm || motor_id < 1 || motor_id > STARK_MAX_MOTORS) return;
+    int i = motor_id - 1;
+    c->shm->led_cfg[i].enable_mask = mask;
+    c->shm->led_cfg[i].mode        = mode;
+    c->shm->led_cfg[i].r           = r;
+    c->shm->led_cfg[i].g           = g;
+    c->shm->led_cfg[i].b           = b;
+    __atomic_add_fetch(&c->shm->led_seq[i], 1, __ATOMIC_RELEASE);
+}
+
+/* 双电机 LED 控制 */
+static inline void stark_led_ctrl_all(stark_client_t* c,
+                                       uint8_t mask, uint8_t mode,
+                                       uint8_t r, uint8_t g, uint8_t b)
+{
+    stark_led_ctrl(c, 1, mask, mode, r, g, b);
+    stark_led_ctrl(c, 2, mask, mode, r, g, b);
+}
+
+/* -- 按键 B 状态 (GPIO 线程写, 算法只读) ------------------------ */
+
+static inline uint8_t stark_btn_state(stark_client_t* c)
+{
+    if (!c || !c->shm) return 0;
+    return __atomic_load_n(&c->shm->btn_report_state, __ATOMIC_ACQUIRE);
+}
+
+static inline uint32_t stark_btn_seq(stark_client_t* c)
+{
+    if (!c || !c->shm) return 0;
+    return __atomic_load_n(&c->shm->btn_report_seq, __ATOMIC_ACQUIRE);
 }
 
 /* -- 周期上报 (5ms 自动推送, 校准完成后自动开启) ------------------ */

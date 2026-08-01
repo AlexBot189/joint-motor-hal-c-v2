@@ -64,7 +64,10 @@ bool CanDispatcher::InitDispatcher()
         return false;
     }
 
-    /* 4. 启动接收线程 */
+    /* 4. 设置接收线程实时参数 */
+    motor_hal_recv_set_rt(m_hal, m_rt_cfg.enable_rt, m_rt_cfg.recv_priority);
+
+    /* 5. 启动接收线程 */
     ret = motor_hal_recv_start(m_hal);
     if (ret < 0) {
         ECO_ERROR_NEW("[CanDispatcher] motor_hal_recv_start() failed: {}", ret);
@@ -72,17 +75,17 @@ bool CanDispatcher::InitDispatcher()
         return false;
     }
 
-    /* 5. 创建 StarkMotorCtrl 封装 */
+    /* 6. 创建 StarkMotorCtrl 封装 */
     m_ctrl = std::make_unique<StarkMotorCtrl>(m_hal);
 
-    /* 6. 初始化 IMU HAL (配置已在 LoadMotorConfig 中从 config.json 读取) */
+    /* 7. 初始化 IMU HAL (配置已在 LoadMotorConfig 中从 config.json 读取) */
     m_imu_sensor = std::make_unique<ImuHALSensor>();
     if (!m_imu_sensor->Init(m_imu_i2c_dev.c_str(), m_imu_gpio_chip.c_str(),
                             m_imu_gpio_line, m_imu_op_mode)) {
         ECO_WARN_NEW("[CanDispatcher] IMU HAL init failed, running without IMU");
     }
 
-    /* 7. 打开共享内存 */
+    /* 8. 打开共享内存 */
     m_shm_mgr = stark_shm_mgr_open(m_shm_name.c_str(), true, m_shm_size_bytes);
     if (!m_shm_mgr) {
         ECO_ERROR_NEW("[CanDispatcher] stark_shm_mgr_open() failed");
@@ -311,8 +314,10 @@ bool CanDispatcher::LoadMotorConfig()
         if (cfg.contains("rt")) {
             auto& r = cfg["rt"];
             m_rt_cfg.priority      = r.value("control_priority",  90);
+            m_rt_cfg.recv_priority  = r.value("recv_priority",     85);
             m_rt_cfg.period_us     = r.value("control_period_us", 1000u);
             m_rt_cfg.report_divider = r.value("report_divider",    5);
+            m_rt_cfg.enable_rt     = r.value("enable_rt", true);
             if (r.contains("cpu_affinity") && r["cpu_affinity"].is_array()
                 && r["cpu_affinity"].size() > 0) {
                 m_rt_cfg.cpu_affinity[0] = r["cpu_affinity"][0].get<int>();
@@ -336,7 +341,6 @@ bool CanDispatcher::LoadMotorConfig()
         /* 解析 calib */
         if (cfg.contains("calib")) {
             auto& c = cfg["calib"];
-            m_calib_auto = c.value("auto_calib", false);
             m_calib_timeout_ms = c.value("timeout_ms", 10000);
         }
 
@@ -373,6 +377,36 @@ bool CanDispatcher::LoadMotorConfig()
             m_report_period_ms   = rpt.value("period_ms",   5u);
         }
 
+        /* 解析 led */
+        if (cfg.contains("led")) {
+            m_led_motor_id = cfg["led"].value("motor_id", 0);
+            ECO_INFO_NEW("[CanDispatcher] led motor_id={} (0=disabled)", m_led_motor_id);
+        }
+
+        /* 解析 buttons */
+        if (cfg.contains("buttons")) {
+            auto& btn = cfg["buttons"];
+            if (btn.contains("calib")) {
+                m_btn_calib_chip = btn["calib"].value("gpio_chip", std::string{});
+                m_btn_calib_line = btn["calib"].value("line", -1);
+            }
+            if (btn.contains("report")) {
+                m_btn_report_chip = btn["report"].value("gpio_chip", std::string{});
+                m_btn_report_line = btn["report"].value("line", -1);
+            }
+            ECO_INFO_NEW("[CanDispatcher] buttons calib={}:{} report={}:{}",
+                         m_btn_calib_chip, m_btn_calib_line,
+                         m_btn_report_chip, m_btn_report_line);
+        }
+
+        /* 解析 web (WebSocket 调试) */
+        if (cfg.contains("web")) {
+            m_web_enabled = cfg["web"].value("enabled", false);
+            m_web_port    = cfg["web"].value("port", 8080);
+            m_web_push_period_ms = cfg["web"].value("push_period_ms", 5);
+            ECO_INFO_NEW("[CanDispatcher] web enabled={} port={} push_period={}ms", m_web_enabled, m_web_port, m_web_push_period_ms);
+        }
+
         return true;  /* 文件解析完成, 缺失字段用默认值 */
     }
 
@@ -380,7 +414,6 @@ bool CanDispatcher::LoadMotorConfig()
     ECO_INFO_NEW("[CanDispatcher] config not found, using hardcoded defaults");
 
     /* 校准/透传默认值 (对齐 motor_tool daemon) */
-    m_calib_auto       = true;
     m_calib_timeout_ms = 10000;
     m_sensor_period_ms = 1;
     m_sensor_period_div = 1;
@@ -389,9 +422,9 @@ bool CanDispatcher::LoadMotorConfig()
     m_sensor_force_module = 1;
 
     motor_config_t def = {};
-    def.heartbeat_ms      = 2000;
-    def.profile_accel     = 5000;
-    def.profile_decel     = 5000;
+    def.heartbeat_ms      = 0;
+    def.profile_accel     = 500;
+    def.profile_decel     = 500;
     def.profile_velocity  = 20;
     def.disable_watchdog  = true;
     def.auto_enable       = false;   /* 对齐 motor_tool: 不自动使能, 零位校准后再由控制命令使能 */

@@ -46,6 +46,14 @@
     "mode": 2,
     "force_module": 1
   },
+  "led": {
+    "motor_id": 0,
+    "init_off": true
+  },
+  "buttons": {
+    "calib":  { "gpio_chip": "gpiochip4", "line": 7 },
+    "report": { "gpio_chip": "gpiochip4", "line": 8 }
+  },
   "imu": {
     "i2c_dev": "/dev/i2c-3",
     "gpio_chip": "gpiochip4",

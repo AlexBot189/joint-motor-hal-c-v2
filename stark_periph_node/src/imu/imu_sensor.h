@@ -80,6 +80,11 @@ private:
     mutable pthread_mutex_t m_raw_mutex;
     emd_raw_sensor_t        m_cached_raw;
 
+    /* 融合数据缓存 (GAF ODR, 无新数据时保留上次有效值) */
+    mutable pthread_mutex_t m_fused_mutex;
+    mutable emd_output_t    m_cached_fused;
+    mutable bool            m_fused_valid = false;
+
     static void _RawDataCb(const emd_raw_sensor_t *data, void *user_data);
 };
 

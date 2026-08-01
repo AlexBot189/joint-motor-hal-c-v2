@@ -62,7 +62,6 @@ public:
 
     /* 配置获取 (主线程读取, 设置 g_ctx) */
     int  GetMotorCount()     const { return m_motor_count; }
-    bool GetCalibAuto()      const { return m_calib_auto; }
     int  GetCalibTimeoutMs() const { return m_calib_timeout_ms; }
     uint16_t GetSensorPeriodMs()   const { return m_sensor_period_ms; }
     uint16_t GetSensorPeriodDiv()  const { return m_sensor_period_div; }
@@ -72,6 +71,14 @@ public:
     bool     GetReportAutoEnable() const { return m_report_auto_enable; }
     uint32_t GetReportPeriodMs()   const { return m_report_period_ms; }
     bool     GetMotorAutoEnable()  const { return m_motor_auto_enable; }
+    int      GetLedMotorId()       const { return m_led_motor_id; }
+    const std::string& GetBtnCalibChip()  const { return m_btn_calib_chip; }
+    int      GetBtnCalibLine()  const { return m_btn_calib_line; }
+    const std::string& GetBtnReportChip() const { return m_btn_report_chip; }
+    int      GetBtnReportLine() const { return m_btn_report_line; }
+    bool     GetWebEnabled()   const { return m_web_enabled; }
+    uint16_t GetWebPort()      const { return m_web_port; }
+    uint32_t GetWebPushPeriodMs() const { return m_web_push_period_ms; }
 
     bool IsRunning() const { return m_running; }
     void SetConfigPath(const std::string& path) { m_config_path = path; }
@@ -111,7 +118,6 @@ private:
     int          m_motor_count    = 2;
 
     /* 校准/透传配置 (来自 config.json) */
-    bool         m_calib_auto       = false;
     int          m_calib_timeout_ms = 10000;
     uint16_t     m_sensor_period_ms = 1;
     uint16_t     m_sensor_period_div = 1;   /* 0.5ms 基准分频, 默认 1 */
@@ -121,6 +127,18 @@ private:
     bool         m_report_auto_enable = true;  /* 校准后自动开启周期上报 */
     uint32_t     m_report_period_ms   = 5;    /* 上报周期 ms */
     bool         m_motor_auto_enable  = false; /* 任意电机 auto_enable=true 则置 true */
+    int          m_led_motor_id = 0;          /* 0=禁用, 1=右, 2=左 */
+
+    /* 按键 */
+    std::string  m_btn_calib_chip;
+    int          m_btn_calib_line  = -1;
+    std::string  m_btn_report_chip;
+    int          m_btn_report_line = -1;
+
+    /* WebSocket */
+    bool         m_web_enabled = false;
+    uint16_t     m_web_port    = 8080;
+    uint32_t     m_web_push_period_ms = 5;  /* push rate, default 5ms = 200Hz */
 };
 
 }  /* namespace stark_periph_manager_node */
