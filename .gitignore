@@ -31,3 +31,7 @@ exo_node/3rd_party/usr/
 
 # Patch files (not source)
 *.patch
+tags
+stark_deploy/
+tmp/
+*.zip
