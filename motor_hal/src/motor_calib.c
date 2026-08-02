@@ -159,6 +159,19 @@ motor_calib_state_t motor_calib_poll(motor_calib_t *cal)
         uint8_t id_l = cal->cfg.motor_id_l;
         int ret = 0;
 
+        /* Step 2.5: 力矩传感器零漂标定 (去使能状态, 失败不中断) */
+        {
+            int tmp_ret;
+            if (id_r > 0) {
+                tmp_ret = motor_hal_torque_zero_calib(cal->hal, id_r);
+                if (tmp_ret != 0) CALIB_LOG("M%d torque zero calib skipped (ret=%d)", id_r, tmp_ret);
+            }
+            if (id_l > 0) {
+                tmp_ret = motor_hal_torque_zero_calib(cal->hal, id_l);
+                if (tmp_ret != 0) CALIB_LOG("M%d torque zero calib skipped (ret=%d)", id_l, tmp_ret);
+            }
+        }
+
         /* Step 3-5: 使能 + 模式设置 + 透传 (仅 enable_after_done=true) */
         if (cal->cfg.enable_after_done) {
             /* Step 3: DS402 使能 (0x06, 0x07, 0x0F) */
