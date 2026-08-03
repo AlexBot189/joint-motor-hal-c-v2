@@ -533,6 +533,8 @@ static void usage(void)
     printf("  pdo vel <id> <rpm> [acc]             单电机速度 (PV)\n");
     printf("  pdo vel <id1> <id2> <rpm> [acc]      双电机同值速度 (PV)\n");
     printf("  pdo vel <id1> <id2> <r1> <r2> [acc]  双电机不同值速度 (PV)\n");
+    printf("  pdo mit <id> <pos> <vel> <kp> <kd> [tq]  单电机MIT单帧调试\n");
+    printf("  pdo mit <id1> <id2> <pos> <vel> <kp> <kd> [tq] 双电机MIT单帧\n");
     printf("\n管理命令:\n");
     printf("  enable  <id>          使能电机\n");
     printf("  disable <id>          失能电机\n");
@@ -575,6 +577,8 @@ static void usage(void)
     printf("  ./demo_algo pdo pos 1 30          # PDO M1=30° (PP)\n");
     printf("  ./demo_algo pdo pos 1 2 30 500 10 # PDO M1=M2=30° acc=500 vel=10\n");
     printf("  ./demo_algo pdo vel 1 10 500      # PDO M1=10RPM acc=500\n");
+    printf("  ./demo_algo pdo mit 1 0 0 5 2     # PDO M1 MIT单帧 kp=5 kd=2\n");
+    printf("  ./demo_algo pdo mit 1 2 0 0 30 5  # PDO 双MIT单帧 kp=30 kd=5\n");
     printf("  ./demo_algo report                # 周期上报\n");
     printf("  ./demo_algo stat                  # 只读反馈\n");
     printf("  ./demo_algo led 1 0xF0 0 255 0 0  # M1 红灯全亮常亮\n");
