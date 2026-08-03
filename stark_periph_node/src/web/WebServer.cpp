@@ -340,8 +340,6 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         "\"spi_valid\":%u,"
         "\"spi_torque2\":%.1f,"
         "\"spi_valid2\":%u,"
-        "\"tq_nm1\":%.2f,"
-        "\"tq_nm2\":%.2f,"
         /* 指令追踪 */
         "\"cmd_cur1\":%d,"
         "\"cmd_cur2\":%d,"
@@ -416,8 +414,6 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         d->spi_valid,
         d->spi_torque_left,
         d->spi_valid_left,
-        (float)d->torque_feedback * 0.05f,
-        (float)d->torque_feedback_left * 0.05f,
         /* 指令追踪 */
         track.cur_m1, track.cur_m2,
         track.pos_m1, track.pos_m2,

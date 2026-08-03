@@ -333,11 +333,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
           <label style="color:#f97316"><span class="ydot" style="background:#f97316"></span><span>左电流<br><span class="chart-label-unit">(A)</span></span><input type="checkbox" data-key="cur2" checked></label>
           <label style="color:#8b5cf6"><span class="ydot" style="background:#8b5cf6"></span><span>右速度<br><span class="chart-label-unit">(RPM)</span></span><input type="checkbox" data-key="vel1"></label>
           <label style="color:#ec4899"><span class="ydot" style="background:#ec4899"></span><span>左速度<br><span class="chart-label-unit">(RPM)</span></span><input type="checkbox" data-key="vel2"></label>
-          <label style="color:#14b8a6"><span class="ydot" style="background:#14b8a6"></span><span>右力矩(0x300)<br><span class="chart-label-unit">(N.m)</span></span><input type="checkbox" data-key="tq1"></label>
-          <label style="color:#f43f5e"><span class="ydot" style="background:#f43f5e"></span><span>左力矩(0x300)<br><span class="chart-label-unit">(N.m)</span></span><input type="checkbox" data-key="tq2"></label>
-          
-          <label style="color:#a78bfa"><span class="ydot" style="background:#a78bfa"></span><span>右力矩(SPI)<br><span class="chart-label-unit">(N.m)</span></span><input type="checkbox" data-key="spi_tq1"></label>
-          <label style="color:#fb923c"><span class="ydot" style="background:#fb923c"></span><span>左力矩(SPI)<br><span class="chart-label-unit">(N.m)</span></span><input type="checkbox" data-key="spi_tq2"></label>
+          <label style="color:#14b8a6"><span class="ydot" style="background:#14b8a6"></span><span>右力矩<br><span class="chart-label-unit">(N.m)</span></span><input type="checkbox" data-key="spi_tq1"></label>
+          <label style="color:#f43f5e"><span class="ydot" style="background:#f43f5e"></span><span>左力矩<br><span class="chart-label-unit">(N.m)</span></span><input type="checkbox" data-key="spi_tq2"></label>
           <label style="color:#06b6d4"><span class="ydot" style="background:#06b6d4"></span><span>横滚<br><span class="chart-label-unit">(°)</span></span><input type="checkbox" data-key="imu_r" checked></label>
           <label style="color:#d946ef"><span class="ydot" style="background:#d946ef"></span><span>俯仰<br><span class="chart-label-unit">(°)</span></span><input type="checkbox" data-key="imu_p" checked></label>
           <label style="color:#eab308"><span class="ydot" style="background:#eab308"></span><span>偏航<br><span class="chart-label-unit">(°)</span></span><input type="checkbox" data-key="imu_y" checked></label>
@@ -595,12 +592,12 @@ var chartMouseX = -1, chartMouseY = -1;
 var chartOffset = 0;
 var chartDragging = false, chartDragStart = 0, chartDragOffset0 = 0;
 
-var CHART_KEYS = ['pos1','pos2','cur1','cur2','vel1','vel2','tq1','tq2','spi_tq1','spi_tq2','imu_r','imu_p','imu_y','c_cur1','c_cur2','c_pos1','c_pos2','c_vel1','c_vel2','c_tq1','c_tq2'];
+var CHART_KEYS = ['pos1','pos2','cur1','cur2','vel1','vel2','spi_tq1','spi_tq2','imu_r','imu_p','imu_y','c_cur1','c_cur2','c_pos1','c_pos2','c_vel1','c_vel2','c_tq1','c_tq2'];
 
 var CHART_COLORS = {
   pos1:'#22c55e', pos2:'#ef4444', cur1:'#0ea5e9', cur2:'#f97316',
   vel1:'#8b5cf6', vel2:'#ec4899',
-  tq1:'#14b8a6', tq2:'#f43f5e', spi_tq1:'#a78bfa', spi_tq2:'#fb923c',
+  spi_tq1:'#14b8a6', spi_tq2:'#f43f5e',
 
   imu_r:'#06b6d4', imu_p:'#d946ef', imu_y:'#eab308',
   c_cur1:'#0ea5e9', c_cur2:'#f97316', c_pos1:'#22c55e', c_pos2:'#ef4444',
@@ -609,8 +606,8 @@ var CHART_COLORS = {
 
 var CHART_LABELS = {
   pos1:'右位置', pos2:'左位置', cur1:'右电流', cur2:'左电流',
-  vel1:'右速度', vel2:'左速度', tq1:'右力矩', tq2:'左力矩',
-  spi_tq1:'右SPI力矩', spi_tq2:'左SPI力矩',
+  vel1:'右速度', vel2:'左速度',
+  spi_tq1:'右力矩', spi_tq2:'左力矩',
   imu_r:'横滚', imu_p:'俯仰', imu_y:'偏航',
   c_cur1:'右电流指令', c_cur2:'左电流指令',
   c_pos1:'右位置指令', c_pos2:'左位置指令',
@@ -842,8 +839,6 @@ function feedChart(d){
   pt('cur2', (d.m2_cur||0)/100.0);
   pt('vel1', (d.m1_vel||0)/10.0);
   pt('vel2', (d.m2_vel||0)/10.0);
-  pt('tq1', d.tq_nm1||0);
-  pt('tq2', d.tq_nm2||0);
   pt('spi_tq1', d.spi_torque||0);
   pt('spi_tq2', d.spi_torque2||0);
 
