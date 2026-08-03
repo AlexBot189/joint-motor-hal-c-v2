@@ -289,6 +289,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <input type="number" id="tq_nm" value="0" step="0.1" placeholder="Nm" style="flex:1">
       <button onclick="sendCalibTorque()" class="small calib" style="flex:1;padding:6px;font-weight:700">标定</button>
     </div>
+    <button onclick="sendCalibTorqueZero()" class="small" style="width:100%;padding:6px;margin-top:4px;font-weight:700;background:#f0fdf4;border-color:#86efac;color:#15803d">零漂标定 (理论力矩=0)</button>
 
     <div class="hl"></div>
     <h3>⚙ MIT 缩放迁移</h3>
@@ -811,6 +812,13 @@ function sendCalibTorque(){
   var torque_mNm=Math.round(torque_nm*1000);
   if(!confirm('标定 M'+motor+': '+torque_nm.toFixed(1)+' Nm ('+torque_mNm+' mNm)\n\n确认电机已失能、关节静止、负载稳定？')) return;
   g_ws.send(JSON.stringify({cmd:'calib_torque', motor:motor, value:torque_mNm}));
+}
+
+function sendCalibTorqueZero(){
+  if(!g_ws||!g_connected){alert('未连接');return;}
+  var motor=parseInt(document.getElementById('tq_motor').value);
+  if(!confirm('零漂标定 M'+motor+': 理论力矩=0Nm\n\n确认电机已失能、关节在机械零点、无外部负载。\n标定完成后力矩反馈应接近0Nm。\n确定执行？')) return;
+  g_ws.send(JSON.stringify({cmd:'calib_torque', motor:motor, value:0}));
 }
 
 function sendMitMigrate(){

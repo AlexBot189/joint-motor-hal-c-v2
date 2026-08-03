@@ -19,6 +19,7 @@
  * 校准 / 迁移:
  *   ./demo_algo calib                 编码器零位校准
  *   ./demo_algo calib_torque <id> <Nm> 力矩传感器标定 (理论力矩 Nm)
+ *   ./demo_algo calib_torque_zero <id>  力矩传感器零漂标定 (理论力矩=0)
  *   ./demo_algo mit_migrate <id>       MIT缩放迁移 (Tmax→20Nm + 保存Flash)
  *
  * SDO 单帧控制 (通过 mailbox → main_loop):
@@ -539,6 +540,7 @@ static void usage(void)
     printf("  clearf  <id>          清故障\n");
     printf("  calib                 触发复杂校准 (按键/命令)\n");
     printf("  calib_torque <id> <Nm> 力矩传感器标定 (理论力矩 Nm)\n");
+    printf("  calib_torque_zero <id>  力矩传感器零漂标定 (理论力矩=0)\n");
     printf("  mit_migrate <id>        MIT缩放迁移: 写 Tmax=20 并保存 Flash\n");
     printf("  led  <id> <mask> <mode> [r] [g] [b]  LED 灯控制\n");
     printf("  btn                   读取按键上报状态\n");
@@ -558,6 +560,7 @@ static void usage(void)
     printf("  ./demo_algo mit_multi 50 10 0 0 8  # MIT 多轴 8Nm双电机\n");
     printf("  ./demo_algo calib_torque 1 0        # M1 力矩零漂标定(零负载)\n");
     printf("  ./demo_algo calib_torque 2 17.15    # M2 力矩标定(挂5kg×0.35m)\n");
+    printf("  ./demo_algo calib_torque_zero 1     # M1 零漂标定(快捷, tau=0)\n");
     printf("  ./demo_algo mit_migrate 1           # M1 MIT缩放迁移(Tmax→20)\n");
     printf("  ./demo_algo sdo cur 1 500         # SDO M1=500mA\n");
     printf("  ./demo_algo sdo cur 1 2 500       # SDO M1=M2=500mA\n");
@@ -706,6 +709,22 @@ int main(int argc, char** argv)
         }
         stark_sdo_torque_calib(&c, id, torque_mNm);
         printf("Sent. Wait 2s, then check 0x6077 for verification.\n");
+        usleep(100000);
+        stark_close(&c);
+        return 0;
+    }
+    if (strcmp(mode, "calib_torque_zero") == 0) {
+        if (argc < 3) { printf("Usage: calib_torque_zero <id>\n"); stark_close(&c); return 1; }
+        int id = atoi(argv[2]);
+        if (id < 1 || id > 2) { printf("calib_torque_zero: id must be 1 or 2\n"); stark_close(&c); return 1; }
+        printf("Torque zero calib: M%d (tau=0Nm)\n", id);
+        printf("Ensure: motor DISABLED, joint at mechanical ZERO, no external load.\n");
+        printf("Proceed? (y/N): ");
+        char confirm = (char)getchar();
+        if (confirm != 'y' && confirm != 'Y') { printf("Cancelled.\n"); stark_close(&c); return 0; }
+        stark_sdo_torque_calib(&c, id, 0);
+        printf("Sent. Wait 2s, then check 0x6077 (should read ~0Nm).\n");
+        usleep(100000);
         /* 等待主循环处理 */
         usleep(100000);
         stark_close(&c);
