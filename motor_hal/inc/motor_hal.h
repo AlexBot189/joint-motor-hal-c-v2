@@ -332,6 +332,43 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
                           float kp, float kd, float torque);
 
 /**
+ * @brief 从驱动器读取 MIT 快控缩放参数 (0x2542~0x2546)
+ *
+ * 必须在电机启动后调用, 建议在 motor_startup 完成后立即调用。
+ * 读取成功后覆盖 motor_node_t 中的默认缩放值。
+ *
+ * @return 0=全部成功, 非0=部分或全部读取失败 (已保留默认值)
+ */
+int motor_hal_read_mit_scales(motor_hal_t *hal, uint8_t node_id);
+
+/**
+ * @brief 获取已读取的 MIT 缩放值
+ *
+ * @param idx 0=pmax, 1=vmax, 2=kpmax, 3=kdmax, 4=tmax
+ * @return 缩放值 (float), 未读取时返回默认值
+ */
+float motor_hal_get_mit_scale(motor_hal_t *hal, uint8_t node_id, int idx);
+
+/**
+ * @brief MIT 编码: 物理量 → raw 值
+ *
+ * 按 KWS CANFD V2 协议公式:
+ *   pos_raw  = round((pos_rad + pmax) / (2*pmax) × 65535)
+ *   vel_raw  = round((vel_rads + vmax) / (2*vmax) × 4095)
+ *   kp_raw   = round(kp / kpmax × 4095)
+ *   kd_raw   = round(kd / kdmax × 4095)
+ *   tq_raw   = round((tau_ff_nm + tmax) / (2*tmax) × 4095)
+ *
+ * 所有 raw 值均钳位到合法范围。
+ */
+void motor_hal_mit_encode_raw(const mit_scales_t *s,
+                              float pos_rad, float vel_rads,
+                              float kp, float kd, float tau_ff_nm,
+                              uint16_t *pos_raw, uint16_t *vel_raw,
+                              uint16_t *kp_raw, uint16_t *kd_raw,
+                              uint16_t *tq_raw);
+
+/**
  * @brief 通用 PDO 控制 — 指定模式 + 裸参数
  *
  * 当标准接口 (set_position/set_velocity/set_torque) 不够灵活时使用。

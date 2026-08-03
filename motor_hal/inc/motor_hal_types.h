@@ -378,6 +378,22 @@ typedef struct {
 #define OD_CANFD_BAUD         (0x2540)
 #define OD_WATCHDOG_LIMIT     (0x2650)  /* 看门狗/限位控制 */
 
+/* MIT 快控缩放 (KWS CANFD V2, 启动时 SDO 读取) */
+#define OD_MIT_POS_SCALE      (0x2542)  /* Pmax × 0.01 rad, 默认 314 */
+#define OD_MIT_VEL_SCALE      (0x2543)  /* Vmax × 0.01 rad/s, 默认 314 */
+#define OD_MIT_KP_SCALE       (0x2544)  /* Kpmax Nm/rad, 默认 50 */
+#define OD_MIT_KD_SCALE       (0x2545)  /* Kdmax Nm·s/rad, 默认 50 */
+#define OD_MIT_TQ_SCALE       (0x2546)  /* Tmax Nm, 默认 20 */
+
+/* MIT 缩放参数, 每个节点独立 */
+typedef struct {
+    float pmax;    /* 位置量程, rad, 默认 3.14 */
+    float vmax;    /* 速度量程, rad/s, 默认 3.14 */
+    float kpmax;   /* 刚度量程, Nm/rad, 默认 50 */
+    float kdmax;   /* 阻尼量程, Nm·s/rad, 默认 50 */
+    float tmax;    /* 力矩量程, Nm, 默认 20 */
+} mit_scales_t;
+
 /* CiA 402 标准 */
 #define OD_CONTROLWORD        (0x6040)
 #define OD_STATUSWORD         (0x6041)

@@ -44,6 +44,7 @@ extern stark_periph_manager_node::StarkRtWorker* g_rt_worker;
 /* 本文件内部的静态变量 */
 static bool g_sensor_configured[STARK_MAX_MOTORS];
 static bool g_sensor_logged[STARK_MAX_MOTORS];   /* 仅打印一次日志 */
+static bool g_mit_scales_done[STARK_MAX_MOTORS];
 static bool g_calib_triggered = false;
 static bool g_first_boot = true;       /* 首次启动无需校准, 直接进 RUNNING */
 static bool g_sdo_telemetry_started = false;
@@ -134,6 +135,7 @@ static void poll_common(motor_hal_t* hal, stark_shm_t* shm, uint8_t motor_count)
     for (uint8_t i = 0; i < motor_count; i++) {
         if (dropped & (1 << i)) {
             g_sensor_configured[i] = false;
+            g_mit_scales_done[i] = false;
         }
     }
     g_prev_online_mask = shm->motor_online;
@@ -160,6 +162,23 @@ static void poll_common(motor_hal_t* hal, stark_shm_t* shm, uint8_t motor_count)
                                  g_ctx->sensor_bus_format == 3 ? "CANFD BRS" : "Classic CAN",
                                  g_ctx->sensor_mode, g_ctx->sensor_force_module);
                 }
+            }
+        }
+
+        /* 读取 MIT 快控缩放 (仅一次, 电机在线后) */
+        if (!g_mit_scales_done[id - 1]) {
+            motor_state_t st = motor_hal_get_state(hal, id);
+            if (st >= MOTOR_STATE_SWITCH_ON_DIS && st != MOTOR_STATE_UNKNOWN) {
+                int ret = motor_hal_read_mit_scales(hal, id);
+                g_mit_scales_done[id - 1] = true;
+                ECO_INFO_NEW("[main] MIT scales M{}: pmax={:.2f} vmax={:.2f} kpmax={:.0f} kdmax={:.0f} tmax={:.0f} (ret={})",
+                             id,
+                             motor_hal_get_mit_scale(hal, id, 0),
+                             motor_hal_get_mit_scale(hal, id, 1),
+                             motor_hal_get_mit_scale(hal, id, 2),
+                             motor_hal_get_mit_scale(hal, id, 3),
+                             motor_hal_get_mit_scale(hal, id, 4),
+                             ret);
             }
         }
     }

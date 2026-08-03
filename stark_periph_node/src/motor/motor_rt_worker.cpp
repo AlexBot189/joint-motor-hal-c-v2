@@ -487,6 +487,7 @@ void StarkRtWorker::ProcessMailbox()
                     }
                     break;
                 case STARK_CMD_MIT:
+                    /* decode: raw → 物理量 (KWS CANFD V2 公式) */
                     motor_hal_mit_control(m_hal, mid,
                         (float)c.mit_pos * (360.0f / 65535.0f) - 180.0f,
                         (float)((int16_t)(c.mit_vel << 4)) / 16.0f,

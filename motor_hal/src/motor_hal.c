@@ -130,6 +130,9 @@ typedef struct {
     int32_t  sdo_temp_01c;      /* 0x2663 temperature, 0.1°C, -1=not yet polled */
     int32_t  sdo_position;      /* 0x6064 position, counts, valid when sdo_temp_01c >= 0 */
 
+    /* MIT 快控缩放 (启动时从 OD 读取, 运行中不变) */
+    mit_scales_t mit_scales;
+
     /* PDO Byte0 — 仅由 PDO API 管理, SDO 不碰 */
     uint8_t  pdo_byte0;         /* Byte0 持久值, 默认 0x00 */
     bool     clr_err_pending;   /* bit5 脉冲标志 */
@@ -320,6 +323,12 @@ int motor_hal_add_motor(motor_hal_t *hal, const motor_config_t *cfg)
     m->clr_err_pending = false;
     m->sdo_temp_01c    = -1;     /* 尚未 SDO 轮询 */
     m->sdo_position    = 0;
+    /* 默认 MIT 缩放 (KWS CANFD V2 出厂值), 后续由 motor_hal_read_mit_scales 覆盖 */
+    m->mit_scales.pmax  = 3.14f;
+    m->mit_scales.vmax  = 3.14f;
+    m->mit_scales.kpmax = 50.0f;
+    m->mit_scales.kdmax = 50.0f;
+    m->mit_scales.tmax  = 20.0f;
     memcpy(&m->config, cfg, sizeof(motor_config_t));
 
     hal->motor_count++;
@@ -515,19 +524,98 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     bool enabled = m ? m->enabled : false;
     uint8_t b0 = m ? _consume_pdo_byte0(m) : 0;
     if (m) { b0 = (b0 & ~PDO_BYTE0_MODE_MASK) | pdo_byte0_mode_part(MOTOR_MODE_MIT); m->pdo_byte0 = b0; }
+    mit_scales_t scales;
+    if (m) scales = m->mit_scales;
+    else { scales.pmax=3.14f; scales.vmax=3.14f; scales.kpmax=50.0f; scales.kdmax=50.0f; scales.tmax=20.0f; }
     pthread_mutex_unlock(&hal->lock);
 
     if (!m) return -ENOENT;
     if (!enabled) return -EAGAIN;
 
-    uint16_t pos  = (uint16_t)((position + 180.0f) / 360.0f * 65535.0f);
-    uint16_t vel  = (uint16_t)((int16_t)velocity);
-    uint16_t kp_v = (uint16_t)(kp * 100.0f);
-    uint16_t kd_v = (uint16_t)(kd * 100.0f);
-    int16_t  torq = (int16_t)(torque * 1000.0f);
+    /* 物理量 → raw 编码 (KWS CANFD V2 协议公式) */
+    uint16_t pos_raw, vel_raw, kp_raw, kd_raw, tq_raw;
+    motor_hal_mit_encode_raw(&scales, (double)position * M_PI / 180.0,
+                             (double)velocity * M_PI / 30.0,
+                             kp, kd, torque,
+                             &pos_raw, &vel_raw, &kp_raw, &kd_raw, &tq_raw);
 
-    pdo_mit_send_raw(hal->drv, node_id, b0, pos, vel, kp_v, kd_v, torq);
+    /* KWS V2: 全 0 raw 驱动拒收, 发送前校验 */
+    if (pos_raw == 0 && vel_raw == 0 && kp_raw == 0 && kd_raw == 0 && tq_raw == 0)
+        return -EINVAL;
+
+    pdo_mit_send_raw(hal->drv, node_id, b0, pos_raw, vel_raw, kp_raw, kd_raw, (int16_t)tq_raw);
     return 0;
+}
+
+int motor_hal_read_mit_scales(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) return -ENOENT;
+
+    static const uint16_t ods[] = {OD_MIT_POS_SCALE, OD_MIT_VEL_SCALE,
+                                   OD_MIT_KP_SCALE, OD_MIT_KD_SCALE, OD_MIT_TQ_SCALE};
+    float *dests[] = {&m->mit_scales.pmax, &m->mit_scales.vmax,
+                      &m->mit_scales.kpmax, &m->mit_scales.kdmax, &m->mit_scales.tmax};
+    float defaults[] = {3.14f, 3.14f, 50.0f, 50.0f, 20.0f};
+
+    int err = 0;
+    for (int i = 0; i < 5; i++) {
+        uint32_t val = 0;
+        int ret = sdo_read_simple(hal->drv, node_id, ods[i], 0x00, &val);
+        if (ret != 0 || val == 0) {
+            *dests[i] = defaults[i];
+            err++;
+        } else {
+            /* 0x2542/0x2543: val × 0.01; 0x2544~0x2546: val 即目标单位 */
+            *dests[i] = (i < 2) ? ((float)(int32_t)val * 0.01f) : (float)(int32_t)val;
+        }
+    }
+    return (err == 0) ? 0 : -1;
+}
+
+float motor_hal_get_mit_scale(motor_hal_t *hal, uint8_t node_id, int idx)
+{
+    motor_node_t *m = _find_motor(hal, node_id);
+    if (!m) return 0;
+    switch (idx) {
+    case 0: return m->mit_scales.pmax;
+    case 1: return m->mit_scales.vmax;
+    case 2: return m->mit_scales.kpmax;
+    case 3: return m->mit_scales.kdmax;
+    case 4: return m->mit_scales.tmax;
+    default: return 0;
+    }
+}
+
+void motor_hal_mit_encode_raw(const mit_scales_t *s,
+                              float pos_rad, float vel_rads,
+                              float kp, float kd, float tau_ff_nm,
+                              uint16_t *pos_raw, uint16_t *vel_raw,
+                              uint16_t *kp_raw, uint16_t *kd_raw,
+                              uint16_t *tq_raw)
+{
+    /* 对称量: 先限幅再四舍五入 */
+    float p = pos_rad;
+    if (p < -s->pmax) p = -s->pmax; else if (p > s->pmax) p = s->pmax;
+    *pos_raw = (uint16_t)((p + s->pmax) / (2.0f * s->pmax) * 65535.0f + 0.5f);
+
+    float v = vel_rads;
+    if (v < -s->vmax) v = -s->vmax; else if (v > s->vmax) v = s->vmax;
+    *vel_raw = (uint16_t)((v + s->vmax) / (2.0f * s->vmax) * 4095.0f + 0.5f);
+
+    /* 非对称量: 限幅到 [0, max], 四舍五入 */
+    if (kp < 0) kp = 0; else if (kp > s->kpmax) kp = s->kpmax;
+    *kp_raw = (uint16_t)(kp / s->kpmax * 4095.0f + 0.5f);
+
+    if (kd < 0) kd = 0; else if (kd > s->kdmax) kd = s->kdmax;
+    *kd_raw = (uint16_t)(kd / s->kdmax * 4095.0f + 0.5f);
+
+    /* 对称量: 力矩 */
+    float t = tau_ff_nm;
+    if (t < -s->tmax) t = -s->tmax; else if (t > s->tmax) t = s->tmax;
+    *tq_raw = (uint16_t)((t + s->tmax) / (2.0f * s->tmax) * 4095.0f + 0.5f);
 }
 
 int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,
