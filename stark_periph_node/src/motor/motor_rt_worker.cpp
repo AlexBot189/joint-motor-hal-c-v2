@@ -745,7 +745,6 @@ void StarkRtWorker::PublishFeedback()
                             d.spi_error_left         = s.spi_error;
                         }
                     }
-                }
                 }  /* end if data_source */
             }
             struct timespec now_ts;
