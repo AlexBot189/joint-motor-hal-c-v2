@@ -11,9 +11,15 @@
  *   ./demo_algo pos <deg>              位置控制 (CSP), 方波
  *   ./demo_algo pp <deg> [acc] [vel]   轮廓位置 PP, 方波
  *   ./demo_algo pv <rpm> [acc]         轮廓速度 PV, 梯形波
- *   ./demo_algo mit <kp> <kd>          MIT 阻抗控制
+ *   ./demo_algo mit <kp> <kd> [pos] [vel] [tq]  MIT 阻抗控制
+ *   ./demo_algo mit_multi <kp> <kd> [pos] [vel] [tq]  MIT 多轴广播
  *   ./demo_algo multi <ma1> <ma2>      多轴广播, 恒电流
  *   ./demo_algo torque_ctrl <val>       力矩环控制, 正弦 (val=0.05N.m)
+ *
+ * 校准 / 迁移:
+ *   ./demo_algo calib                 编码器零位校准
+ *   ./demo_algo calib_torque <id> <Nm> 力矩传感器标定 (理论力矩 Nm)
+ *   ./demo_algo mit_migrate <id>       MIT缩放迁移 (Tmax→20Nm + 保存Flash)
  *
  * SDO 单帧控制 (通过 mailbox → main_loop):
  *   ./demo_algo sdo cur <id> <mA>                    单电机电流
@@ -545,6 +551,14 @@ static void usage(void)
     printf("  ./demo_algo pv 30 1000            # PV ±30RPM acc=1000\n");
     printf("  ./demo_algo pos 15                # 位置 ±15° 方波\n");
     printf("  ./demo_algo pp 15 2000 10         # PP ±15° 方波\n");
+    printf("  ./demo_algo mit 30 5              # MIT Kp=30 Kd=5 零目标位置\n");
+    printf("  ./demo_algo mit 30 5 0 0 10       # MIT Kp=30 Kd=5 10Nm前馈力矩\n");
+    printf("  ./demo_algo mit 0 0 0 0 15         # MIT 纯力矩控制 15Nm\n");
+    printf("  ./demo_algo mit_multi 30 5          # MIT 多轴广播 Kp=30 Kd=5\n");
+    printf("  ./demo_algo mit_multi 50 10 0 0 8  # MIT 多轴 8Nm双电机\n");
+    printf("  ./demo_algo calib_torque 1 0        # M1 力矩零漂标定(零负载)\n");
+    printf("  ./demo_algo calib_torque 2 17.15    # M2 力矩标定(挂5kg×0.35m)\n");
+    printf("  ./demo_algo mit_migrate 1           # M1 MIT缩放迁移(Tmax→20)\n");
     printf("  ./demo_algo sdo cur 1 500         # SDO M1=500mA\n");
     printf("  ./demo_algo sdo cur 1 2 500       # SDO M1=M2=500mA\n");
     printf("  ./demo_algo sdo cur 1 2 500 300   # SDO M1=500 M2=300mA\n");
