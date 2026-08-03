@@ -984,6 +984,9 @@ int motor_hal_get_bus_current(motor_hal_t *hal, uint8_t node_id, int32_t *bus_ma
 /** @brief Flash 保存参数 (OD 0x1010:01, 写入任意值触发保存) */
 int motor_hal_store_params(motor_hal_t *hal, uint8_t node_id);
 
+/** @brief MIT 缩放迁移: 写 0x2546=20(Tmax) 并保存到 Flash, 适配 V2 出厂默认值 */
+int motor_hal_mit_migrate_scales(motor_hal_t *hal, uint8_t node_id);
+
 /** @brief 扭矩传感器零漂标定 (旧协议: OD 0x2531:00 写入值2, 驱动板自行归零) */
 int motor_hal_torque_zero_calib(motor_hal_t *hal, uint8_t node_id);
 

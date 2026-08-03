@@ -291,6 +291,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
 
     <div class="hl"></div>
+    <h3>⚙ MIT 缩放迁移</h3>
+    <span style="font-size:0.65em;color:#94a3b8">⚠ 失能状态下执行, 写 Tmax=20Nm 并保存 Flash, 需重启验证</span>
+    <select id="mig_motor" style="width:100%;margin:3px 0">
+      <option value="1">右髋 (ID=1)</option>
+      <option value="2">左髋 (ID=2)</option>
+    </select>
+    <button onclick="sendMitMigrate()" class="small" style="width:100%;padding:6px;font-weight:700;background:#fffbeb;border-color:#fcd34d;color:#b45309">迁移 Tmax=20Nm + 保存Flash</button>
+
+    <div class="hl"></div>
     <h3>💡 LED</h3>
     <div class="row2">
       <select id="led_motor" style="flex:1">
@@ -802,6 +811,13 @@ function sendCalibTorque(){
   var torque_mNm=Math.round(torque_nm*1000);
   if(!confirm('标定 M'+motor+': '+torque_nm.toFixed(1)+' Nm ('+torque_mNm+' mNm)\n\n确认电机已失能、关节静止、负载稳定？')) return;
   g_ws.send(JSON.stringify({cmd:'calib_torque', motor:motor, value:torque_mNm}));
+}
+
+function sendMitMigrate(){
+  if(!g_ws||!g_connected){alert('未连接');return;}
+  var motor=parseInt(document.getElementById('mig_motor').value);
+  if(!confirm('MIT迁移 M'+motor+': 写 0x2546=20(Tmax) + 0x2539=1 保存Flash\n\n确认电机已失能。执行后需重启驱动器并验证。\n确定执行？')) return;
+  g_ws.send(JSON.stringify({cmd:'mit_migrate', motor:motor}));
 }
 
 function readBtn(){

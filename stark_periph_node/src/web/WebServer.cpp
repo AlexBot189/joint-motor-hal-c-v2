@@ -548,6 +548,23 @@ static void dispatch_command(stark_shm_t *shm, motor_hal_t *hal,
         return;
     }
 
+    if (cmd == "mit_migrate") {
+        if (motor_id < 1 || motor_id > 2) {
+            ECO_INFO_NEW("[WebServer] mit_migrate: invalid motor={}", motor_id);
+            return;
+        }
+        int idx = motor_id - 1;
+        sdo_cmd_slot_t *s = &shm->sdo_cmds[idx];
+        memset(s, 0, sizeof(*s));
+        s->motor_id = (uint8_t)motor_id;
+        s->cmd      = STARK_CMD_SDO_MIT_MIGRATE;
+        __atomic_store_n(&shm->sdo_seq[idx],
+            __atomic_load_n(&shm->sdo_seq[idx], __ATOMIC_RELAXED) + 1,
+            __ATOMIC_RELEASE);
+        ECO_INFO_NEW("[WebServer] mit_migrate M{}: Tmax=20 + save Flash", motor_id);
+        return;
+    }
+
     if (cmd == "calib_torque") {
         int torque_mNm = get_int("value", 0);
         if (motor_id < 1 || motor_id > 2) {

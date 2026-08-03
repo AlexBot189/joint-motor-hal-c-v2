@@ -499,6 +499,11 @@ static void poll_sdo_commands(motor_hal_t* hal, stark_shm_t* shm)
                          id, (float)torque_mNm / 1000.0f, ret);
             break;
         }
+        case STARK_CMD_SDO_MIT_MIGRATE: {
+            int ret = motor_hal_mit_migrate_scales(hal, id);
+            ECO_INFO_NEW("[SDO] motor {}: MIT migrate Tmax=20 ret={}", id, ret);
+            break;
+        }
         default:
             break;
         }

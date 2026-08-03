@@ -2025,6 +2025,17 @@ int motor_hal_store_params(motor_hal_t *hal, uint8_t node_id)
     return sdo_write_simple(hal->drv, node_id, 0x1010, 0x01, 1, 4);
 }
 
+int motor_hal_mit_migrate_scales(motor_hal_t *hal, uint8_t node_id)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    /* 写 0x2546=20 (Tmax=20Nm, V2 出厂值), 然后 0x2539=1 保存到 Flash */
+    int ret = sdo_write_simple(hal->drv, node_id, OD_MIT_TQ_SCALE, 0x00, 20, 4);
+    if (ret != 0) return ret;
+    usleep(50000);
+    ret = sdo_write_simple(hal->drv, node_id, OD_SAVE_FLASH, 0x00, 1, 4);
+    return ret;
+}
+
 int motor_hal_torque_zero_calib(motor_hal_t *hal, uint8_t node_id)
 {
     if (!hal || !hal->drv) return -ENODEV;

@@ -284,6 +284,7 @@ static const char* _stark_cmd_name(uint8_t cmd)
     case STARK_CMD_SDO_POS:          return "SDO_POS";
     case STARK_CMD_SDO_VEL:          return "SDO_VEL";
     case STARK_CMD_SDO_TORQUE_CALIB: return "SDO_TORQUE_CALIB";
+    case STARK_CMD_SDO_MIT_MIGRATE:  return "SDO_MIT_MIGRATE";
     default:                          return "?";
     }
 }
@@ -516,6 +517,7 @@ void StarkRtWorker::ProcessMailbox()
                 case STARK_CMD_SDO_POS:
                 case STARK_CMD_SDO_VEL:
                 case STARK_CMD_SDO_TORQUE_CALIB:
+                case STARK_CMD_SDO_MIT_MIGRATE:
                     {
                         int si = (int)(mid - 1);
                         if (si >= 0 && si < STARK_MAX_MOTORS) {

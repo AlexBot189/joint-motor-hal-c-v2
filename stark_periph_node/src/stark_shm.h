@@ -144,6 +144,7 @@ typedef enum {
     STARK_CMD_SDO_POS         = 21,      /* SDO 轮廓位置(PP), value=deg×100 value2=accel ff=vel  */
     STARK_CMD_SDO_VEL         = 22,      /* SDO 轮廓速度(PV), value=RPM×100 value2=accel          */
     STARK_CMD_SDO_TORQUE_CALIB = 23,     /* SDO 力矩标定, value=torque_mNm                      */
+    STARK_CMD_SDO_MIT_MIGRATE  = 24,     /* SDO MIT缩放迁移, value=0x2546值 (默认20)               */
 } stark_cmd_type_t;
 
 typedef struct {
