@@ -128,6 +128,7 @@ int main(int argc, char** argv)
     g_node_ctx.calib_timeout_ms = g_dispatcher->GetCalibTimeoutMs();
     g_node_ctx.report_auto_enable = g_dispatcher->GetReportAutoEnable();
     g_node_ctx.report_period_ms   = g_dispatcher->GetReportPeriodMs();
+    g_node_ctx.report_data_source = g_dispatcher->GetReportDataSource();
     g_node_ctx.led_motor_id       = g_dispatcher->GetLedMotorId();
     g_node_ctx.btn_calib_chip     = g_dispatcher->GetBtnCalibChip();
     g_node_ctx.btn_calib_line     = g_dispatcher->GetBtnCalibLine();
@@ -135,9 +136,12 @@ int main(int argc, char** argv)
     g_node_ctx.btn_report_line    = g_dispatcher->GetBtnReportLine();
     g_node_ctx.calib_enable_after = g_dispatcher->GetMotorAutoEnable();
 
-    ECO_INFO_NEW("[main] config: motor_count={} sensor_period={}ms bus_fmt={} motor_auto_enable={}",
+    ECO_INFO_NEW("[main] config: motor_count={} sensor_period={}ms bus_fmt={} auto_enable={} data_src={}",
                  motor_count, g_node_ctx.sensor_period_ms,
-                 g_node_ctx.sensor_bus_format, g_node_ctx.calib_enable_after);
+                 g_node_ctx.sensor_bus_format, g_node_ctx.calib_enable_after,
+                 g_node_ctx.report_data_source);
+
+    g_rt_worker->SetDataSource(g_node_ctx.report_data_source);
 
     /* 步骤 4: 初始化 ROS (编译可选) */
 

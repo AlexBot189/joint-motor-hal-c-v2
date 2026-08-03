@@ -77,6 +77,10 @@ public:
 
     /** @brief 周期上报开关 + 周期配置 */
     void SetReportEnabled(bool enabled, uint32_t period_ms);
+
+    /** @brief 设置 report 数据来源 (启动前调用, 运行中不变) */
+    enum DataSource { DS_MIXED = 0, DS_UNIFIED_6C0 = 1 };
+    void SetDataSource(const std::string& src);
     void Run();
     void ProcessMgmt();
     void ProcessMailbox();
@@ -101,10 +105,11 @@ public:
     uint32_t m_latency_idx;
 
     /* 周期控制 */
-    int      m_report_divider;
-    bool     m_report_enabled = false;     /* 周期上报总开关 */
-    uint32_t m_report_period_ms = 5;       /* 周期上报间隔 ms */
-    uint64_t m_periodic_last_cycle = 0;    /* 上次上报的 RT 周期号 */
+    int        m_report_divider;
+    bool       m_report_enabled = false;     /* 周期上报总开关 */
+    uint32_t   m_report_period_ms = 5;       /* 周期上报间隔 ms */
+    DataSource m_data_source = DS_MIXED;     /* 数据来源: mixed(默认) | unified_6c0 */
+    uint64_t   m_periodic_last_cycle = 0;    /* 上次上报的 RT 周期号 */
     uint64_t m_cycle_count;
     uint64_t m_overrun_count;
 

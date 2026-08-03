@@ -375,6 +375,7 @@ bool CanDispatcher::LoadMotorConfig()
             auto& rpt = cfg["report"];
             m_report_auto_enable = rpt.value("auto_enable", true);
             m_report_period_ms   = rpt.value("period_ms",   5u);
+            m_report_data_source = rpt.value("data_source", std::string("mixed"));
         }
 
         /* 解析 led */

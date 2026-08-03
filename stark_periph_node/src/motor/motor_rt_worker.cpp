@@ -103,6 +103,15 @@ void StarkRtWorker::SetReportEnabled(bool enabled, uint32_t period_ms)
     }
 }
 
+void StarkRtWorker::SetDataSource(const std::string& src)
+{
+    if (src == "unified_6c0") {
+        m_data_source = DS_UNIFIED_6C0;
+    } else {
+        m_data_source = DS_MIXED;
+    }
+}
+
 /* Run() — RT 线程主循环 1KHz */
 
 void StarkRtWorker::Run()
@@ -592,86 +601,153 @@ void StarkRtWorker::PublishFeedback()
                 motor_sensor_t s;
                 bool is_right = (id == 1);
 
-                if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
-                    uint32_t ts = (uint32_t)(mfb.timestamp_us & 0xFFFFFFFF);
-                    if (ts < motor_ts_min) motor_ts_min = ts;
-           //         int32_t vel_x10  = (int32_t)mfb.velocity * 10;
-           //         int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
-	            int32_t vel_x10  = (int32_t)mfb.velocity * 10;
-                    int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
+                if (m_data_source == DS_UNIFIED_6C0) {
+                    /* 统一6C0: status+torque_fb 走0x300, 其余全部走0x6C0 */
+                    int16_t mstate = 0;
+                    int16_t torque_fb = 0;
+                    uint32_t motor_ts = 0;
+                    if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
+                        mstate    = (int16_t)mfb.status_byte;
+                        torque_fb = mfb.torque_nm;
+                        motor_ts  = (uint32_t)(mfb.timestamp_us & 0xFFFFFFFF);
+                    }
+                    if (motor_ts < motor_ts_min) motor_ts_min = motor_ts;
+
+                    if (motor_hal_get_sensor(m_hal, id, &s) == 0) {
+                        uint32_t sts = (uint32_t)(s.timestamp_us & 0xFFFFFFFF);
+                        if (sts < sensor_ts_min) sensor_ts_min = sts;
+
+                        int32_t vel_x10   = s.motor_vel_raw * 10;
+                        int16_t iq_x100   = (int16_t)(s.iq_current / 10);
+                        int16_t fcode     = (int16_t)s.error_code;
+                        int32_t tmp_x100  = (int32_t)s.motor_temp_x10 * 10;
+                        int16_t ang_x10   = (int16_t)(s.motor_pos_raw * 3600 / 65536);
+                        int16_t bus_x100  = (int16_t)(s.bus_current / 10);
+
+                        if (is_right) {
+                            d.RealtimeVelocity = vel_x10;
+                            d.motor_abs_angle  = ang_x10;
+                            d.cal_Iq_current   = iq_x100;
+                            d.motor_temp       = tmp_x100;
+                            d.cal_bus_current  = bus_x100;
+                            d.fault_code       = fcode;
+                            d.motor_state      = mstate;
+                            d.torque_feedback  = torque_fb;
+                            d.hall_a_data      = s.hall_adc0;
+                            d.hall_b_data      = s.hall_adc1;
+                            d.hall_c_data      = s.hall_adc2;
+                            d.df181_torque     = s.force_raw;
+                            d.knee_hall        = (int16_t)s.knee_hall;
+                            d.key_landing      = s.hw_sw_pc9;
+                            d.torque_valid     = s.data_valid;
+                            d.spi_torque       = (float)s.spi_force_raw_s24 / 100.0f;
+                            d.spi_valid        = s.spi_valid;
+                            d.spi_error        = s.spi_error;
+                        } else {
+                            d.RealtimeVelocity_left = vel_x10;
+                            d.motor_abs_angle_left  = ang_x10;
+                            d.cal_Iq_current_left   = iq_x100;
+                            d.motor_temp_left       = tmp_x100;
+                            d.cal_bus_current_left  = bus_x100;
+                            d.fault_code_left       = fcode;
+                            d.motor_state_left      = mstate;
+                            d.torque_feedback_left  = torque_fb;
+                            d.hall_a_data_left      = s.hall_adc0;
+                            d.hall_b_data_left      = s.hall_adc1;
+                            d.hall_c_data_left      = s.hall_adc2;
+                            d.df181_torque_left     = s.force_raw;
+                            d.knee_hall_left        = (int16_t)s.knee_hall;
+                            d.key_landing_left      = s.hw_sw_pc9;
+                            d.torque_valid_left     = s.data_valid;
+                            d.spi_torque_left       = (float)s.spi_force_raw_s24 / 100.0f;
+                            d.spi_valid_left        = s.spi_valid;
+                            d.spi_error_left        = s.spi_error;
+                        }
+                    }
+                } else {
+                    /* mixed: 原有混合来源逻辑, 保持不变 */
+
+                    if (motor_hal_get_feedback(m_hal, id, &mfb) == 0) {
+                        uint32_t ts = (uint32_t)(mfb.timestamp_us & 0xFFFFFFFF);
+                        if (ts < motor_ts_min) motor_ts_min = ts;
+               //         int32_t vel_x10  = (int32_t)mfb.velocity * 10;
+               //         int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
+    	            int32_t vel_x10  = (int32_t)mfb.velocity * 10;
+                        int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
            
-	   	    int16_t fcode    = (int16_t)mfb.error_code;
-                    int16_t mstate   = (int16_t)mfb.status_byte;
+    	   	    int16_t fcode    = (int16_t)mfb.error_code;
+                        int16_t mstate   = (int16_t)mfb.status_byte;
 
-                    /* 温度: 优先 0x6A0 透传帧, 回退 0x300 */
-                    int32_t tmp_x100;
-                    (void)motor_hal_get_sensor(m_hal, id, &s);
-                    if (s.motor_temp_x10 != 0)
-                        tmp_x100 = (int32_t)s.motor_temp_x10 * 10;
-                    else
-                        tmp_x100 = (int32_t)mfb.temperature * 10;
+                        /* 温度: 优先 0x6A0 透传帧, 回退 0x300 */
+                        int32_t tmp_x100;
+                        (void)motor_hal_get_sensor(m_hal, id, &s);
+                        if (s.motor_temp_x10 != 0)
+                            tmp_x100 = (int32_t)s.motor_temp_x10 * 10;
+                        else
+                            tmp_x100 = (int32_t)mfb.temperature * 10;
 
-                    int32_t sdo_val = 0;
-                    int16_t ang_x10;
-                    if (motor_hal_get_sdo_position(m_hal, id, &sdo_val) == 0)
-                        ang_x10 = (int16_t)(sdo_val * 3600 / 65536);
-                    else
-                        ang_x10 = (int16_t)((int32_t)mfb.position * 3600 / 65536);
+                        int32_t sdo_val = 0;
+                        int16_t ang_x10;
+                        if (motor_hal_get_sdo_position(m_hal, id, &sdo_val) == 0)
+                            ang_x10 = (int16_t)(sdo_val * 3600 / 65536);
+                        else
+                            ang_x10 = (int16_t)((int32_t)mfb.position * 3600 / 65536);
 
-                    if (is_right) {
-                        d.RealtimeVelocity = vel_x10;
-                        d.motor_abs_angle  = ang_x10;
-                        d.cal_Iq_current   = iq_x100;
-                        d.motor_temp       = tmp_x100;
-                        d.cal_bus_current   = (int16_t)(s.bus_current / 10);
-                        d.fault_code       = fcode;
-                        d.motor_state      = mstate;
-                    } else {
-                        d.RealtimeVelocity_left = vel_x10;
-                        d.motor_abs_angle_left  = ang_x10;
-                        d.cal_Iq_current_left   = iq_x100;
-                        d.motor_temp_left       = tmp_x100;
-                        d.cal_bus_current_left   = (int16_t)(s.bus_current / 10);
-                        d.fault_code_left       = fcode;
-                        d.motor_state_left      = mstate;
+                        if (is_right) {
+                            d.RealtimeVelocity = vel_x10;
+                            d.motor_abs_angle  = ang_x10;
+                            d.cal_Iq_current   = iq_x100;
+                            d.motor_temp       = tmp_x100;
+                            d.cal_bus_current   = (int16_t)(s.bus_current / 10);
+                            d.fault_code       = fcode;
+                            d.motor_state      = mstate;
+                        } else {
+                            d.RealtimeVelocity_left = vel_x10;
+                            d.motor_abs_angle_left  = ang_x10;
+                            d.cal_Iq_current_left   = iq_x100;
+                            d.motor_temp_left       = tmp_x100;
+                            d.cal_bus_current_left   = (int16_t)(s.bus_current / 10);
+                            d.fault_code_left       = fcode;
+                            d.motor_state_left      = mstate;
+                        }
+                    }
+
+                    if (motor_hal_get_sensor(m_hal, id, &s) == 0) {
+                        uint32_t sts = (uint32_t)(s.timestamp_us & 0xFFFFFFFF);
+                        if (sts < sensor_ts_min) sensor_ts_min = sts;
+                        if (is_right) {
+                            d.hall_a_data  = s.hall_adc0;
+                            d.hall_b_data  = s.hall_adc1;
+                            d.hall_c_data  = s.hall_adc2;
+                            d.df181_torque = s.force_raw;
+                            d.knee_hall   = (int16_t)s.knee_hall;
+                            d.key_landing  = s.hw_sw_pc9;
+                            d.torque_valid = s.data_valid;
+                            d.torque_feedback = mfb.torque_nm;
+                        } else {
+                            d.hall_a_data_left  = s.hall_adc0;
+                            d.hall_b_data_left  = s.hall_adc1;
+                            d.hall_c_data_left  = s.hall_adc2;
+                            d.df181_torque_left = s.force_raw;
+                            d.knee_hall_left   = (int16_t)s.knee_hall;
+                            d.key_landing_left  = s.hw_sw_pc9;
+                            d.torque_valid_left = s.data_valid;
+                            d.torque_feedback_left = mfb.torque_nm;
+                        }
+                        /* 0x6B0 力矩并入 PeriodicUploadData (单一上报路径) */
+                        if (is_right) {
+                            d.spi_torque        = (float)s.spi_force_raw_s24 / 100.0f;
+                            d.spi_valid         = s.spi_valid;
+                            d.spi_error         = s.spi_error;
+                        } else {
+                            d.spi_torque_left        = (float)s.spi_force_raw_s24 / 100.0f;
+                            d.spi_valid_left         = s.spi_valid;
+                            d.spi_error_left         = s.spi_error;
+                        }
                     }
                 }
-
-                if (motor_hal_get_sensor(m_hal, id, &s) == 0) {
-                    uint32_t sts = (uint32_t)(s.timestamp_us & 0xFFFFFFFF);
-                    if (sts < sensor_ts_min) sensor_ts_min = sts;
-                    if (is_right) {
-                        d.hall_a_data  = s.hall_adc0;
-                        d.hall_b_data  = s.hall_adc1;
-                        d.hall_c_data  = s.hall_adc2;
-                        d.df181_torque = s.force_raw;
-                        d.knee_hall   = (int16_t)s.knee_hall;
-                        d.key_landing  = s.hw_sw_pc9;
-                        d.torque_valid = s.data_valid;
-                        d.torque_feedback = mfb.torque_nm;
-                    } else {
-                        d.hall_a_data_left  = s.hall_adc0;
-                        d.hall_b_data_left  = s.hall_adc1;
-                        d.hall_c_data_left  = s.hall_adc2;
-                        d.df181_torque_left = s.force_raw;
-                        d.knee_hall_left   = (int16_t)s.knee_hall;
-                        d.key_landing_left  = s.hw_sw_pc9;
-                        d.torque_valid_left = s.data_valid;
-                        d.torque_feedback_left = mfb.torque_nm;
-                    }
-                    /* 0x6B0 力矩并入 PeriodicUploadData (单一上报路径) */
-                    if (is_right) {
-                        d.spi_torque        = (float)s.spi_force_raw_s24 / 100.0f;
-                        d.spi_valid         = s.spi_valid;
-                        d.spi_error         = s.spi_error;
-                    } else {
-                        d.spi_torque_left        = (float)s.spi_force_raw_s24 / 100.0f;
-                        d.spi_valid_left         = s.spi_valid;
-                        d.spi_error_left         = s.spi_error;
-                    }
-                }
+                }  /* end if data_source */
             }
-
             struct timespec now_ts;
             clock_gettime(CLOCK_REALTIME, &now_ts);
             d.timestamp_ms  = (uint32_t)(now_ts.tv_sec * 1000ULL +

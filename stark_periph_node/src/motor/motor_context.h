@@ -39,6 +39,7 @@ struct StarkNodeContext {
     /* 周期上报 */
     bool         report_auto_enable = true;   /* 校准后自动开启上报 */
     uint32_t     report_period_ms   = 5;      /* 上报周期 ms */
+    std::string  report_data_source = "mixed"; /* 数据来源: mixed | unified_6c0 */
 
     /* LED 灯显 */
     int          led_motor_id = 0;            /* 0=禁用, 1=右电机, 2=左电机 */

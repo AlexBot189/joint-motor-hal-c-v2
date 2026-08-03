@@ -68,8 +68,9 @@ public:
     uint8_t  GetSensorBusFormat()  const { return m_sensor_bus_format; }
     uint8_t  GetSensorMode()        const { return m_sensor_mode; }
     uint8_t  GetSensorForceModule() const { return m_sensor_force_module; }
-    bool     GetReportAutoEnable() const { return m_report_auto_enable; }
-    uint32_t GetReportPeriodMs()   const { return m_report_period_ms; }
+    bool     GetReportAutoEnable()   const { return m_report_auto_enable; }
+    uint32_t GetReportPeriodMs()     const { return m_report_period_ms; }
+    const std::string& GetReportDataSource() const { return m_report_data_source; }
     bool     GetMotorAutoEnable()  const { return m_motor_auto_enable; }
     int      GetLedMotorId()       const { return m_led_motor_id; }
     const std::string& GetBtnCalibChip()  const { return m_btn_calib_chip; }
@@ -126,6 +127,7 @@ private:
     uint8_t      m_sensor_force_module = 1; /* 0=CAN力矩 1=SPI力矩 */
     bool         m_report_auto_enable = true;  /* 校准后自动开启周期上报 */
     uint32_t     m_report_period_ms   = 5;    /* 上报周期 ms */
+    std::string  m_report_data_source = "mixed"; /* 数据来源: mixed(混合/默认) | unified_6c0(统一6C0) */
     bool         m_motor_auto_enable  = false; /* 任意电机 auto_enable=true 则置 true */
     int          m_led_motor_id = 0;          /* 0=禁用, 1=右, 2=左 */
 

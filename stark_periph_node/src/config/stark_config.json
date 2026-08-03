@@ -53,7 +53,8 @@
   },
   "report": {
     "auto_enable": true,
-    "period_ms": 5
+    "period_ms": 5,
+    "data_source": "mixed"
   },
   "sensor": {
     "period_div": 4,
