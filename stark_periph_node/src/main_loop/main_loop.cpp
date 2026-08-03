@@ -438,9 +438,9 @@ static void poll_rt_pending(stark_shm_t* shm)
  *   检查 sdo_seq != sdo_ack, 调用 StarkMotorCtrl 处理
  */
 
-static void poll_sdo_commands(stark_shm_t* shm)
+static void poll_sdo_commands(motor_hal_t* hal, stark_shm_t* shm)
 {
-    if (!shm || !g_dispatcher) return;
+    if (!shm || !hal) return;
     auto* ctrl = g_dispatcher->GetCtrl();
     if (!ctrl) return;
 
@@ -473,6 +473,13 @@ static void poll_sdo_commands(stark_shm_t* shm)
             ECO_INFO_NEW("[SDO] motor {}: vel={}RPM accel={}",
                          id, (int)(s->value / 100), (int)(s->value2 / 100));
             break;
+        case STARK_CMD_SDO_TORQUE_CALIB: {
+            int32_t torque_mNm = s->value;
+            int ret = motor_hal_torque_calib(hal, id, torque_mNm);
+            ECO_INFO_NEW("[SDO] motor {}: torque_calib={:.2f}Nm ret={}",
+                         id, (float)torque_mNm / 1000.0f, ret);
+            break;
+        }
         default:
             break;
         }
@@ -602,7 +609,7 @@ void main_loop_run(motor_hal_t* hal, stark_shm_t* shm,
         poll_rt_pending(shm);
 
         /* SDO 控制命令 (算法写, 主循环处理) */
-        poll_sdo_commands(shm);
+        poll_sdo_commands(hal, shm);
 
         /* LED 灯控制 */
         poll_led_commands(hal, shm, g_ctx->led_motor_id);

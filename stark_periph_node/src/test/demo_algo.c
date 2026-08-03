@@ -528,6 +528,7 @@ static void usage(void)
     printf("  estop   <id>          急停\n");
     printf("  clearf  <id>          清故障\n");
     printf("  calib                 触发复杂校准 (按键/命令)\n");
+    printf("  calib_torque <id> <Nm> 力矩传感器标定 (理论力矩 Nm)\n");
     printf("  led  <id> <mask> <mode> [r] [g] [b]  LED 灯控制\n");
     printf("  btn                   读取按键上报状态\n");
     printf("\n状态:\n");
@@ -560,7 +561,6 @@ static void usage(void)
     printf("  ./demo_algo btn                    # 读取按键上报状态\n");
 }
 
-static void _sdo_hal_close(motor_hal_t *h) { if (h) motor_hal_destroy(h); }
 
 int main(int argc, char** argv)
 {
@@ -657,6 +657,38 @@ int main(int argc, char** argv)
         int id = atoi(argv[2]);
         stark_clear_fault(&c, id);
         printf("motor %d fault cleared\n", id);
+        stark_close(&c);
+        return 0;
+    }
+    if (strcmp(mode, "calib_torque") == 0) {
+        if (argc < 4) {
+            printf("Usage: calib_torque <id> <torque_Nm>\n");
+            return 1;
+        }
+        int id = atoi(argv[2]);
+        float torque_nm = (float)atof(argv[3]);
+        if (id < 1 || id > 2) {
+            printf("calib_torque: id must be 1 or 2\n");
+            return 1;
+        }
+        if (torque_nm < -100.0f || torque_nm > 100.0f) {
+            printf("calib_torque: torque out of range [-100, 100] Nm\n");
+            return 1;
+        }
+        int32_t torque_mNm = (int32_t)(torque_nm * 1000.0f);
+        printf("Torque calib: M%d = %.2f Nm (%d mNm)\n", id, torque_nm, torque_mNm);
+        printf("Ensure: motor DISABLED, joint STATIONARY, load STABLE.\n");
+        printf("Proceed? (y/N): ");
+        char confirm = (char)getchar();
+        if (confirm != 'y' && confirm != 'Y') {
+            printf("Cancelled.\n");
+            stark_close(&c);
+            return 0;
+        }
+        stark_sdo_torque_calib(&c, id, torque_mNm);
+        printf("Sent. Wait 2s, then check 0x6077 for verification.\n");
+        /* 等待主循环处理 */
+        usleep(100000);
         stark_close(&c);
         return 0;
     }

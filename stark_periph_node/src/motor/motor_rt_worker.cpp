@@ -280,10 +280,11 @@ static const char* _stark_cmd_name(uint8_t cmd)
     case STARK_CMD_RECOVER:     return "RECOVER";
     case STARK_CMD_SET_MODE:    return "SET_MODE";
     case STARK_CMD_CLEAR_FAULT: return "CLEAR_FAULT";
-    case STARK_CMD_SDO_CUR:    return "SDO_CUR";
-    case STARK_CMD_SDO_POS:    return "SDO_POS";
-    case STARK_CMD_SDO_VEL:    return "SDO_VEL";
-    default:                    return "?";
+    case STARK_CMD_SDO_CUR:          return "SDO_CUR";
+    case STARK_CMD_SDO_POS:          return "SDO_POS";
+    case STARK_CMD_SDO_VEL:          return "SDO_VEL";
+    case STARK_CMD_SDO_TORQUE_CALIB: return "SDO_TORQUE_CALIB";
+    default:                          return "?";
     }
 }
 
@@ -496,6 +497,7 @@ void StarkRtWorker::ProcessMailbox()
                 case STARK_CMD_SDO_CUR:
                 case STARK_CMD_SDO_POS:
                 case STARK_CMD_SDO_VEL:
+                case STARK_CMD_SDO_TORQUE_CALIB:
                     {
                         int si = (int)(mid - 1);
                         if (si >= 0 && si < STARK_MAX_MOTORS) {

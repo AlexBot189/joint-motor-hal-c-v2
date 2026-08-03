@@ -1901,6 +1901,14 @@ int motor_hal_torque_zero_calib(motor_hal_t *hal, uint8_t node_id)
     return sdo_write_simple(hal->drv, node_id, 0x2531, 0x00, 2, 4);
 }
 
+int motor_hal_torque_calib(motor_hal_t *hal, uint8_t node_id, int32_t torque_mNm)
+{
+    if (!hal || !hal->drv) return -ENODEV;
+    /* opcode=2 | (int24 mNm << 8), 小端 */
+    int32_t packed = ((int32_t)torque_mNm << 8) | 0x02;
+    return sdo_write_simple(hal->drv, node_id, 0x2531, 0x00, (uint32_t)packed, 4);
+}
+
 int motor_hal_get_sensor(motor_hal_t *hal, uint8_t node_id, motor_sensor_t *s)
 {
     if (!hal || !s) return -EINVAL;

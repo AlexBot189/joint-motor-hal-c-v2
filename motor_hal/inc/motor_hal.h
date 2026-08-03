@@ -937,8 +937,19 @@ int motor_hal_get_bus_current(motor_hal_t *hal, uint8_t node_id, int32_t *bus_ma
 /** @brief Flash 保存参数 (OD 0x1010:01, 写入任意值触发保存) */
 int motor_hal_store_params(motor_hal_t *hal, uint8_t node_id);
 
-/** @brief 扭矩传感器零漂标定 (OD 0x2531:00, 写入值2) */
+/** @brief 扭矩传感器零漂标定 (旧协议: OD 0x2531:00 写入值2, 驱动板自行归零) */
 int motor_hal_torque_zero_calib(motor_hal_t *hal, uint8_t node_id);
+
+/**
+ * @brief 力矩传感器当前力矩标定 (新协议: OD 0x2531:00)
+ *
+ * pack: opcode=2 | (torque_mNm << 8)  24位有符号补码
+ * 驱动板采集1000点样本, 计算 zero_drift = avg_raw - expected, 保存到 Flash
+ *
+ * @param torque_mNm  理论关节力矩, mNm, 范围 ±100000 (±100 Nm)
+ * @return 0=成功, <0=失败
+ */
+int motor_hal_torque_calib(motor_hal_t *hal, uint8_t node_id, int32_t torque_mNm);
 
 /* ============================================================================
  * 12. 工具函数 — 单位换算 (inline, 零开销)

@@ -140,9 +140,10 @@ typedef enum {
     STARK_CMD_TORQUE_CTRL = 16,
 
     /* SDO 控制命令 (算法写, 主循环处理, 非 RT) */
-    STARK_CMD_SDO_CUR    = 20,      /* SDO 电流, value=mA                                    */
-    STARK_CMD_SDO_POS    = 21,      /* SDO 轮廓位置(PP), value=deg×100 value2=accel ff=vel  */
-    STARK_CMD_SDO_VEL    = 22,      /* SDO 轮廓速度(PV), value=RPM×100 value2=accel          */
+    STARK_CMD_SDO_CUR         = 20,      /* SDO 电流, value=mA                                    */
+    STARK_CMD_SDO_POS         = 21,      /* SDO 轮廓位置(PP), value=deg×100 value2=accel ff=vel  */
+    STARK_CMD_SDO_VEL         = 22,      /* SDO 轮廓速度(PV), value=RPM×100 value2=accel          */
+    STARK_CMD_SDO_TORQUE_CALIB = 23,     /* SDO 力矩标定, value=torque_mNm                      */
 } stark_cmd_type_t;
 
 typedef struct {

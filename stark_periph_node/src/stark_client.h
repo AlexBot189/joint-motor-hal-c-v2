@@ -449,6 +449,20 @@ static inline void stark_sdo_vel(stark_client_t* c, int id, int32_t rpm,
     _stark_mbox_commit(c);
 }
 
+/* SDO 力矩标定, value=torque_mNm */
+static inline void stark_sdo_torque_calib(stark_client_t* c, int id, int32_t torque_mNm)
+{
+    if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
+    int slot = _stark_mbox_begin(c);
+    if (slot < 0) return;
+    memset(&c->shm->mailbox.frames[slot], 0, sizeof(mailbox_frame_t));
+    c->shm->mailbox.frames[slot].cmd[id - 1].motor_id = (uint8_t)id;
+    c->shm->mailbox.frames[slot].cmd[id - 1].cmd      = STARK_CMD_SDO_TORQUE_CALIB;
+    c->shm->mailbox.frames[slot].cmd[id - 1].value    = torque_mNm;
+    c->shm->mailbox.frames[slot].cmd[id - 1].timestamp_us = _stark_now_us();
+    _stark_mbox_commit(c);
+}
+
 /* SDO 轮廓速度 (PV, SDO 通过 mailbox → main_loop → StarkMotorCtrl) */
 
 /*
