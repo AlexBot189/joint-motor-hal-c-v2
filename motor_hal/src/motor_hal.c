@@ -523,7 +523,7 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     motor_node_t *m = _find_motor(hal, node_id);
     bool enabled = m ? m->enabled : false;
     uint8_t b0 = m ? _consume_pdo_byte0(m) : 0;
-    if (m) { b0 = (b0 & ~PDO_BYTE0_MODE_MASK) | pdo_byte0_mode_part(MOTOR_MODE_MIT); m->pdo_byte0 = b0; }
+    if (m) { b0 = (b0 & ~PDO_BYTE0_MODE_MASK) | pdo_byte0_mode_part(MOTOR_MODE_MIT) | PDO_BYTE0_ENABLE | PDO_BYTE0_BUS_ON; m->pdo_byte0 = b0; }
     mit_scales_t scales;
     if (m) scales = m->mit_scales;
     else { scales.pmax=3.14f; scales.vmax=3.14f; scales.kpmax=50.0f; scales.kdmax=50.0f; scales.tmax=20.0f; }
