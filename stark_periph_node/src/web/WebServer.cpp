@@ -568,7 +568,9 @@ static void dispatch_command(stark_shm_t *shm, motor_hal_t *hal,
         s->motor_id = (uint8_t)motor_id;
         s->cmd      = STARK_CMD_SDO_TORQUE_CALIB;
         s->value    = torque_mNm;
-        __atomic_add_fetch(&shm->sdo_seq[idx], 1, __ATOMIC_RELEASE);
+        __atomic_store_n(&shm->sdo_seq[idx],
+            __atomic_load_n(&shm->sdo_seq[idx], __ATOMIC_RELAXED) + 1,
+            __ATOMIC_RELEASE);
         ECO_INFO_NEW("[WebServer] calib_torque M{}: {} mNm", motor_id, torque_mNm);
         return;
     }
