@@ -618,6 +618,48 @@ void motor_hal_mit_encode_raw(const mit_scales_t *s,
     *tq_raw = (uint16_t)((t + s->tmax) / (2.0f * s->tmax) * 4095.0f + 0.5f);
 }
 
+void motor_hal_mit_multi_ctrl_phys(motor_hal_t *hal,
+    uint8_t id1, float pos1, float vel1, float kp1, float kd1, float tq1,
+    uint8_t id2, float pos2, float vel2, float kp2, float kd2, float tq2)
+{
+    if (!hal || !hal->drv) return;
+
+    multi_mit_cmd_t cmds[2];
+    uint8_t count = 0;
+    uint8_t ids[] = {id1, id2};
+    float pos[]  = {pos1,  pos2};
+    float vel[]  = {vel1,  vel2};
+    float kps[]  = {kp1,   kp2};
+    float kds[]  = {kd1,   kd2};
+    float tqs[]  = {tq1,   tq2};
+
+    for (int i = 0; i < 2; i++) {
+        motor_node_t *m = _find_motor(hal, ids[i]);
+        if (!m || !m->enabled) continue;
+
+        uint16_t pr, vr, kr, dr, tr;
+        motor_hal_mit_encode_raw(&m->mit_scales,
+            (double)pos[i] * M_PI / 180.0,
+            (double)vel[i] * M_PI / 30.0,
+            kps[i], kds[i], tqs[i],
+            &pr, &vr, &kr, &dr, &tr);
+
+        if (pr == 0 && vr == 0 && kr == 0 && dr == 0 && tr == 0) continue;
+
+        cmds[count].node_id       = ids[i];
+        cmds[count].enable        = true;
+        cmds[count].release_brake = false;
+        cmds[count].clear_error   = false;
+        cmds[count].position      = pr;
+        cmds[count].velocity      = vr;
+        cmds[count].kp            = kr;
+        cmds[count].kd            = dr;
+        cmds[count].torque        = tr;
+        count++;
+    }
+    if (count > 0) motor_hal_mit_multi_ctrl(hal, cmds, count);
+}
+
 int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,
                        motor_mode_t mode,
                        int16_t target1, uint16_t target2, int16_t feedforward)

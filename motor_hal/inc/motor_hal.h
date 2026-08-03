@@ -369,6 +369,16 @@ void motor_hal_mit_encode_raw(const mit_scales_t *s,
                               uint16_t *tq_raw);
 
 /**
+ * @brief MIT 双电机多轴控制 (物理量 → 0x210 一帧同时发出)
+ *
+ * 从 motor_node 读取各自缩放参数, 分别编码后打包到一个 0x210 帧。
+ * 任一电机不存在或未使能则跳过该电机。
+ */
+void motor_hal_mit_multi_ctrl_phys(motor_hal_t *hal,
+    uint8_t id1, float pos1, float vel1, float kp1, float kd1, float tq1,
+    uint8_t id2, float pos2, float vel2, float kp2, float kd2, float tq2);
+
+/**
  * @brief 通用 PDO 控制 — 指定模式 + 裸参数
  *
  * 当标准接口 (set_position/set_velocity/set_torque) 不够灵活时使用。

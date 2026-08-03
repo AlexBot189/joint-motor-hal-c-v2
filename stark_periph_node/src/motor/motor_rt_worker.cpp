@@ -366,8 +366,24 @@ void StarkRtWorker::ProcessMailbox()
             }
         }
 
+        /* MIT 多轴: 双电机用 0x210 一帧同时控制 */
+        if (cmd0.cmd == STARK_CMD_MIT_MULTI && cmd1.cmd == STARK_CMD_MIT_MULTI) {
+            motor_hal_mit_multi_ctrl_phys(m_hal,
+                cmd0.motor_id,
+                (float)cmd0.mit_pos * (360.0f / 65535.0f) - 180.0f,
+                (float)((int16_t)(cmd0.mit_vel << 4)) / 16.0f,
+                (float)cmd0.mit_kp / 100.0f,
+                (float)cmd0.mit_kd / 100.0f,
+                (float)((int16_t)(cmd0.mit_torque << 4)) / 16.0f,
+                cmd1.motor_id,
+                (float)cmd1.mit_pos * (360.0f / 65535.0f) - 180.0f,
+                (float)((int16_t)(cmd1.mit_vel << 4)) / 16.0f,
+                (float)cmd1.mit_kp / 100.0f,
+                (float)cmd1.mit_kd / 100.0f,
+                (float)((int16_t)(cmd1.mit_torque << 4)) / 16.0f);
+        }
         /* 控制命令 (通过 pdo_byte0 发 PDO) */
-        if (cmd0.cmd == STARK_CMD_MULTI || cmd1.cmd == STARK_CMD_MULTI) {
+        else if (cmd0.cmd == STARK_CMD_MULTI || cmd1.cmd == STARK_CMD_MULTI) {
             multi_axis_cmd_t mcmds[STARK_MAX_MOTORS] = {};
             int mcount = 0; uint8_t b0;
 
