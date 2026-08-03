@@ -336,9 +336,11 @@ static void run_torque_ctrl(stark_client_t* c, int32_t val)
 
 
 /* MIT 多轴广播控制 (0x210, 双电机一帧) */
-static void run_mit_multi(stark_client_t* c, float kp, float kd)
+static void run_mit_multi(stark_client_t* c, float kp, float kd,
+                          float pos_deg, float vel_rpm, float torque_nm)
 {
-    printf("[MIT multi] kp=%.0f, kd=%.0f, 双电机一帧广播\n", kp, kd);
+    printf("[MIT multi] pos=%.1f° vel=%.0fRPM kp=%.1f kd=%.1f tq=%.1fNm\n",
+           pos_deg, vel_rpm, kp, kd, torque_nm);
     printf("  按 Ctrl+C 停止\n");
 
     uint64_t last = now_ms();
@@ -346,8 +348,8 @@ static void run_mit_multi(stark_client_t* c, float kp, float kd)
     while (g_running) {
         if (stark_online(c, 1) && stark_online(c, 2)) {
             stark_mit_multi(c,
-                0.0f, 0.0f, kp, kd, 0.0f,   /* M1: pos,vel,kp,kd,tq */
-                0.0f, 0.0f, kp, kd, 0.0f);  /* M2: pos,vel,kp,kd,tq */
+                pos_deg, vel_rpm, kp, kd, torque_nm,
+                pos_deg, vel_rpm, kp, kd, torque_nm);
         }
 
         uint64_t now = now_ms();
@@ -503,7 +505,7 @@ static void usage(void)
     printf("  csp    <deg>          PP 位置 (同 pos)\n");
     printf("  pp     <deg> [acc] [v] 轮廓位置 PP, 方波\n");
     printf("  mit    <kp> <kd> [pos_deg] [vel_rpm] [torque_Nm]  MIT 阻抗\n");
-    printf("  mit_multi <kp> <kd>      MIT 多轴广播\\n");
+    printf("  mit_multi <kp> <kd> [pos_deg] [vel_rpm] [tq_Nm]  MIT 多轴广播\n");
     printf("\nSDO 单帧控制 (sdo cur/pos/vel, 支持单/双电机):\n");
     printf("  sdo cur <id> <mA>                    单电机电流\n");
     printf("  sdo cur <id1> <id2> <mA>             双电机同值电流\n");
@@ -1046,9 +1048,12 @@ int main(int argc, char** argv)
 
     } else if (strcmp(mode, "mit_multi") == 0) {
         if (argc < 4) { printf("ERR: 需要 kp kd\n"); stark_close(&c); return 1; }
-        float kp_m = (float)atof(argv[2]);
-        float kd_m = (float)atof(argv[3]);
-        run_mit_multi(&c, kp_m, kd_m);
+        float kp_m      = (float)atof(argv[2]);
+        float kd_m      = (float)atof(argv[3]);
+        float pos_deg_m = (argc >= 5) ? (float)atof(argv[4]) : 0.0f;
+        float vel_rpm_m = (argc >= 6) ? (float)atof(argv[5]) : 0.0f;
+        float tq_nm_m   = (argc >= 7) ? (float)atof(argv[6]) : 0.0f;
+        run_mit_multi(&c, kp_m, kd_m, pos_deg_m, vel_rpm_m, tq_nm_m);
 
     } else if (strcmp(mode, "multi") == 0) {
         if (argc < 4) { printf("ERR: 需要 ma1 ma2\n"); stark_close(&c); return 1; }
