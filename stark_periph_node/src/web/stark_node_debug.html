@@ -279,6 +279,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
 
     <div class="hl"></div>
+    <h3>🔧 力矩标定</h3>
+    <span style="font-size:0.65em;color:#94a3b8">⚠ 失能、关节静止、挂好负载后再执行</span>
+    <select id="tq_motor" style="width:100%;margin:3px 0">
+      <option value="1">右髋 (ID=1)</option>
+      <option value="2">左髋 (ID=2)</option>
+    </select>
+    <div class="row2">
+      <input type="number" id="tq_nm" value="0" step="0.1" placeholder="Nm" style="flex:1">
+      <button onclick="sendCalibTorque()" class="small calib" style="flex:1;padding:6px;font-weight:700">标定</button>
+    </div>
+
+    <div class="hl"></div>
     <h3>💡 LED</h3>
     <div class="row2">
       <select id="led_motor" style="flex:1">
@@ -782,6 +794,17 @@ function sendLED(){
   var g=parseInt(document.getElementById('led_g').value)||0;
   var b=parseInt(document.getElementById('led_b').value)||0;
   g_ws.send(JSON.stringify({cmd:'led', motor:motor, mask:mask, lmode:lmode, r:r, g:g, b:b}));
+}
+
+function sendCalibTorque(){
+  if(!g_ws||!g_connected){alert('未连接');return;}
+  var motor=parseInt(document.getElementById('tq_motor').value);
+  var torque_nm=parseFloat(document.getElementById('tq_nm').value);
+  if(isNaN(torque_nm)){alert('请输入理论力矩值 (Nm)');return;}
+  if(torque_nm<-100||torque_nm>100){alert('力矩超出范围 [-100, 100] Nm');return;}
+  var torque_mNm=Math.round(torque_nm*1000);
+  if(!confirm('标定 M'+motor+': '+torque_nm.toFixed(1)+' Nm ('+torque_mNm+' mNm)\n\n确认电机已失能、关节静止、负载稳定？')) return;
+  g_ws.send(JSON.stringify({cmd:'calib_torque', motor:motor, value:torque_mNm}));
 }
 
 function readBtn(){
