@@ -196,14 +196,16 @@ static void run_position(stark_client_t* c, float amplitude_deg)
     }
 }
 
-/* MIT 阻抗控制 */
-static void run_mit(stark_client_t* c, float kp, float kd)
+/* MIT 阻抗控制: mit <kp> <kd> [pos_deg] [vel_rpm] [torque_nm] */
+static void run_mit(stark_client_t* c, float kp, float kd,
+                    float pos_deg, float vel_rpm, float torque_nm)
 {
-    printf("[MIT] kp=%.0f, kd=%.0f, 零目标位置\n", kp, kd);
+    printf("[MIT] pos=%.1f° vel=%.0fRPM kp=%.1f kd=%.1f tq=%.1fNm\n",
+           pos_deg, vel_rpm, kp, kd, torque_nm);
 
     while (g_running) {
-        if (stark_online(c, 1)) stark_mit(c, 1, 0.0f, 0.0f, kp, kd, 0.0f);
-        if (stark_online(c, 2)) stark_mit(c, 2, 0.0f, 0.0f, kp, kd, 0.0f);
+        if (stark_online(c, 1)) stark_mit(c, 1, pos_deg, vel_rpm, kp, kd, torque_nm);
+        if (stark_online(c, 2)) stark_mit(c, 2, pos_deg, vel_rpm, kp, kd, torque_nm);
 
         static int cnt = 0;
         if (++cnt % 50 == 0) {
@@ -500,7 +502,7 @@ static void usage(void)
     printf("  pos    <deg>          位置控制 (PP), 方波 (电机不支持 CSP)\n");
     printf("  csp    <deg>          PP 位置 (同 pos)\n");
     printf("  pp     <deg> [acc] [v] 轮廓位置 PP, 方波\n");
-    printf("  mit    <kp> <kd>      MIT 阻抗\n");
+    printf("  mit    <kp> <kd> [pos_deg] [vel_rpm] [torque_Nm]  MIT 阻抗\n");
     printf("  mit_multi <kp> <kd>      MIT 多轴广播\\n");
     printf("\nSDO 单帧控制 (sdo cur/pos/vel, 支持单/双电机):\n");
     printf("  sdo cur <id> <mA>                    单电机电流\n");
@@ -962,7 +964,7 @@ int main(int argc, char** argv)
             }
             int off = has_dual ? 5 : 4;
             if (argc < off + 4) {
-                printf("ERR: pdo mit <id> <pos_deg> <vel_rpm> <kp> <kd> [tq_ma]\n");
+                printf("ERR: pdo mit <id> <pos_deg> <vel_rpm> <kp> <kd> [tq_Nm]\n");
                 stark_close(&c); return 1;
             }
             float p = (float)atof(argv[off]);
@@ -1035,9 +1037,12 @@ int main(int argc, char** argv)
 
     } else if (strcmp(mode, "mit") == 0) {
         if (argc < 4) { printf("ERR: 需要 kp kd\n"); stark_close(&c); return 1; }
-        float kp = (float)atof(argv[2]);
-        float kd = (float)atof(argv[3]);
-        run_mit(&c, kp, kd);
+        float kp       = (float)atof(argv[2]);
+        float kd       = (float)atof(argv[3]);
+        float pos_deg  = (argc >= 5) ? (float)atof(argv[4]) : 0.0f;
+        float vel_rpm  = (argc >= 6) ? (float)atof(argv[5]) : 0.0f;
+        float torque_nm = (argc >= 7) ? (float)atof(argv[6]) : 0.0f;
+        run_mit(&c, kp, kd, pos_deg, vel_rpm, torque_nm);
 
     } else if (strcmp(mode, "mit_multi") == 0) {
         if (argc < 4) { printf("ERR: 需要 kp kd\n"); stark_close(&c); return 1; }

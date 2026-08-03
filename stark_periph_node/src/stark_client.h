@@ -339,10 +339,10 @@ static inline void stark_pp(stark_client_t* c, int id,
     _stark_mbox_commit(c);
 }
 
-/* MIT 阻抗控制, pos_deg=平衡点 vel_rpm=阻尼速度 kp=刚度 kd=阻尼 torque_ma=前馈 */
+/* MIT 阻抗控制, pos_deg=平衡点 vel_rpm=阻尼速度 kp=刚度 kd=阻尼 torque=前馈力矩 Nm */
 static inline void stark_mit(stark_client_t* c, int id,
                               float pos_deg, float vel_rpm,
-                              float kp, float kd, float torque_ma)
+                              float kp, float kd, float torque)
 {
     if (!c || !c->shm || id < 1 || id > STARK_MAX_MOTORS) return;
 
@@ -357,7 +357,7 @@ static inline void stark_mit(stark_client_t* c, int id,
     c->shm->mailbox.frames[slot].cmd[idx].mit_vel    = (uint16_t)(vel_rpm);
     c->shm->mailbox.frames[slot].cmd[idx].mit_kp     = (uint16_t)(kp * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].mit_kd     = (uint16_t)(kd * 100.0f);
-    c->shm->mailbox.frames[slot].cmd[idx].mit_torque = (uint16_t)(torque_ma);
+    c->shm->mailbox.frames[slot].cmd[idx].mit_torque = (uint16_t)(torque);
     c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
