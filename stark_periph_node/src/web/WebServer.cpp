@@ -552,6 +552,27 @@ static void dispatch_command(stark_shm_t *shm, motor_hal_t *hal,
         return;
     }
 
+    if (cmd == "calib_torque") {
+        int torque_mNm = get_int("value", 0);
+        if (motor_id < 1 || motor_id > 2) {
+            ECO_INFO_NEW("[WebServer] calib_torque: invalid motor={}", motor_id);
+            return;
+        }
+        if (torque_mNm < -100000 || torque_mNm > 100000) {
+            ECO_INFO_NEW("[WebServer] calib_torque: torque {} mNm out of [-100000,100000]", torque_mNm);
+            return;
+        }
+        int idx = motor_id - 1;
+        sdo_cmd_slot_t *s = &shm->sdo_cmds[idx];
+        memset(s, 0, sizeof(*s));
+        s->motor_id = (uint8_t)motor_id;
+        s->cmd      = STARK_CMD_SDO_TORQUE_CALIB;
+        s->value    = torque_mNm;
+        __atomic_add_fetch(&shm->sdo_seq[idx], 1, __ATOMIC_RELEASE);
+        ECO_INFO_NEW("[WebServer] calib_torque M{}: {} mNm", motor_id, torque_mNm);
+        return;
+    }
+
     /* ================================================================
      * LED control: {"cmd":"led","motor":N,"mask":240,"mode":0,"r":255,"g":0,"b":0}
      * ================================================================ */
