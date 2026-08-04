@@ -566,10 +566,6 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     if (pos_raw == 0 && vel_raw == 0 && kp_raw == 0 && kd_raw == 0 && tq_raw == 0)
         return -EINVAL;
 
-    /* MIT 日志降频: 每 50 次调用打印一次完整 9 行, 避免 1KHz 洪流 */
-    static int _mit_skip[16] = {0};
-    if (++_mit_skip[node_id] % 50 == 0) {
-
     PROTO_SEND("[MIT_SEND] M%d ========== Layer1: phys → raw ==========", node_id);
     PROTO_SEND("[MIT_SEND] M%d   phys: pos=%.1f° vel=%.0fRPM kp=%.1f kd=%.1f tq=%.2fNm",
                node_id, position, velocity, kp, kd, torque);
@@ -606,8 +602,6 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
                node_id, (uint32_t)(0x110 + node_id), 9);
     PROTO_SEND("[MIT_SEND] M%d   hex: %02X %02X %02X %02X %02X %02X %02X %02X %02X",
                node_id, d0, d1, d2, d3, d4, d5, d6, d7, d8);
-
-    } /* end if (_mit_skip % 50 == 0) */
 
     pdo_mit_send_raw(hal->drv, node_id, b0, pos_raw, vel_raw, kp_raw, kd_raw, (int16_t)tq_raw);
     return 0;
@@ -724,8 +718,6 @@ void motor_hal_mit_multi_ctrl_phys(motor_hal_t *hal,
         count++;
     }
     if (count > 0) {
-        static int _multi_skip = 0;
-        if (++_multi_skip % 50 == 0) {
         PROTO_SEND("[MIT_MULTI_SEND] M%d+M%d count=%d | "
                    "raw1: pr=%u vr=%u kr=%u dr=%u tr=%d | "
                    "raw2: pr=%u vr=%u kr=%u dr=%u tr=%d",
@@ -736,7 +728,6 @@ void motor_hal_mit_multi_ctrl_phys(motor_hal_t *hal,
                    count >= 2 ? cmds[1].position : 0, count >= 2 ? cmds[1].velocity : 0,
                    count >= 2 ? cmds[1].kp : 0, count >= 2 ? cmds[1].kd : 0,
                    count >= 2 ? cmds[1].torque : 0);
-        }
         motor_hal_mit_multi_ctrl(hal, cmds, count);
     }
 }

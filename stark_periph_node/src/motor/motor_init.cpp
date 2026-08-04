@@ -64,12 +64,12 @@ bool CanDispatcher::InitDispatcher()
         return false;
     }
 
-    /* 3.5 协议日志桥 (根据配置开关) */
-    if (m_proto_log_enabled) {
+    /* 3.5 调试日志桥 (根据 config: log_onoff) */
+    if (m_log_onoff) {
         motor_hal_set_log_callback([](const char *msg) {
             ECO_INFO_NEW("[PROTO] {}", msg);
         });
-        ECO_INFO_NEW("[CanDispatcher] proto_log ENABLED");
+        ECO_INFO_NEW("[CanDispatcher] log_onoff ENABLED");
     }
 
     /* 4. 设置接收线程实时参数 */
@@ -384,7 +384,7 @@ bool CanDispatcher::LoadMotorConfig()
             m_report_auto_enable = rpt.value("auto_enable", true);
             m_report_period_ms   = rpt.value("period_ms",   5u);
             m_report_data_source = rpt.value("data_source", std::string("mixed"));
-            m_proto_log_enabled  = rpt.value("proto_log",   false);
+            m_log_onoff          = rpt.value("log_onoff",  false);
         }
 
         /* 解析 led */
