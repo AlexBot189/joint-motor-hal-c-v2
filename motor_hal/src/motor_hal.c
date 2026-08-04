@@ -1508,14 +1508,6 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
         m->last_fb_us = fb.timestamp_us;
         pthread_mutex_unlock(&m->fb_lock);
 
-        PROTO_RECV(node, "[300_RECV] M%d pos=%d cnt (%.1f\u00b0) vel=%d RPM Iq=%.1fA temp=%.1f\u00b0C torque=%.2fNm st=0x%02X err=0x%04X",
-                   node,
-                   fb.position, fb.position * 360.0 / 65536.0,
-                   fb.velocity, fb.current_iq / 1000.0,
-                   fb.temperature / 10.0,
-                   fb.torque_nm * 0.05,
-                   fb.status_byte, fb.error_code);
-
         /* 触发反馈回调 */
         if (m->fb_cb) {
             m->fb_cb(node, &fb, m->fb_ctx);
