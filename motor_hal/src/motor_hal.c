@@ -60,7 +60,8 @@ void motor_hal_clear_log_callback(void)                { g_proto_log_cb = NULL; 
 
 /* 接收路径: 降频打印 (每 PROTO_RECV_EVERY_N 帧一次) */
 #define PROTO_RECV(node_id, fmt, ...) do { \
-    if (g_proto_log_cb && (++g_proto_recv_cnt[(node_id)-1] % PROTO_RECV_EVERY_N == 0)) { \
+    if (g_proto_log_cb && (node_id) >= 1 && (node_id) <= 16 && \
+        (++g_proto_recv_cnt[(node_id)-1] % PROTO_RECV_EVERY_N == 0)) { \
         char _rbuf[320]; \
         snprintf(_rbuf, sizeof(_rbuf), fmt, ##__VA_ARGS__); \
         g_proto_log_cb(_rbuf); \
@@ -1600,16 +1601,15 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
         s.timestamp_us = motor_utils_now_us();
 
         pthread_mutex_lock(&m->sensor_lock);
-        /* 保存 0x6B0 过来的 spi 字段, 防止被 0x680 帧的解析结果 (spi 全零) 覆盖 */
-        int32_t  prev_spi_force = m->cached_sensor.spi_force_raw_s24;
-        uint8_t  prev_spi_valid = m->cached_sensor.spi_valid;
-        uint8_t  prev_spi_error = m->cached_sensor.spi_error;
-        uint64_t prev_spi_ts    = m->cached_sensor.spi_timestamp_us;
-        memcpy(&m->cached_sensor, &s, sizeof(s));
-        m->cached_sensor.spi_force_raw_s24 = prev_spi_force;
-        m->cached_sensor.spi_valid         = prev_spi_valid;
-        m->cached_sensor.spi_error         = prev_spi_error;
-        m->cached_sensor.spi_timestamp_us  = prev_spi_ts;
+        /* 只写入 _parse_sensor_frame 实际解析的字段, 不动 SPI 力矩字段 */
+        m->cached_sensor.hall_adc0   = s.hall_adc0;
+        m->cached_sensor.hall_adc1   = s.hall_adc1;
+        m->cached_sensor.hall_adc2   = s.hall_adc2;
+        m->cached_sensor.force_raw   = s.force_raw;
+        m->cached_sensor.knee_hall    = s.knee_hall;
+        m->cached_sensor.hw_sw_pc9   = s.hw_sw_pc9;
+        m->cached_sensor.data_valid  = s.data_valid;
+        m->cached_sensor.timestamp_us = s.timestamp_us;
         m->last_sensor_us = s.timestamp_us;
         pthread_mutex_unlock(&m->sensor_lock);
 
