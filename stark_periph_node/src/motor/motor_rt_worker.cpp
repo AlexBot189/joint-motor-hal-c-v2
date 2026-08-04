@@ -828,7 +828,7 @@ void StarkRtWorker::PublishFeedback()
             fb->motor[idx].temperature = mfb.temperature;
             fb->motor[idx].status_byte = mfb.status_byte;
             fb->motor[idx].mode        = mfb.mode;
-            fb->motor[idx].error_code  = (uint8_t)(mfb.error_code & 0xFF);
+            fb->motor[idx].error_code  = mfb.error_code;
         }
     }
 

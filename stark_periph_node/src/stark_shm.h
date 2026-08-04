@@ -41,10 +41,9 @@ typedef struct {
     int16_t  temperature;       /* 温度, 0.1°C                                       */
     uint8_t  status_byte;       /* bit7:使能 bit6:抱闸 bit5:错误 bit4:到位             */
     uint8_t  mode;              /* 当前控制模式 (CiA 402)                              */
-    uint8_t  error_code;        /* 故障码 (高4位=故障类型, 低4位=子码)                  */
+    uint16_t error_code;        /* 故障码, 与 motor_feedback_t 类型一致                  */
     /* V2 扩展 (0x300 DLC=16) */
     int16_t  torque_nm;         /* 力矩反馈, 0.05N.m (Byte[10-11]) */
-    uint8_t  _pad;
 } motor_data_t;
 
 /* 传感器透传 (CAN 0x680 帧, 小端 bit-packed) */
@@ -368,8 +367,10 @@ typedef struct {
     volatile uint8_t  btn_report_state;            /* 0=松开 1=按下 */
     volatile uint32_t btn_report_seq;              /* 每次按下递增, 算法比对检测边沿 */
 
-    uint8_t   _pad[3117];             /* 对齐 64KB */
+    uint8_t   _pad[3121];             /* 对齐 64KB */
 } stark_shm_t;
+
+_Static_assert(sizeof(stark_shm_t) == 65536, "stark_shm_t must be exactly 64KB");
 
 #ifdef __cplusplus
 }

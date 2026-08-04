@@ -2151,8 +2151,8 @@ int motor_hal_torque_zero_calib(motor_hal_t *hal, uint8_t node_id)
 int motor_hal_torque_calib(motor_hal_t *hal, uint8_t node_id, int32_t torque_mNm)
 {
     if (!hal || !hal->drv) return -ENODEV;
-    /* opcode=2 | (int24 mNm << 8), 小端 */
-    int32_t packed = ((int32_t)torque_mNm << 8) | 0x02;
+    /* opcode=2 | (int24 mNm << 8), 小端; 先转无符号避免负数左移UB */
+    int32_t packed = (int32_t)(((uint32_t)torque_mNm << 8) | 0x02);
     PROTO_SEND("[CALIB_TORQUE] M%d torque=%d mNm (%.2f Nm) packed=0x%08X",
                node_id, torque_mNm, torque_mNm / 1000.0, (uint32_t)packed);
     return sdo_write_simple(hal->drv, node_id, 0x2531, 0x00, (uint32_t)packed, 4);
@@ -2185,8 +2185,8 @@ static void* _sdo_telemetry_thread_fn(void *arg)
     motor_hal_t *hal = (motor_hal_t*)arg;
     
     while (sdo_telemetry_running) {
-        for (uint8_t id = 1; id <= hal->motor_count && sdo_telemetry_running; id++) {
-            motor_hal_poll_sdo_telemetry(hal, id);
+        for (int i = 0; i < hal->motor_count && sdo_telemetry_running; i++) {
+            motor_hal_poll_sdo_telemetry(hal, hal->motors[i].node_id);
         }
         usleep(500);
     }
@@ -2236,12 +2236,15 @@ int motor_hal_get_sdo_temperature(motor_hal_t *hal, uint8_t node_id, int32_t *te
 {
     if (!hal || !temp) return -EINVAL;
 
+    int ret = -EAGAIN;
     pthread_mutex_lock(&hal->lock);
     motor_node_t *m = _find_motor(hal, node_id);
-    if (m) *temp = m->sdo_temp_01c;
+    if (m && m->sdo_temp_01c >= 0) {
+        *temp = m->sdo_temp_01c;
+        ret = 0;
+    }
     pthread_mutex_unlock(&hal->lock);
-
-    return (m && *temp >= 0) ? 0 : -EAGAIN;
+    return ret;
 }
 
 int motor_hal_get_sdo_position(motor_hal_t *hal, uint8_t node_id, int32_t *pos)
