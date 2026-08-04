@@ -57,16 +57,19 @@ bool CanDispatcher::InitDispatcher()
     ECO_INFO_NEW("[CanDispatcher] CANFD {}: arb={}bps data={}bps",
                  m_can_iface, m_can_arb_rate, m_can_data_rate);
 
-    /* 2.5 注册 C→C++ 日志桥 (motor_hal.c → ECO_INFO_NEW) */
-    motor_hal_set_log_callback([](const char *msg) {
-        ECO_INFO_NEW("[PROTO] {}", msg);
-    });
-
     /* 3. 注册电机 (走配置或硬编码默认) */
     if (!LoadMotorConfig()) {
         ECO_ERROR_NEW("[CanDispatcher] LoadMotorConfig() failed");
         motor_hal_destroy(m_hal); m_hal = nullptr;
         return false;
+    }
+
+    /* 3.5 协议日志桥 (根据配置开关) */
+    if (m_proto_log_enabled) {
+        motor_hal_set_log_callback([](const char *msg) {
+            ECO_INFO_NEW("[PROTO] {}", msg);
+        });
+        ECO_INFO_NEW("[CanDispatcher] proto_log ENABLED");
     }
 
     /* 4. 设置接收线程实时参数 */
@@ -381,6 +384,7 @@ bool CanDispatcher::LoadMotorConfig()
             m_report_auto_enable = rpt.value("auto_enable", true);
             m_report_period_ms   = rpt.value("period_ms",   5u);
             m_report_data_source = rpt.value("data_source", std::string("mixed"));
+            m_proto_log_enabled  = rpt.value("proto_log",   false);
         }
 
         /* 解析 led */

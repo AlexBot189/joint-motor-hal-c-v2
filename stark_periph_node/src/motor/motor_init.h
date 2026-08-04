@@ -128,6 +128,7 @@ private:
     bool         m_report_auto_enable = true;  /* 校准后自动开启周期上报 */
     uint32_t     m_report_period_ms   = 5;    /* 上报周期 ms */
     std::string  m_report_data_source = "mixed"; /* 数据来源: mixed(混合/默认) | unified_6c0(统一6C0) */
+    bool         m_proto_log_enabled  = false; /* 协议验收日志: 默认关闭 */
     bool         m_motor_auto_enable  = false; /* 任意电机 auto_enable=true 则置 true */
     int          m_led_motor_id = 0;          /* 0=禁用, 1=右, 2=左 */
 
