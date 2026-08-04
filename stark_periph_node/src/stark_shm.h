@@ -245,12 +245,10 @@ typedef struct {
     uint16_t hall_a_data;           /* 霍尔传感器 A                              */
     uint16_t hall_b_data;           /* 霍尔传感器 B                              */
     uint16_t hall_c_data;           /* 霍尔传感器 C                              */
-    uint16_t df181_torque;          /* DF181 力矩                                */
+    int16_t  motor_torque;          /* 驱动力矩反馈, 0.05N.m (0x300 Byte[10-11])   */
     int16_t  knee_hall;            /* 膝关节霍尔                              */
     uint8_t  key_landing;           /* 着地开关                                  */
     uint8_t  torque_valid;          /* 力矩数据有效                              */
-    int16_t  torque_feedback;       /* 力矩反馈, 0.05N.m (0x300 Byte[10-11])     */
-    uint8_t  _pad_motor_r[1];
 
     /* 左电机 (ID=2) */
     int32_t  RealtimeVelocity_left;
@@ -264,12 +262,10 @@ typedef struct {
     uint16_t hall_a_data_left;
     uint16_t hall_b_data_left;
     uint16_t hall_c_data_left;
-    uint16_t df181_torque_left;
+    int16_t  motor_torque_left;     /* 驱动力矩反馈, 0.05N.m */
     int16_t  knee_hall_left;
     uint8_t  key_landing_left;
     uint8_t  torque_valid_left;
-    int16_t  torque_feedback_left;   /* 力矩反馈, 0.05N.m */
-    uint8_t  _pad_motor_l[1];
 
     /* 时间戳 */
     uint32_t timestamp_ms;      /* CLOCK_REALTIME, ms since epoch */
@@ -367,14 +363,14 @@ typedef struct {
     volatile uint8_t  btn_report_state;            /* 0=松开 1=按下 */
     volatile uint32_t btn_report_seq;              /* 每次按下递增, 算法比对检测边沿 */
 
-    uint8_t   _pad[3121];
+    uint8_t   _pad[3129];
 } stark_shm_t;
 
 /* 编译期校验 struct 大小, 字段变更时更新此值 */
 #ifdef __cplusplus
-static_assert(sizeof(stark_shm_t) == 4656, "stark_shm_t size changed, update _pad and this assert");
+static_assert(sizeof(stark_shm_t) == 4648, "stark_shm_t size changed, update _pad and this assert");
 #else
-_Static_assert(sizeof(stark_shm_t) == 4656, "stark_shm_t size changed, update _pad and this assert");
+_Static_assert(sizeof(stark_shm_t) == 4648, "stark_shm_t size changed, update _pad and this assert");
 #endif
 
 #ifdef __cplusplus

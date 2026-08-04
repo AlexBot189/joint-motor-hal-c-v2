@@ -130,9 +130,9 @@ static void run_torque(stark_client_t* c, int32_t amplitude_ma)
                        d->RealtimeVelocity_left, d->motor_abs_angle_left / 10.0f,
                        d->cal_Iq_current_left, d->motor_temp_left / 100.0f,
                        d->hall_a_data, d->hall_b_data, d->hall_c_data,
-                       d->df181_torque, d->knee_hall,
+                       d->motor_torque, d->knee_hall,
                        d->hall_a_data_left, d->hall_b_data_left, d->hall_c_data_left,
-                       d->df181_torque_left, d->knee_hall_left);
+                       d->motor_torque_left, d->knee_hall_left);
             }
         }
 
@@ -426,13 +426,13 @@ static void run_report_loop(stark_client_t* c)
         /* S1 */
         printf("S1   hall(a=%u b=%u c=%u)  torque=%u  knee=%d  land=%u  valid=%u\n",
                d->hall_a_data, d->hall_b_data, d->hall_c_data,
-               d->df181_torque, d->knee_hall,
+               d->motor_torque, d->knee_hall,
                d->key_landing, d->torque_valid);
 
         /* S2 */
         printf("S2   hall(a=%u b=%u c=%u)  torque=%u  knee=%d  land=%u  valid=%u\n\n",
                d->hall_a_data_left, d->hall_b_data_left, d->hall_c_data_left,
-               d->df181_torque_left, d->knee_hall_left,
+               d->motor_torque_left, d->knee_hall_left,
                d->key_landing_left, d->torque_valid_left);
 
         /* 0x6B0 力矩原始计数, 已并入 PeriodicUploadData, 直接从 d 取 */
@@ -440,9 +440,9 @@ static void run_report_loop(stark_client_t* c)
                d->spi_torque, d->spi_valid, d->spi_error,
                d->spi_torque_left, d->spi_valid_left, d->spi_error_left);
 
-        printf("TQ   M1[tq=%.2fN.m]  M2[tq=%.2fN.m]  (0x300 力矩反馈)\n",
-               (float)d->torque_feedback * 0.05f,
-               (float)d->torque_feedback_left * 0.05f);
+        printf("TQ   M1[tq=%.2fN.m]  M2[tq=%.2fN.m]  (0x300 驱动力矩)\n",
+               (float)d->motor_torque * 0.05f,
+               (float)d->motor_torque_left * 0.05f);
 
         printf("\n");
     }
