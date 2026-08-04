@@ -245,7 +245,7 @@ typedef struct {
     uint16_t hall_a_data;           /* 霍尔传感器 A                              */
     uint16_t hall_b_data;           /* 霍尔传感器 B                              */
     uint16_t hall_c_data;           /* 霍尔传感器 C                              */
-    int16_t  motor_torque;          /* 驱动力矩反馈, 0.05N.m (0x300 Byte[10-11])   */
+    uint16_t df181_torque;          /* 驱动力矩反馈, 0.05N.m (0x300 Byte[10-11])   */
     int16_t  knee_hall;            /* 膝关节霍尔                              */
     uint8_t  key_landing;           /* 着地开关                                  */
     uint8_t  torque_valid;          /* 力矩数据有效                              */
@@ -262,7 +262,7 @@ typedef struct {
     uint16_t hall_a_data_left;
     uint16_t hall_b_data_left;
     uint16_t hall_c_data_left;
-    int16_t  motor_torque_left;     /* 驱动力矩反馈, 0.05N.m */
+    uint16_t df181_torque_left;     /* 驱动力矩反馈, 0.05N.m */
     int16_t  knee_hall_left;
     uint8_t  key_landing_left;
     uint8_t  torque_valid_left;
