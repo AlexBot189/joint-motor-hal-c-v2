@@ -1191,8 +1191,8 @@ function appendLog(d){
     'busI='+padR(d.m1_busI||0,4)+'mA  temp='+padR((d.m1_temp||0).toFixed(2),6)+'C  fault=0x'+((d.m1_fault||0)&0xFFFF).toString(16).toUpperCase().padStart(4,'0')+'  state=0x'+((d.m1_state||0)&0xFF).toString(16).toUpperCase().padStart(2,'0'));
   addDiv('log-motor','M2   vel='+padR(d.m2_vel||0,7)+'RPM  ang='+padR((d.m2_angle||0).toFixed(1),6)+'deg  Iq='+padR(d.m2_cur||0,5)+'mA  '+
     'busI='+padR(d.m2_busI||0,4)+'mA  temp='+padR((d.m2_temp||0).toFixed(2),6)+'C  fault=0x'+((d.m2_fault||0)&0xFFFF).toString(16).toUpperCase().padStart(4,'0')+'  state=0x'+((d.m2_state||0)&0xFF).toString(16).toUpperCase().padStart(2,'0'));
-  addDiv('log-sensor','S1   hall(a='+(d.m1_hall_a||0)+' b='+(d.m1_hall_b||0)+' c='+(d.m1_hall_c||0)+')  torque='+(d.m1_torque||0)+'  knee='+(d.m1_knee||0)+'  land='+(d.m1_land||0)+'  valid='+(d.m1_torque_valid||0));
-  addDiv('log-sensor','S2   hall(a='+(d.m2_hall_a||0)+' b='+(d.m2_hall_b||0)+' c='+(d.m2_hall_c||0)+')  torque='+(d.m2_torque||0)+'  knee='+(d.m2_knee||0)+'  land='+(d.m2_land||0)+'  valid='+(d.m2_torque_valid||0));
+  addDiv('log-sensor','S1   hall(a='+(d.m1_hall_a||0)+' b='+(d.m1_hall_b||0)+' c='+(d.m1_hall_c||0)+')  torque='+(d.m1_torque||0)+'  tq_fb='+((d.m1_torque_fb||0).toFixed(2))+'Nm  knee='+(d.m1_knee||0)+'  land='+(d.m1_land||0)+'  valid='+(d.m1_torque_valid||0));
+  addDiv('log-sensor','S2   hall(a='+(d.m2_hall_a||0)+' b='+(d.m2_hall_b||0)+' c='+(d.m2_hall_c||0)+')  torque='+(d.m2_torque||0)+'  tq_fb='+((d.m2_torque_fb||0).toFixed(2))+'Nm  knee='+(d.m2_knee||0)+'  land='+(d.m2_land||0)+'  valid='+(d.m2_torque_valid||0));
 
   body.appendChild(frag);
   while(body.children.length>g_maxLog&&body.firstChild)body.removeChild(body.firstChild);

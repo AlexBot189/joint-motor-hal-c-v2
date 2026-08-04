@@ -303,6 +303,7 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         "\"m1_hall_b\":%u,"
         "\"m1_hall_c\":%u,"
         "\"m1_torque\":%u,"
+        "\"m1_torque_fb\":%.2f,"
         "\"m1_torque_valid\":%u,"
         "\"m1_knee\":%d,"
         "\"m1_land\":%u,"
@@ -318,6 +319,7 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         "\"m2_hall_b\":%u,"
         "\"m2_hall_c\":%u,"
         "\"m2_torque\":%u,"
+        "\"m2_torque_fb\":%.2f,"
         "\"m2_torque_valid\":%u,"
         "\"m2_knee\":%d,"
         "\"m2_land\":%u,"
@@ -390,6 +392,7 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         d->motor_state,
         d->hall_a_data, d->hall_b_data, d->hall_c_data,
         d->df181_torque,
+        (float)d->torque_feedback * 0.05f,
         d->torque_valid,
         d->knee_hall,
         d->key_landing,
@@ -402,6 +405,7 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         d->motor_state_left,
         d->hall_a_data_left, d->hall_b_data_left, d->hall_c_data_left,
         d->df181_torque_left,
+        (float)d->torque_feedback_left * 0.05f,
         d->torque_valid_left,
         d->knee_hall_left,
         d->key_landing_left,
