@@ -57,6 +57,11 @@ bool CanDispatcher::InitDispatcher()
     ECO_INFO_NEW("[CanDispatcher] CANFD {}: arb={}bps data={}bps",
                  m_can_iface, m_can_arb_rate, m_can_data_rate);
 
+    /* 2.5 注册 C→C++ 日志桥 (motor_hal.c → ECO_INFO_NEW) */
+    motor_hal_set_log_callback([](const char *msg) {
+        ECO_INFO_NEW("[PROTO] {}", msg);
+    });
+
     /* 3. 注册电机 (走配置或硬编码默认) */
     if (!LoadMotorConfig()) {
         ECO_ERROR_NEW("[CanDispatcher] LoadMotorConfig() failed");

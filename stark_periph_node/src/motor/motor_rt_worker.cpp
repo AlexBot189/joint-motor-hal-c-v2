@@ -12,6 +12,7 @@
 #include "utils/latency_trace.h"
 #include "motor/motor_ctrl.h"
 #include "imu/imu_sensor.h"
+#include <log_helper/LogHelper.h>
 
 #include <cstring>
 #include <ctime>
@@ -110,6 +111,7 @@ void StarkRtWorker::SetDataSource(const std::string& src)
     } else {
         m_data_source = DS_MIXED;
     }
+    ECO_INFO_NEW("[RT] data_source={}", m_data_source == DS_UNIFIED_6C0 ? "unified_6c0" : "mixed");
 }
 
 /* Run() — RT 线程主循环 1KHz */

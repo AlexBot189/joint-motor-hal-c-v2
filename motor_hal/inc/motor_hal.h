@@ -1047,6 +1047,19 @@ const char* motor_utils_nmt_state_str(uint8_t state);
  */
 const char* motor_utils_emcy_str(uint16_t emcy_code);
 
+/* =====================================================
+ * 日志桥接 — 纯 C → C++ ECO_INFO_NEW
+ * ===================================================== */
+
+/** @brief 日志回调签名: C 侧 snprintf 格式化后传入, C++ 侧转发到 ECO_INFO_NEW */
+typedef void (*motor_hal_log_cb_t)(const char *msg);
+
+/** @brief 注册日志回调 (在 motor_hal_init 后调用) */
+void motor_hal_set_log_callback(motor_hal_log_cb_t cb);
+
+/** @brief 清除日志回调 */
+void motor_hal_clear_log_callback(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -41,6 +41,32 @@ static void _dump_can_frame(const char *dir, const canfd_frame_t *f)
 static inline void _dump_can_frame(const char *dir, const canfd_frame_t *f) { (void)dir; (void)f; }
 #endif
 
+/* ---------- 协议验收日志桥接 (C → C++ ECO_INFO_NEW) ---------- */
+static motor_hal_log_cb_t g_proto_log_cb = NULL;
+static int g_proto_recv_cnt[16] = {0};  /* max MOTOR_HAL_MAX_MOTORS */
+#define PROTO_RECV_EVERY_N  50   /* 接收帧每 N 帧打印一次, 避免刷屏 */
+
+void motor_hal_set_log_callback(motor_hal_log_cb_t cb) { g_proto_log_cb = cb; }
+void motor_hal_clear_log_callback(void)                { g_proto_log_cb = NULL; }
+
+/* 发送路径: 每次都打印 (频率由上层控制回路决定) */
+#define PROTO_SEND(fmt, ...) do { \
+    if (g_proto_log_cb) { \
+        char _pbuf[320]; \
+        snprintf(_pbuf, sizeof(_pbuf), fmt, ##__VA_ARGS__); \
+        g_proto_log_cb(_pbuf); \
+    } \
+} while(0)
+
+/* 接收路径: 降频打印 (每 PROTO_RECV_EVERY_N 帧一次) */
+#define PROTO_RECV(node_id, fmt, ...) do { \
+    if (g_proto_log_cb && (++g_proto_recv_cnt[(node_id)-1] % PROTO_RECV_EVERY_N == 0)) { \
+        char _rbuf[320]; \
+        snprintf(_rbuf, sizeof(_rbuf), fmt, ##__VA_ARGS__); \
+        g_proto_log_cb(_rbuf); \
+    } \
+} while(0)
+
 /* =====================================================
  * 内部: 前向声明拆分模块函数
  * ===================================================== */
@@ -540,6 +566,43 @@ int motor_hal_mit_control(motor_hal_t *hal, uint8_t node_id,
     if (pos_raw == 0 && vel_raw == 0 && kp_raw == 0 && kd_raw == 0 && tq_raw == 0)
         return -EINVAL;
 
+    PROTO_SEND("[MIT_SEND] M%d ========== Layer1: phys → raw ==========", node_id);
+    PROTO_SEND("[MIT_SEND] M%d   phys: pos=%.1f° vel=%.0fRPM kp=%.1f kd=%.1f tq=%.2fNm",
+               node_id, position, velocity, kp, kd, torque);
+    PROTO_SEND("[MIT_SEND] M%d   raw:  pr=%u vr=%u kr=%u dr=%u tr=%d",
+               node_id, pos_raw, vel_raw, kp_raw, kd_raw, (int16_t)tq_raw);
+    PROTO_SEND("[MIT_SEND] M%d   scales: pmax=%.2f vmax=%.2f kpmax=%.0f kdmax=%.0f tmax=%.0f",
+               node_id, (double)scales.pmax, (double)scales.vmax,
+               (double)scales.kpmax, (double)scales.kdmax, (double)scales.tmax);
+
+    /* ========== Layer2: raw → byte packing ========== */
+    uint8_t d0 = b0;
+    uint8_t d1 = (uint8_t)((pos_raw >> 8) & 0xFF);
+    uint8_t d2 = (uint8_t)(pos_raw & 0xFF);
+    uint8_t d3 = (uint8_t)((vel_raw >> 4) & 0xFF);
+    uint8_t d4 = (uint8_t)(((vel_raw & 0x0F) << 4) | ((kp_raw >> 8) & 0x0F));
+    uint8_t d5 = (uint8_t)(kp_raw & 0xFF);
+    uint8_t d6 = (uint8_t)((kd_raw >> 4) & 0xFF);
+    uint8_t d7 = (uint8_t)(((kd_raw & 0x0F) << 4) | (((uint16_t)tq_raw >> 8) & 0x0F));
+    uint8_t d8 = (uint8_t)((uint16_t)tq_raw & 0xFF);
+
+    PROTO_SEND("[MIT_SEND] M%d ========== Layer2: byte packing (DLC=9) ==========", node_id);
+    PROTO_SEND("[MIT_SEND] M%d   [0]B0=0x%02X | [1-2]pos_H:L=0x%02X:0x%02X (raw=%u)",
+               node_id, d0, d1, d2, pos_raw);
+    PROTO_SEND("[MIT_SEND] M%d   [3]vel_H=0x%02X | [4]vel_L:kp_H=0x%02X (vel=%u kp=%u)",
+               node_id, d3, d4, vel_raw, kp_raw);
+    PROTO_SEND("[MIT_SEND] M%d   [5]kp_L=0x%02X | [6]kd_H=0x%02X | [7]kd_L:tq_H=0x%02X (kd=%u)",
+               node_id, d5, d6, d7, kd_raw);
+    PROTO_SEND("[MIT_SEND] M%d   [8]tq_L=0x%02X (tq_raw=%d)",
+               node_id, d8, (int16_t)tq_raw);
+
+    /* ========== Layer3: CAN frame hex dump ========== */
+    PROTO_SEND("[MIT_SEND] M%d ========== Layer3: CAN frame (CAN FD + BRS) ==========", node_id);
+    PROTO_SEND("[MIT_SEND] M%d   CAN ID=0x%03X DLC=%d FD=1 BRS=1",
+               node_id, (uint32_t)(0x110 + node_id), 9);
+    PROTO_SEND("[MIT_SEND] M%d   hex: %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+               node_id, d0, d1, d2, d3, d4, d5, d6, d7, d8);
+
     pdo_mit_send_raw(hal->drv, node_id, b0, pos_raw, vel_raw, kp_raw, kd_raw, (int16_t)tq_raw);
     return 0;
 }
@@ -654,7 +717,19 @@ void motor_hal_mit_multi_ctrl_phys(motor_hal_t *hal,
         cmds[count].torque        = tr;
         count++;
     }
-    if (count > 0) motor_hal_mit_multi_ctrl(hal, cmds, count);
+    if (count > 0) {
+        PROTO_SEND("[MIT_MULTI_SEND] M%d+M%d count=%d | "
+                   "raw1: pr=%u vr=%u kr=%u dr=%u tr=%d | "
+                   "raw2: pr=%u vr=%u kr=%u dr=%u tr=%d",
+                   id1, id2, count,
+                   count >= 1 ? cmds[0].position : 0, count >= 1 ? cmds[0].velocity : 0,
+                   count >= 1 ? cmds[0].kp : 0, count >= 1 ? cmds[0].kd : 0,
+                   count >= 1 ? cmds[0].torque : 0,
+                   count >= 2 ? cmds[1].position : 0, count >= 2 ? cmds[1].velocity : 0,
+                   count >= 2 ? cmds[1].kp : 0, count >= 2 ? cmds[1].kd : 0,
+                   count >= 2 ? cmds[1].torque : 0);
+        motor_hal_mit_multi_ctrl(hal, cmds, count);
+    }
 }
 
 int motor_hal_ctrl_raw(motor_hal_t *hal, uint8_t node_id,
@@ -1256,6 +1331,12 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
                 m->cached_sensor.motor_temp_x10 = (int16_t)((uint16_t)f->data[4] | ((uint16_t)f->data[5] << 8));
                 m->cached_sensor.error_code    = (uint16_t)((uint16_t)f->data[6] | ((uint16_t)f->data[7] << 8));
                 m->cached_sensor.run_fb_timestamp_us = motor_utils_now_us();
+                PROTO_RECV(node, "[6A0_RECV] M%d Iq=%.1fA bus=%.2fA temp=%.1f\u00b0C err=0x%04X",
+                           node,
+                           m->cached_sensor.iq_current / 1000.0,
+                           m->cached_sensor.bus_current / 1000.0,
+                           m->cached_sensor.motor_temp_x10 / 10.0,
+                           m->cached_sensor.error_code);
                 pthread_mutex_unlock(&m->sensor_lock);
             }
         }
@@ -1282,6 +1363,8 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
                 m->cached_sensor.motor_pos_raw = raw_pos;
                 m->cached_sensor.motor_vel_raw = raw_vel;
                 m->cached_sensor.run_fb_timestamp_us = motor_utils_now_us();
+                PROTO_RECV(node, "[690_RECV] M%d pos=%d cnt (%.1f\u00b0) vel=%d RPM",
+                           node, raw_pos, raw_pos * 360.0 / 65536.0, raw_vel);
                 pthread_mutex_unlock(&m->sensor_lock);
             }
         }
@@ -1335,6 +1418,18 @@ static void _dispatch_frame(motor_hal_t *hal, const canfd_frame_t *f)
             }
 
             pthread_mutex_unlock(&m->sensor_lock);
+
+            PROTO_RECV(node, "[6C0_RECV] M%d hall=(%u,%u,%u) force=%u knee=%u key=%u valid=%u | "
+                       "pos=%d cnt vel=%d RPM | Iq=%.1fA bus=%.2fA temp=%.1f\u00b0C err=0x%04X | "
+                       "spi_raw=%d spi_v=%u spi_e=%u",
+                       node,
+                       m->cached_sensor.hall_adc0, m->cached_sensor.hall_adc1, m->cached_sensor.hall_adc2,
+                       m->cached_sensor.force_raw, m->cached_sensor.knee_hall, m->cached_sensor.hw_sw_pc9,
+                       m->cached_sensor.data_valid,
+                       m->cached_sensor.motor_pos_raw, m->cached_sensor.motor_vel_raw,
+                       m->cached_sensor.iq_current / 1000.0, m->cached_sensor.bus_current / 1000.0,
+                       m->cached_sensor.motor_temp_x10 / 10.0, m->cached_sensor.error_code,
+                       m->cached_sensor.spi_force_raw_s24, m->cached_sensor.spi_valid, m->cached_sensor.spi_error);
 
             /* 触发传感器回调 */
             if (m->sensor_cb) {
@@ -2027,15 +2122,20 @@ int motor_hal_mit_migrate_scales(motor_hal_t *hal, uint8_t node_id)
     if (!hal || !hal->drv) return -ENODEV;
     /* 写 0x2546=20 (Tmax=20Nm, V2 出厂值), 然后 0x2539=1 保存到 Flash */
     int ret = sdo_write_simple(hal->drv, node_id, OD_MIT_TQ_SCALE, 0x00, 20, 4);
-    if (ret != 0) return ret;
+    if (ret != 0) {
+        PROTO_SEND("[MIT_MIGRATE] M%d write 0x2546=20 FAILED ret=%d", node_id, ret);
+        return ret;
+    }
     usleep(50000);
     ret = sdo_write_simple(hal->drv, node_id, OD_SAVE_FLASH, 0x00, 1, 4);
+    PROTO_SEND("[MIT_MIGRATE] M%d 0x2546=20 saved, Flash ret=%d", node_id, ret);
     return ret;
 }
 
 int motor_hal_torque_zero_calib(motor_hal_t *hal, uint8_t node_id)
 {
     if (!hal || !hal->drv) return -ENODEV;
+    PROTO_SEND("[CALIB_ZERO] M%d write 0x2531=2 (zero calibration)", node_id);
     return sdo_write_simple(hal->drv, node_id, 0x2531, 0x00, 2, 4);
 }
 
@@ -2044,6 +2144,8 @@ int motor_hal_torque_calib(motor_hal_t *hal, uint8_t node_id, int32_t torque_mNm
     if (!hal || !hal->drv) return -ENODEV;
     /* opcode=2 | (int24 mNm << 8), 小端 */
     int32_t packed = ((int32_t)torque_mNm << 8) | 0x02;
+    PROTO_SEND("[CALIB_TORQUE] M%d torque=%d mNm (%.2f Nm) packed=0x%08X",
+               node_id, torque_mNm, torque_mNm / 1000.0, (uint32_t)packed);
     return sdo_write_simple(hal->drv, node_id, 0x2531, 0x00, (uint32_t)packed, 4);
 }
 
