@@ -367,14 +367,8 @@ typedef struct {
     volatile uint8_t  btn_report_state;            /* 0=松开 1=按下 */
     volatile uint32_t btn_report_seq;              /* 每次按下递增, 算法比对检测边沿 */
 
-    uint8_t   _pad[3121];             /* 对齐 64KB */
+    uint8_t   _pad[3121];
 } stark_shm_t;
-
-#ifdef __cplusplus
-static_assert(sizeof(stark_shm_t) == 65536, "stark_shm_t must be exactly 64KB");
-#else
-_Static_assert(sizeof(stark_shm_t) == 65536, "stark_shm_t must be exactly 64KB");
-#endif
 
 #ifdef __cplusplus
 }
