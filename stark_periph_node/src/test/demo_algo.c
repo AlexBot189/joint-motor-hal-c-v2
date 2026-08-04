@@ -424,13 +424,13 @@ static void run_report_loop(stark_client_t* c)
                d->fault_code_left, d->motor_state_left);
 
         /* S1 */
-        printf("S1   hall(a=%u b=%u c=%u)  torque=%u  knee=%d  land=%u  valid=%u\n",
+        printf("S1   hall(a=%u b=%u c=%u)  torque=%d  knee=%d  land=%u  valid=%u\n",
                d->hall_a_data, d->hall_b_data, d->hall_c_data,
                d->motor_torque, d->knee_hall,
                d->key_landing, d->torque_valid);
 
         /* S2 */
-        printf("S2   hall(a=%u b=%u c=%u)  torque=%u  knee=%d  land=%u  valid=%u\n\n",
+        printf("S2   hall(a=%u b=%u c=%u)  torque=%d  knee=%d  land=%u  valid=%u\n\n",
                d->hall_a_data_left, d->hall_b_data_left, d->hall_c_data_left,
                d->motor_torque_left, d->knee_hall_left,
                d->key_landing_left, d->torque_valid_left);
