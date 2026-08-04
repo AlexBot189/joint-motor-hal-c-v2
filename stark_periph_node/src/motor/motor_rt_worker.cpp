@@ -656,7 +656,8 @@ void StarkRtWorker::PublishFeedback()
                             d.cal_bus_current  = bus_x100;
                             d.fault_code       = fcode;
                             d.motor_state      = mstate;
-                            d.df181_torque  = (uint16_t)torque_fb;
+                            d.torque_feedback  = torque_fb;
+                            d.df181_torque     = s.force_raw;
                             d.hall_a_data      = s.hall_adc0;
                             d.hall_b_data      = s.hall_adc1;
                             d.hall_c_data      = s.hall_adc2;
@@ -674,7 +675,8 @@ void StarkRtWorker::PublishFeedback()
                             d.cal_bus_current_left  = bus_x100;
                             d.fault_code_left       = fcode;
                             d.motor_state_left      = mstate;
-                            d.df181_torque_left  = (uint16_t)torque_fb;
+                            d.torque_feedback_left  = torque_fb;
+                            d.df181_torque_left     = s.force_raw;
                             d.hall_a_data_left      = s.hall_adc0;
                             d.hall_b_data_left      = s.hall_adc1;
                             d.hall_c_data_left      = s.hall_adc2;
@@ -744,7 +746,8 @@ void StarkRtWorker::PublishFeedback()
                             d.knee_hall   = (int16_t)s.knee_hall;
                             d.key_landing  = s.hw_sw_pc9;
                             d.torque_valid = s.data_valid;
-                            d.df181_torque = (uint16_t)mfb.torque_nm;
+                            d.df181_torque = s.force_raw;
+                            d.torque_feedback = mfb.torque_nm;
                         } else {
                             d.hall_a_data_left  = s.hall_adc0;
                             d.hall_b_data_left  = s.hall_adc1;
@@ -752,7 +755,8 @@ void StarkRtWorker::PublishFeedback()
                             d.knee_hall_left   = (int16_t)s.knee_hall;
                             d.key_landing_left  = s.hw_sw_pc9;
                             d.torque_valid_left = s.data_valid;
-                            d.df181_torque_left = (uint16_t)mfb.torque_nm;
+                            d.df181_torque_left = s.force_raw;
+                            d.torque_feedback_left = mfb.torque_nm;
                         }
                         /* 0x6B0 力矩并入 PeriodicUploadData (单一上报路径) */
                         if (is_right) {
