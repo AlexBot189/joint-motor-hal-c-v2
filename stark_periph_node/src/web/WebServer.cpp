@@ -701,7 +701,7 @@ static void dispatch_command(stark_shm_t *shm, motor_hal_t *hal,
                 int id = ids[i];
                 int v  = vals[i];
 
-                uint64_t w = shm->mailbox.seq_write;
+                uint64_t w = __atomic_load_n(&shm->mailbox.seq_write, __ATOMIC_ACQUIRE);
                 uint64_t r = __atomic_load_n(&shm->mailbox.seq_read, __ATOMIC_ACQUIRE);
                 if (w - r >= STARK_MBOX_DEPTH) { ECO_INFO_NEW("[WebServer] PDO mailbox full"); return; }
 
@@ -724,7 +724,7 @@ static void dispatch_command(stark_shm_t *shm, motor_hal_t *hal,
                     c->value = v;  /* mA */
                 }
 
-                shm->mailbox.seq_write = w + 1;
+                __atomic_store_n(&shm->mailbox.seq_write, w + 1, __ATOMIC_RELEASE);
             }
         } else if (mode == "sdo") {
             /* SDO: write to sdo_cmds (main loop processes) */
