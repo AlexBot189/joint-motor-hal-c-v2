@@ -390,9 +390,12 @@ void StarkRtWorker::ProcessMailbox()
             multi_axis_cmd_t mcmds[STARK_MAX_MOTORS] = {};
             int mcount = 0; uint8_t b0;
 
-            if (motor_hal_pdo_consume_byte0(m_hal, cmd0.motor_id, &b0) == 0) {
+            /* get_byte0: 不消费 clr_err 脉冲, 无副作用 */
+            if (motor_hal_pdo_get_byte0(m_hal, cmd0.motor_id, &b0) == 0) {
+                motor_mode_t m = (motor_mode_t)(pdo_byte0_get_mode(b0));
+                if ((uint8_t)m == 0) m = MOTOR_MODE_CURRENT; /* 默认电流环 */
                 mcmds[mcount].node_id       = cmd0.motor_id;
-                mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
+                mcmds[mcount].mode          = m;
                 mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
                 mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
                 mcmds[mcount].target1       = (int16_t)cmd0.value;
@@ -400,9 +403,11 @@ void StarkRtWorker::ProcessMailbox()
                 mcmds[mcount].feedforward   = (int16_t)cmd0.feedforward;
                 mcount++;
             }
-            if (motor_hal_pdo_consume_byte0(m_hal, cmd1.motor_id, &b0) == 0) {
+            if (motor_hal_pdo_get_byte0(m_hal, cmd1.motor_id, &b0) == 0) {
+                motor_mode_t m = (motor_mode_t)(pdo_byte0_get_mode(b0));
+                if ((uint8_t)m == 0) m = MOTOR_MODE_CURRENT; /* 默认电流环 */
                 mcmds[mcount].node_id       = cmd1.motor_id;
-                mcmds[mcount].mode          = (motor_mode_t)(pdo_byte0_get_mode(b0));
+                mcmds[mcount].mode          = m;
                 mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
                 mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
                 mcmds[mcount].target1       = (int16_t)cmd1.value;
