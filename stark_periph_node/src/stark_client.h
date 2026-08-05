@@ -357,7 +357,7 @@ static inline void stark_mit(stark_client_t* c, int id,
     c->shm->mailbox.frames[slot].cmd[idx].mit_vel    = (uint16_t)(vel_rpm);
     c->shm->mailbox.frames[slot].cmd[idx].mit_kp     = (uint16_t)(kp * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].mit_kd     = (uint16_t)(kd * 100.0f);
-    c->shm->mailbox.frames[slot].cmd[idx].mit_torque = (uint16_t)((int16_t)(torque)); /* float→int16→uint16 避免负值UB */
+    c->shm->mailbox.frames[slot].cmd[idx].mit_torque = (int16_t)(torque);
     c->shm->mailbox.frames[slot].cmd[idx].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);
@@ -381,7 +381,7 @@ static inline void stark_mit_multi(stark_client_t* c,
     c->shm->mailbox.frames[slot].cmd[0].mit_vel    = (uint16_t)(vel1);
     c->shm->mailbox.frames[slot].cmd[0].mit_kp     = (uint16_t)(kp1 * 100.0f);
     c->shm->mailbox.frames[slot].cmd[0].mit_kd     = (uint16_t)(kd1 * 100.0f);
-    c->shm->mailbox.frames[slot].cmd[0].mit_torque = (uint16_t)((int16_t)(tq1)); /* float→int16→uint16 */
+    c->shm->mailbox.frames[slot].cmd[0].mit_torque = (int16_t)(tq1);
     c->shm->mailbox.frames[slot].cmd[0].timestamp_us = _stark_now_us();
 
     /* M2 */
@@ -391,7 +391,7 @@ static inline void stark_mit_multi(stark_client_t* c,
     c->shm->mailbox.frames[slot].cmd[1].mit_vel    = (uint16_t)(vel2);
     c->shm->mailbox.frames[slot].cmd[1].mit_kp     = (uint16_t)(kp2 * 100.0f);
     c->shm->mailbox.frames[slot].cmd[1].mit_kd     = (uint16_t)(kd2 * 100.0f);
-    c->shm->mailbox.frames[slot].cmd[1].mit_torque = (uint16_t)((int16_t)(tq2)); /* float→int16→uint16 */
+    c->shm->mailbox.frames[slot].cmd[1].mit_torque = (int16_t)(tq2);
     c->shm->mailbox.frames[slot].cmd[1].timestamp_us = _stark_now_us();
 
     _stark_mbox_commit(c);

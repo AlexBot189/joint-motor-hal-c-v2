@@ -295,7 +295,7 @@ static void _stark_dbg_tx(const motor_command_t& c)
 {
     if (c.motor_id < 1) return;
     if (c.cmd == STARK_CMD_MIT) {
-        fprintf(stderr, "[TX] id=%u %s pos=%u vel=%u kp=%u kd=%u tau=%u\n",
+        fprintf(stderr, "[TX] id=%u %s pos=%u vel=%u kp=%u kd=%u tau=%d\n",
                 c.motor_id, _stark_cmd_name(c.cmd),
                 c.mit_pos, c.mit_vel, c.mit_kp, c.mit_kd, c.mit_torque);
     } else {

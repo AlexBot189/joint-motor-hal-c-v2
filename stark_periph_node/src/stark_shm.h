@@ -157,7 +157,7 @@ typedef struct {
     uint16_t mit_vel;           /* 目标速度 [0-4095]                                   */
     uint16_t mit_kp;            /* 位置刚度 [0-4095]                                   */
     uint16_t mit_kd;            /* 速度阻尼 [0-4095]                                   */
-    uint16_t mit_torque;        /* 前馈力矩 [0-4095]                                   */
+    int16_t  mit_torque;        /* 前馈力矩 Nm (V1 直接存储)                            */
     uint8_t  _pad[6];           /* 对齐到 offset 32, sizeof=40 */
     uint64_t timestamp_us;      /* 算法下发时刻                                          */
 } motor_command_t;
