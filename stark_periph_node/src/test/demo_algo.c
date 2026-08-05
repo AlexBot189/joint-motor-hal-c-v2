@@ -1114,6 +1114,11 @@ int main(int argc, char** argv)
         int32_t ma2 = atoi(argv[3]);
         run_multi(&c, ma1, ma2);
 
+    } else if (strcmp(mode, "torque_ctrl") == 0) {
+        if (argc < 3) { printf("ERR: 需要力矩值 (0.05N.m单位)\n"); stark_close(&c); return 1; }
+        int32_t val = atoi(argv[2]);
+        run_torque_ctrl(&c, val);
+
     } else {
         printf("未知模式: %s\n", mode);
         usage();

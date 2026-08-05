@@ -25,6 +25,38 @@ static void _dump_hex(const char *dir, const canfd_frame_t *f)
 #define DUMP(dir, f) ((void)0)
 #endif
 
+/* ---------- MIT cansend 报文 (调试: 验证 control word / raw payload / padding) ---------- */
+
+/* CAN FD 有效字节数 → 线缆字节数 (DLC 编码查表) */
+static int _canfd_wire_len(int len)
+{
+    if (len <= 8)  return len;
+    if (len <= 12) return 12;
+    if (len <= 16) return 16;
+    if (len <= 20) return 20;
+    if (len <= 24) return 24;
+    if (len <= 32) return 32;
+    if (len <= 48) return 48;
+    return 64;
+}
+
+/* 输出格式: [MIT_CANSEND] can0 <ID>##<flags><hex_data>
+ * 示例: [MIT_CANSEND] can0 111##18C800080000000080000000
+ *        ##1 = CAN FD BRS=1, 后面 12 字节 hex (DLC=9 → 12 wire bytes)
+ */
+static void _mit_cansend_dump(const canfd_frame_t *f)
+{
+    int wl = _canfd_wire_len(f->dlc);
+    char buf[512];
+    int off = snprintf(buf, sizeof(buf), "[MIT_CANSEND] can0 %03X##%d",
+                       (int)f->id, f->use_brs ? 1 : 0);
+    for (int i = 0; i < wl && off < (int)sizeof(buf) - 3; i++) {
+        off += snprintf(buf + off, sizeof(buf) - (size_t)off,
+                        "%02X", f->data[i]);
+    }
+    fprintf(stderr, "%s\n", buf);
+}
+
 /* ---------- 控制 PDO 发送 ---------- */
 
 void pdo_ctrl_send(can_driver_t *drv, uint8_t node, motor_mode_t mode,
@@ -66,6 +98,7 @@ void pdo_mit_send_raw(can_driver_t *drv, uint8_t node, uint8_t byte0,
     canfd_frame_t f;
     canopen_mit_pdo_build_u8(node, byte0, position, velocity, kp, kd, torque, &f);
     DUMP("TX", &f);
+    _mit_cansend_dump(&f);
     can_driver_send(drv, &f);
 }
 
@@ -82,6 +115,7 @@ void pdo_mit_multi_send(can_driver_t *drv, const multi_mit_cmd_t *cmds, uint8_t 
     canfd_frame_t f;
     canopen_mit_multi_build(cmds, count, &f);
     DUMP("TX", &f);
+    _mit_cansend_dump(&f);
     can_driver_send(drv, &f);
 }
 

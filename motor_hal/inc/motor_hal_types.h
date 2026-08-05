@@ -150,7 +150,7 @@ typedef enum {
     MOTOR_MODE_CSV           = 4,  /* CSV: 循环同步速度 */
     MOTOR_MODE_CURRENT       = 5,  /* 电流环 */
     MOTOR_MODE_MIT           = 6,  /* MIT: 阻抗控制, 走 0x110 独立帧. 仅力矩环对外骨骼有效 */
-    MOTOR_MODE_TORQUE        = 7,  /* 力矩环, 走 0x100+mode=7. V1.1文档值有歧义(6/7), 暂用7 */
+    MOTOR_MODE_TORQUE        = 7,  /* 力矩环, 走 0x100/0x200+mode=7. 协议定稿确认 反馈=0x7 */
 } motor_mode_t;
 
 /* ============================================================================
