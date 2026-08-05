@@ -308,6 +308,69 @@ static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
     }
 }
 
+/* ===== 多轴控制 (0x200, stark_multi) ===== */
+
+static const char* _multi_mode_name(int mode)
+{
+    switch (mode) {
+    case STARK_MODE_CURRENT: return "CURRENT";
+    case STARK_MODE_CSV:     return "CSV";
+    case STARK_MODE_CSP:     return "CSP";
+    case STARK_MODE_TORQUE:  return "TORQUE";
+    default:                 return "?";
+    }
+}
+
+static const char* _multi_mode_unit(int mode)
+{
+    switch (mode) {
+    case STARK_MODE_CURRENT: return "mA";
+    case STARK_MODE_CSV:     return "RPM";
+    case STARK_MODE_CSP:     return "deg";
+    case STARK_MODE_TORQUE:  return "0.05N.m";
+    default:                 return "?";
+    }
+}
+
+static void run_multi_ctrl(stark_client_t* c, int mode, float v1, float v2)
+{
+    const char* nm = _multi_mode_name(mode);
+    const char* un = _multi_mode_unit(mode);
+    printf("[multi2] %s mode, M1=%.1f%s M2=%.1f%s\n", nm, v1, un, v2, un);
+    printf("  mode=%d, 0x200 多轴广播 (stark_multi)\n", mode);
+
+    int32_t last_t1 = 0, last_t2 = 0;
+
+    while (g_running) {
+        int32_t t1, t2;
+        if (mode == STARK_MODE_CSP) {
+            /* CSP: 输入角度, 转 counts */
+            t1 = (int32_t)(v1 * 65536.0f / 360.0f);
+            t2 = (int32_t)(v2 * 65536.0f / 360.0f);
+        } else {
+            t1 = (int32_t)v1;
+            t2 = (int32_t)v2;
+        }
+
+        stark_multi(c, mode, t1, 0, 0, t2, 0, 0);
+
+        if (t1 != last_t1 || t2 != last_t2) {
+            motor_data_t fb1 = stark_fb(c, 1);
+            motor_data_t fb2 = stark_fb(c, 2);
+            printf("[multi2 %s] M1: pos=%.1f° cur=%dmA tq=%.2fNm  "
+                   "M2: pos=%.1f° cur=%dmA tq=%.2fNm\n",
+                   nm,
+                   counts_to_deg(fb1.position), fb1.current_iq,
+                   (float)fb1.torque_nm * 0.05f,
+                   counts_to_deg(fb2.position), fb2.current_iq,
+                   (float)fb2.torque_nm * 0.05f);
+            last_t1 = t1; last_t2 = t2;
+        }
+        stark_heartbeat(c);
+        usleep(1000);
+    }
+}
+
 /* 力矩环连续控制, val=0.05N.m 幅值, 正弦波 */
 static void run_torque_ctrl(stark_client_t* c, int32_t val)
 {
@@ -504,7 +567,11 @@ static void usage(void)
     printf("用法: ./demo_algo <mode> [args...]\n\n");
     printf("PDO 连续控制 (算法无需 enable/set_mode):\n");
     printf("  torque <mA>           电流环, 正弦波\n");
-    printf("  multi  <ma1> <ma2>    多轴广播, 恒电流\n");
+    printf("  multi  <ma1> <ma2>    多轴广播, 恒电流 (单轴路径)\n");
+    printf("  multi_cur <ma1> <ma2>  多轴电流环 (0x200, stark_multi)\n");
+    printf("  multi_csv <rpm1> <rpm2> 多轴速度环 (0x200)\n");
+    printf("  multi_csp <deg1> <deg2> 多轴位置环 (0x200)\n");
+    printf("  multi_tq  <val1> <val2> 多轴力矩环 (0x200, 0.05N.m)\n");
     printf("  speed  <rpm>          速度控制 (CSV), 梯形波\n");
     printf("  csv    <rpm>          CSV 速度, 梯形波\n");
     printf("  pv     <rpm> [acc]    轮廓速度 PV, 梯形波\n");
@@ -615,6 +682,10 @@ int main(int argc, char** argv)
                       strcmp(mode, "pos") == 0    || strcmp(mode, "pp") == 0 ||
                       strcmp(mode, "pv") == 0    || strcmp(mode, "mit") == 0 ||
                       strcmp(mode, "multi") == 0 ||
+                      strcmp(mode, "multi_cur") == 0 ||
+                      strcmp(mode, "multi_csv") == 0 ||
+                      strcmp(mode, "multi_csp") == 0 ||
+                      strcmp(mode, "multi_tq") == 0 ||
                       strcmp(mode, "torque_ctrl") == 0 ||
                       strcmp(mode, "mit_multi") == 0);
 
@@ -1113,6 +1184,19 @@ int main(int argc, char** argv)
         int32_t ma1 = atoi(argv[2]);
         int32_t ma2 = atoi(argv[3]);
         run_multi(&c, ma1, ma2);
+
+    } else if (strcmp(mode, "multi_cur") == 0) {
+        if (argc < 4) { printf("ERR: multi_cur <mA1> <mA2>\n"); stark_close(&c); return 1; }
+        run_multi_ctrl(&c, STARK_MODE_CURRENT, (float)atof(argv[2]), (float)atof(argv[3]));
+    } else if (strcmp(mode, "multi_csv") == 0) {
+        if (argc < 4) { printf("ERR: multi_csv <rpm1> <rpm2>\n"); stark_close(&c); return 1; }
+        run_multi_ctrl(&c, STARK_MODE_CSV, (float)atof(argv[2]), (float)atof(argv[3]));
+    } else if (strcmp(mode, "multi_csp") == 0) {
+        if (argc < 4) { printf("ERR: multi_csp <deg1> <deg2>\n"); stark_close(&c); return 1; }
+        run_multi_ctrl(&c, STARK_MODE_CSP, (float)atof(argv[2]), (float)atof(argv[3]));
+    } else if (strcmp(mode, "multi_tq") == 0) {
+        if (argc < 4) { printf("ERR: multi_tq <val1> <val2> (0.05N.m)\n"); stark_close(&c); return 1; }
+        run_multi_ctrl(&c, STARK_MODE_TORQUE, (float)atof(argv[2]), (float)atof(argv[3]));
 
     } else if (strcmp(mode, "torque_ctrl") == 0) {
         if (argc < 3) { printf("ERR: 需要力矩值 (0.05N.m单位)\n"); stark_close(&c); return 1; }
