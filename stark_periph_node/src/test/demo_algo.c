@@ -318,6 +318,7 @@ static void run_multi_ctrl(stark_client_t* c, int mode, float v1, float v2)
     printf("  mode=%d, 0x200 多轴广播 (stark_multi)\n", mode);
 
     int32_t last_t1 = 0, last_t2 = 0;
+    int cnt = 0;
 
     while (g_running) {
         int32_t t1, t2;
@@ -332,7 +333,7 @@ static void run_multi_ctrl(stark_client_t* c, int mode, float v1, float v2)
 
         stark_multi(c, mode, t1, 0, 0, t2, 0, 0);
 
-        if (t1 != last_t1 || t2 != last_t2) {
+        if (++cnt % 200 == 0 || t1 != last_t1 || t2 != last_t2) {
             motor_data_t fb1 = stark_fb(c, 1);
             motor_data_t fb2 = stark_fb(c, 2);
             printf("[multi %s] M1: pos=%.1f° cur=%dmA tq=%.2fNm  "
