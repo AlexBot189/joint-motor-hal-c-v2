@@ -41,7 +41,8 @@ extern "C" {
 #define STARK_MODE_CSP      3   /* 循环同步位置, SYNC 触发 */
 #define STARK_MODE_CSV      4   /* 循环同步速度, SYNC 触发 */
 #define STARK_MODE_CURRENT  5   /* Q轴电流直控 */
-#define STARK_MODE_MIT      6   /* MIT 阻抗控制 */
+#define STARK_MODE_MIT      6   /* MIT 阻抗控制, 走 0x110 独立帧 */
+#define STARK_MODE_TORQUE   7   /* 力矩环, 走 0x100/0x200 */
 
 /* 时间戳辅助 */
 static inline uint64_t _stark_now_us(void)
