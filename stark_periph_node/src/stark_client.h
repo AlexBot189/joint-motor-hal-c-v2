@@ -487,7 +487,7 @@ static inline void stark_sdo_mit_migrate(stark_client_t* c, int id)
  *   CSP 模式:     p1/p2 输入绝对角度
  *   CSV/PV 模式:  v1/v2 输入速度
  */
-static inline void stark_multi(stark_client_t* c,
+static inline void stark_multi(stark_client_t* c, int mode,
                                 int32_t t1, int32_t v1, int32_t p1,
                                 int32_t t2, int32_t v2, int32_t p2)
 {
@@ -498,12 +498,14 @@ static inline void stark_multi(stark_client_t* c,
 
     c->shm->mailbox.frames[slot].cmd[0].motor_id    = 1;
     c->shm->mailbox.frames[slot].cmd[0].cmd         = STARK_CMD_MULTI;
+    c->shm->mailbox.frames[slot].cmd[0].multi_mode  = (uint8_t)mode;
     c->shm->mailbox.frames[slot].cmd[0].value       = t1;
     c->shm->mailbox.frames[slot].cmd[0].value2      = v1;
     c->shm->mailbox.frames[slot].cmd[0].feedforward = p1;
 
     c->shm->mailbox.frames[slot].cmd[1].motor_id    = 2;
     c->shm->mailbox.frames[slot].cmd[1].cmd         = STARK_CMD_MULTI;
+    c->shm->mailbox.frames[slot].cmd[1].multi_mode  = (uint8_t)mode;
     c->shm->mailbox.frames[slot].cmd[1].value       = t2;
     c->shm->mailbox.frames[slot].cmd[1].value2      = v2;
     c->shm->mailbox.frames[slot].cmd[1].feedforward = p2;

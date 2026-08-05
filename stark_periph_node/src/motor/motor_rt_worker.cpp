@@ -388,31 +388,26 @@ void StarkRtWorker::ProcessMailbox()
         /* 控制命令 (通过 pdo_byte0 发 PDO) */
         else if (cmd0.cmd == STARK_CMD_MULTI || cmd1.cmd == STARK_CMD_MULTI) {
             multi_axis_cmd_t mcmds[STARK_MAX_MOTORS] = {};
-            int mcount = 0; uint8_t b0;
+            int mcount = 0;
 
-            /* get_byte0: 不消费 clr_err 脉冲, 无副作用 */
-            if (motor_hal_pdo_get_byte0(m_hal, cmd0.motor_id, &b0) == 0) {
-                motor_mode_t m = (motor_mode_t)(pdo_byte0_get_mode(b0));
-                if ((uint8_t)m == 0) m = MOTOR_MODE_CURRENT; /* 默认电流环 */
-                mcmds[mcount].node_id       = cmd0.motor_id;
+            for (int i = 0; i < 2; i++) {
+                motor_command_t c = (i == 0) ? cmd0 : cmd1;
+                if (c.cmd != STARK_CMD_MULTI) continue;
+                if (c.motor_id < 1) continue;
+
+                motor_mode_t m = (motor_mode_t)(c.multi_mode & 0x0F);
+                if ((uint8_t)m == 0 || m == MOTOR_MODE_MIT) {
+                    ECO_WARN_NEW("[MULTI] M%d multi_mode=%d invalid, skip", c.motor_id, (int)m);
+                    continue;
+                }
+
+                mcmds[mcount].node_id       = c.motor_id;
                 mcmds[mcount].mode          = m;
-                mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
-                mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
-                mcmds[mcount].target1       = (int16_t)cmd0.value;
-                mcmds[mcount].target2       = (uint16_t)cmd0.value2;
-                mcmds[mcount].feedforward   = (int16_t)cmd0.feedforward;
-                mcount++;
-            }
-            if (motor_hal_pdo_get_byte0(m_hal, cmd1.motor_id, &b0) == 0) {
-                motor_mode_t m = (motor_mode_t)(pdo_byte0_get_mode(b0));
-                if ((uint8_t)m == 0) m = MOTOR_MODE_CURRENT; /* 默认电流环 */
-                mcmds[mcount].node_id       = cmd1.motor_id;
-                mcmds[mcount].mode          = m;
-                mcmds[mcount].enable        = pdo_byte0_get_enable(b0);
-                mcmds[mcount].release_brake = pdo_byte0_get_bus_on(b0);
-                mcmds[mcount].target1       = (int16_t)cmd1.value;
-                mcmds[mcount].target2       = (uint16_t)cmd1.value2;
-                mcmds[mcount].feedforward   = (int16_t)cmd1.feedforward;
+                mcmds[mcount].enable        = true;
+                mcmds[mcount].release_brake = true;
+                mcmds[mcount].target1       = (int16_t)c.value;
+                mcmds[mcount].target2       = (uint16_t)c.value2;
+                mcmds[mcount].feedforward   = (int16_t)c.feedforward;
                 mcount++;
             }
             if (mcount > 0) motor_hal_multi_ctrl(m_hal, mcmds, (uint8_t)mcount);
