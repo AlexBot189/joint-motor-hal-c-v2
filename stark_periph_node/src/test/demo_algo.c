@@ -13,7 +13,10 @@
  *   ./demo_algo pv <rpm> [acc]         轮廓速度 PV, 梯形波
  *   ./demo_algo mit <kp> <kd> [pos] [vel] [tq]  MIT 阻抗控制
  *   ./demo_algo mit_multi <kp> <kd> [pos] [vel] [tq]  MIT 多轴广播
- *   ./demo_algo multi <ma1> <ma2>      多轴广播, 恒电流
+ *   ./demo_algo multi_cur <ma1> <ma2>  多轴电流环 (0x200)
+ *   ./demo_algo multi_csv <rpm1> <rpm2> 多轴速度环 (0x200)
+ *   ./demo_algo multi_csp <deg1> <deg2> 多轴位置环 (0x200)
+ *   ./demo_algo multi_tq <val1> <val2>  多轴力矩环 (0x200, 0.05N.m)
  *   ./demo_algo torque_ctrl <val>       力矩环控制, 正弦 (val=0.05N.m)
  *
  * 校准 / 迁移:
@@ -283,31 +286,6 @@ static void run_pv(stark_client_t* c, float max_rpm, float accel)
     }
 }
 
-/* 多轴广播: 恒定电流 */
-static void run_multi(stark_client_t* c, int32_t ma1, int32_t ma2)
-{
-    printf("[multi] 恒电流: M1=%d mA, M2=%d mA\n", ma1, ma2);
-
-    while (g_running) {
-        if (stark_online(c, 1)) stark_torque(c, 1, ma1);
-        if (stark_online(c, 2)) stark_torque(c, 2, ma2);
-
-        static int cnt = 0;
-        if (++cnt % 200 == 0) {
-            motor_data_t fb1 = stark_fb(c, 1);
-            motor_data_t fb2 = stark_fb(c, 2);
-            imu_data_t imu = stark_imu(c);
-            printf("[multi] M1=%.1f deg %d mA  M2=%.1f deg %d mA  "
-                   "IMU: yaw=%.1f pitch=%.1f roll=%.1f\n",
-                   counts_to_deg(fb1.position), fb1.current_iq,
-                   counts_to_deg(fb2.position), fb2.current_iq,
-                   imu.yaw, imu.pitch, imu.roll);
-        }
-        stark_heartbeat(c);
-        usleep(1000);
-    }
-}
-
 /* ===== 多轴控制 (0x200, stark_multi) ===== */
 
 static const char* _multi_mode_name(int mode)
@@ -336,7 +314,7 @@ static void run_multi_ctrl(stark_client_t* c, int mode, float v1, float v2)
 {
     const char* nm = _multi_mode_name(mode);
     const char* un = _multi_mode_unit(mode);
-    printf("[multi2] %s mode, M1=%.1f%s M2=%.1f%s\n", nm, v1, un, v2, un);
+    printf("[multi] %s mode, M1=%.1f%s M2=%.1f%s\n", nm, v1, un, v2, un);
     printf("  mode=%d, 0x200 多轴广播 (stark_multi)\n", mode);
 
     int32_t last_t1 = 0, last_t2 = 0;
@@ -357,7 +335,7 @@ static void run_multi_ctrl(stark_client_t* c, int mode, float v1, float v2)
         if (t1 != last_t1 || t2 != last_t2) {
             motor_data_t fb1 = stark_fb(c, 1);
             motor_data_t fb2 = stark_fb(c, 2);
-            printf("[multi2 %s] M1: pos=%.1f° cur=%dmA tq=%.2fNm  "
+            printf("[multi %s] M1: pos=%.1f° cur=%dmA tq=%.2fNm  "
                    "M2: pos=%.1f° cur=%dmA tq=%.2fNm\n",
                    nm,
                    counts_to_deg(fb1.position), fb1.current_iq,
@@ -567,7 +545,6 @@ static void usage(void)
     printf("用法: ./demo_algo <mode> [args...]\n\n");
     printf("PDO 连续控制 (算法无需 enable/set_mode):\n");
     printf("  torque <mA>           电流环, 正弦波\n");
-    printf("  multi  <ma1> <ma2>    多轴广播, 恒电流 (单轴路径)\n");
     printf("  multi_cur <ma1> <ma2>  多轴电流环 (0x200, stark_multi)\n");
     printf("  multi_csv <rpm1> <rpm2> 多轴速度环 (0x200)\n");
     printf("  multi_csp <deg1> <deg2> 多轴位置环 (0x200)\n");
@@ -681,7 +658,6 @@ int main(int argc, char** argv)
     int need_calib = (strcmp(mode, "torque") == 0 || strcmp(mode, "speed") == 0 ||
                       strcmp(mode, "pos") == 0    || strcmp(mode, "pp") == 0 ||
                       strcmp(mode, "pv") == 0    || strcmp(mode, "mit") == 0 ||
-                      strcmp(mode, "multi") == 0 ||
                       strcmp(mode, "multi_cur") == 0 ||
                       strcmp(mode, "multi_csv") == 0 ||
                       strcmp(mode, "multi_csp") == 0 ||
@@ -1178,12 +1154,6 @@ int main(int argc, char** argv)
         float vel_rpm_m = (argc >= 6) ? (float)atof(argv[5]) : 0.0f;
         float tq_nm_m   = (argc >= 7) ? (float)atof(argv[6]) : 0.0f;
         run_mit_multi(&c, kp_m, kd_m, pos_deg_m, vel_rpm_m, tq_nm_m);
-
-    } else if (strcmp(mode, "multi") == 0) {
-        if (argc < 4) { printf("ERR: 需要 ma1 ma2\n"); stark_close(&c); return 1; }
-        int32_t ma1 = atoi(argv[2]);
-        int32_t ma2 = atoi(argv[3]);
-        run_multi(&c, ma1, ma2);
 
     } else if (strcmp(mode, "multi_cur") == 0) {
         if (argc < 4) { printf("ERR: multi_cur <mA1> <mA2>\n"); stark_close(&c); return 1; }
