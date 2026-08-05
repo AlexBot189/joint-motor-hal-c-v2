@@ -604,6 +604,11 @@ static void usage(void)
     printf("  ./demo_algo mit 0 0 0 0 15         # MIT 纯力矩控制 15Nm\n");
     printf("  ./demo_algo mit_multi 30 5          # MIT 多轴广播 Kp=30 Kd=5\n");
     printf("  ./demo_algo mit_multi 50 10 0 0 8  # MIT 多轴 8Nm双电机\n");
+    printf("  ./demo_algo multi_cur 500 300      # 多轴电流 M1=500mA M2=300mA\n");
+    printf("  ./demo_algo multi_cur 0 0          # 多轴电流 双电机0mA\n");
+    printf("  ./demo_algo multi_csv 10 -10       # 多轴速度 M1=10 M2=-10RPM\n");
+    printf("  ./demo_algo multi_csp 15 -15       # 多轴位置 ±15°\n");
+    printf("  ./demo_algo multi_tq 200 -200      # 多轴力矩 ±200(±10Nm)\n");
     printf("  ./demo_algo calib_torque 1 0        # M1 力矩零漂标定(零负载)\n");
     printf("  ./demo_algo calib_torque 2 17.15    # M2 力矩标定(挂5kg×0.35m)\n");
     printf("  ./demo_algo calib_torque_zero 1     # M1 零漂标定(快捷, tau=0)\n");
