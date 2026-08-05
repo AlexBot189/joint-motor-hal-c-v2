@@ -354,7 +354,7 @@ static inline void stark_mit(stark_client_t* c, int id,
     c->shm->mailbox.frames[slot].cmd[idx].motor_id   = (uint8_t)id;
     c->shm->mailbox.frames[slot].cmd[idx].cmd        = STARK_CMD_MIT;
     c->shm->mailbox.frames[slot].cmd[idx].mit_pos    = (uint16_t)((pos_deg + 180.0f) * 65535.0f / 360.0f);
-    c->shm->mailbox.frames[slot].cmd[idx].mit_vel    = (uint16_t)(vel_rpm);
+    c->shm->mailbox.frames[slot].cmd[idx].mit_vel    = (int16_t)(vel_rpm);
     c->shm->mailbox.frames[slot].cmd[idx].mit_kp     = (uint16_t)(kp * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].mit_kd     = (uint16_t)(kd * 100.0f);
     c->shm->mailbox.frames[slot].cmd[idx].mit_torque = (int16_t)(torque);
@@ -378,7 +378,7 @@ static inline void stark_mit_multi(stark_client_t* c,
     c->shm->mailbox.frames[slot].cmd[0].motor_id   = 1;
     c->shm->mailbox.frames[slot].cmd[0].cmd        = STARK_CMD_MIT_MULTI;
     c->shm->mailbox.frames[slot].cmd[0].mit_pos    = (uint16_t)((pos1 + 180.0f) * 65535.0f / 360.0f);
-    c->shm->mailbox.frames[slot].cmd[0].mit_vel    = (uint16_t)(vel1);
+    c->shm->mailbox.frames[slot].cmd[0].mit_vel    = (int16_t)(vel1);
     c->shm->mailbox.frames[slot].cmd[0].mit_kp     = (uint16_t)(kp1 * 100.0f);
     c->shm->mailbox.frames[slot].cmd[0].mit_kd     = (uint16_t)(kd1 * 100.0f);
     c->shm->mailbox.frames[slot].cmd[0].mit_torque = (int16_t)(tq1);
@@ -388,7 +388,7 @@ static inline void stark_mit_multi(stark_client_t* c,
     c->shm->mailbox.frames[slot].cmd[1].motor_id   = 2;
     c->shm->mailbox.frames[slot].cmd[1].cmd        = STARK_CMD_MIT_MULTI;
     c->shm->mailbox.frames[slot].cmd[1].mit_pos    = (uint16_t)((pos2 + 180.0f) * 65535.0f / 360.0f);
-    c->shm->mailbox.frames[slot].cmd[1].mit_vel    = (uint16_t)(vel2);
+    c->shm->mailbox.frames[slot].cmd[1].mit_vel    = (int16_t)(vel2);
     c->shm->mailbox.frames[slot].cmd[1].mit_kp     = (uint16_t)(kp2 * 100.0f);
     c->shm->mailbox.frames[slot].cmd[1].mit_kd     = (uint16_t)(kd2 * 100.0f);
     c->shm->mailbox.frames[slot].cmd[1].mit_torque = (int16_t)(tq2);

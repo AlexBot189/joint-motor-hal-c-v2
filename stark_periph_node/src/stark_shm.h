@@ -154,7 +154,7 @@ typedef struct {
     int32_t  feedforward;       /* 前馈 (PP模式轮廓速度 RPM, 其他模式填0)                */
     /* MIT 模式专用 */
     uint16_t mit_pos;           /* 目标位置 [0-65535]                                  */
-    uint16_t mit_vel;           /* 目标速度 [0-4095]                                   */
+    int16_t  mit_vel;           /* 目标速度 RPM (V1 直接存储)                          */
     uint16_t mit_kp;            /* 位置刚度 [0-4095]                                   */
     uint16_t mit_kd;            /* 速度阻尼 [0-4095]                                   */
     int16_t  mit_torque;        /* 前馈力矩 Nm (V1 直接存储)                            */
