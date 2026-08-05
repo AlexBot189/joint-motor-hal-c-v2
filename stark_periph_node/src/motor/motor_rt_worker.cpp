@@ -646,8 +646,8 @@ void StarkRtWorker::PublishFeedback()
                         uint32_t sts = (uint32_t)(s.timestamp_us & 0xFFFFFFFF);
                         if (sts < sensor_ts_min) sensor_ts_min = sts;
 
-                        int32_t vel_x10   = s.motor_vel_raw * 10;
-                        int16_t iq_x100   = (int16_t)(s.iq_current / 10);
+                        int32_t vel_x10   = s.motor_vel_raw;
+                        int16_t iq_x100   = (int16_t)(s.iq_current);
                         int16_t fcode     = (int16_t)s.error_code;
                         int32_t tmp_x100  = (int32_t)s.motor_temp_x10 * 10;
                         int16_t ang_x10   = (int16_t)(s.motor_pos_raw * 3600 / 65536);
@@ -701,8 +701,8 @@ void StarkRtWorker::PublishFeedback()
                         if (ts < motor_ts_min) motor_ts_min = ts;
                //         int32_t vel_x10  = (int32_t)mfb.velocity * 10;
                //         int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
-    	            int32_t vel_x10  = (int32_t)mfb.velocity * 10;
-                        int16_t iq_x100  = (int16_t)(mfb.current_iq / 10);
+                    int32_t vel_x10  = (int32_t)mfb.velocity;
+                        int16_t iq_x100  = (int16_t)(mfb.current_iq);
            
     	   	    int16_t fcode    = (int16_t)mfb.error_code;
                         int16_t mstate   = (int16_t)mfb.status_byte;
