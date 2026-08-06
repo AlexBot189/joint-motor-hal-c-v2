@@ -333,6 +333,30 @@ void FootPressureSensor::_ReaderThread()
 
             m_frame_count++;
 
+            /* FPS 统计: 每秒打印实际接收频率 + 最近一帧 AD 值 */
+            {
+                m_fps_count++;
+                memcpy(&m_fps_last_frame, &fp, sizeof(fp));
+
+                struct timespec ts_now;
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+                uint64_t now_sec = (uint64_t)ts_now.tv_sec;
+                if (m_fps_last_sec == 0) m_fps_last_sec = now_sec;
+
+                if (now_sec - m_fps_last_sec >= 1) {
+                    ECO_INFO_NEW("[FootPressure] FPS={} L:%4u %4u %4u  R:%4u %4u %4u",
+                                 m_fps_count,
+                                 m_fps_last_frame.left.adc[0],
+                                 m_fps_last_frame.left.adc[1],
+                                 m_fps_last_frame.left.adc[2],
+                                 m_fps_last_frame.right.adc[0],
+                                 m_fps_last_frame.right.adc[1],
+                                 m_fps_last_frame.right.adc[2]);
+                    m_fps_count = 0;
+                    m_fps_last_sec = now_sec;
+                }
+            }
+
             if (!was_online) {
                 ECO_INFO_NEW("[FootPressure] sensor online");
                 was_online = true;
