@@ -509,13 +509,13 @@ static void run_foot_loop(stark_client_t* c)
 
         if (fp.update_cycle != last_cycle) {
             last_cycle = fp.update_cycle;
-            printf("[t=%lluus] L:%4u %4u %4u  R:%4u %4u %4u  %s\n",
-                   (unsigned long long)fp.timestamp_us,
+            printf("[%uus] L:%4u %4u %4u  R:%4u %4u %4u  %s\n",
+                   (unsigned)fp.update_cycle,
                    fp.left.adc[0], fp.left.adc[1], fp.left.adc[2],
                    fp.right.adc[0], fp.right.adc[1], fp.right.adc[2],
                    fp.timestamp_us ? "OK" : "OFFLINE");
         }
-        usleep(1000);
+        usleep(5000);
     }
 }
 
