@@ -112,6 +112,11 @@ private:
     /* 帧统计 */
     uint32_t m_frame_count     = 0;
     uint32_t m_error_count     = 0;
+
+    /* FPS 统计: 每秒打印实际接收频率 + 最近一帧 AD 值 */
+    uint32_t             m_fps_count      = 0;
+    uint64_t             m_fps_last_sec   = 0;
+    foot_pressure_data_t m_fps_last_frame;
 };
 
 } /* namespace stark_periph_manager_node */
