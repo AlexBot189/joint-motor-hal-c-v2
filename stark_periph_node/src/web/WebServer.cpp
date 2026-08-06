@@ -372,7 +372,13 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         "\"mbox_age_avg\":%u,"
         "\"mbox_age_min\":%u,"
         "\"period_us\":%u,"
-        "\"shm_age\":%u",
+        "\"shm_age\":%u,"
+        "\"foot_l1\":%u,"
+        "\"foot_l2\":%u,"
+        "\"foot_l3\":%u,"
+        "\"foot_r1\":%u,"
+        "\"foot_r2\":%u,"
+        "\"foot_r3\":%u",
         d->timestamp_ms,
         shm->periodic_version,
         d->frame_cycle,
@@ -440,7 +446,13 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         shm->mbox_age_avg_us,
         shm->mbox_age_min_us,
         shm->period_us,
-        shm_age
+        shm_age,
+        d->foot_pressure.left.adc[0],
+        d->foot_pressure.left.adc[1],
+        d->foot_pressure.left.adc[2],
+        d->foot_pressure.right.adc[0],
+        d->foot_pressure.right.adc[1],
+        d->foot_pressure.right.adc[2]
     );
     (void)n;
 

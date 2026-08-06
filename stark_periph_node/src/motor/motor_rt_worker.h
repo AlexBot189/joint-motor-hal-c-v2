@@ -113,8 +113,6 @@ public:
     uint32_t   m_report_period_ms = 5;       /* 周期上报间隔 ms */
     DataSource m_data_source = DS_MIXED;     /* 数据来源: mixed(默认) | unified_6c0 */
     uint64_t   m_periodic_last_cycle = 0;    /* 上次上报的 RT 周期号 */
-    uint64_t   m_last_foot_cycle = 0;        /* 上次写入足底压力的 RT 周期号 */
-    int        m_foot_report_divider = 5;    /* 足底压力降采样分频 */
     uint64_t m_cycle_count;
     uint64_t m_overrun_count;
 

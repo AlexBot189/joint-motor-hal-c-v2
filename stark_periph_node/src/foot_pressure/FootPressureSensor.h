@@ -112,13 +112,6 @@ private:
     /* 帧统计 */
     uint32_t m_frame_count     = 0;
     uint32_t m_error_count     = 0;
-
-    /* 帧间隔统计 (开发联调用) */
-    uint64_t m_last_frame_us   = 0;
-    uint32_t m_interval_min_us = UINT32_MAX;
-    uint32_t m_interval_max_us = 0;
-    uint64_t m_interval_sum_us = 0;
-    uint32_t m_interval_count  = 0;
 };
 
 } /* namespace stark_periph_manager_node */

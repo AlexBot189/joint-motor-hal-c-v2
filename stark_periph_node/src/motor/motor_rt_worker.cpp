@@ -50,8 +50,6 @@ StarkRtWorker::StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
     , m_report_enabled(false)
     , m_report_period_ms(5)
     , m_periodic_last_cycle(0)
-    , m_last_foot_cycle(0)
-    , m_foot_report_divider(m_rt.report_divider)
     , m_cycle_count(0)
     , m_overrun_count(0)
 {
@@ -93,7 +91,6 @@ void StarkRtWorker::SetRtConfig(const RtConfig& cfg)
 {
     m_rt = cfg;
     m_report_divider      = cfg.report_divider;  /* 立即生效 */
-    m_foot_report_divider = cfg.report_divider;  /* 跟随 report_divider */
 }
 
 void StarkRtWorker::SetReportEnabled(bool enabled, uint32_t period_ms)
@@ -786,6 +783,12 @@ void StarkRtWorker::PublishFeedback()
             d.imu_ts_us     = (uint32_t)(imu_local.timestamp_us & 0xFFFFFFFF);
             d.sensor_ts_us  = (sensor_ts_min != 0xFFFFFFFF) ? sensor_ts_min : 0;
 
+            /* 足底压力 */
+            if (m_foot_sensor && m_foot_sensor->IsReady()) {
+                m_foot_sensor->Read(&d.foot_pressure);
+                d.foot_pressure.update_cycle = (uint32_t)m_cycle_count;
+            }
+
             memcpy(&m_shm->periodic_data, &d, sizeof(d));
             __atomic_add_fetch(&m_shm->periodic_version, 1, __ATOMIC_RELEASE);
             /* 唤醒阻塞在 stark_report_wait 的算法侧接收线程. 共享 futex,
@@ -870,17 +873,13 @@ void StarkRtWorker::PublishFeedback()
     /* 气压计: 硬件未接入, 保持全零 */
     memset(&fb->baro, 0, sizeof(fb->baro));
 
-    /* 足底压力: 读传感器缓存, 降采样写入 SHM */
+    /* 足底压力: 读传感器缓存, 每周期写入 SHM */
     if (m_foot_sensor && m_foot_sensor->IsReady()) {
         foot_pressure_data_t fp;
         m_foot_sensor->Read(&fp);
-
-        if (m_cycle_count - m_last_foot_cycle >= (uint64_t)m_foot_report_divider) {
-            fp.update_cycle = (uint32_t)m_cycle_count;
-            fb->foot_pressure = fp;
-            fb->ts_foot_rx = fp.timestamp_us;
-            m_last_foot_cycle = m_cycle_count;
-        }
+        fp.update_cycle = (uint32_t)m_cycle_count;
+        fb->foot_pressure = fp;
+        fb->ts_foot_rx = fp.timestamp_us;
     }
 
     /* IMU+传感器+气压计 组装完成 */

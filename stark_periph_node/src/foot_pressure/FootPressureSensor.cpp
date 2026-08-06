@@ -326,28 +326,6 @@ void FootPressureSensor::_ReaderThread()
                 continue;
             }
 
-            /* 帧间隔统计 */
-            if (m_last_frame_us > 0 && fp.timestamp_us > m_last_frame_us) {
-                uint32_t interval = (uint32_t)(fp.timestamp_us - m_last_frame_us);
-                if (interval < m_interval_min_us) m_interval_min_us = interval;
-                if (interval > m_interval_max_us) m_interval_max_us = interval;
-                m_interval_sum_us += interval;
-                m_interval_count++;
-
-                /* 每 10000 帧打印一次统计 */
-                if (m_interval_count >= FOOT_PRESSURE_STATS_INTERVAL) {
-                    uint32_t avg = (uint32_t)(m_interval_sum_us / m_interval_count);
-                    ECO_INFO_NEW("[FootPressure] {} frames: min={}us max={}us avg={}us",
-                                 m_interval_count, m_interval_min_us,
-                                 m_interval_max_us, avg);
-                    m_interval_min_us = UINT32_MAX;
-                    m_interval_max_us = 0;
-                    m_interval_sum_us = 0;
-                    m_interval_count  = 0;
-                }
-            }
-            m_last_frame_us = fp.timestamp_us;
-
             /* 写入缓存 */
             pthread_mutex_lock(&m_mutex);
             memcpy(&m_cached, &fp, sizeof(foot_pressure_data_t));

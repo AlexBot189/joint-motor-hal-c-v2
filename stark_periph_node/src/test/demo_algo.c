@@ -501,21 +501,23 @@ static void run_report_loop(stark_client_t* c)
 /* 足底压力数据 */
 static void run_foot_loop(stark_client_t* c)
 {
-    printf("[foot] 足底压力数据 (Ctrl+C 退出)\n");
+    printf("[foot] 每帧只打印一条 (新帧=timetamp_us变化)\n");
 
-    uint32_t last_cycle = 0;
+    uint64_t last_ts = 0;
     while (g_running) {
         foot_pressure_data_t fp = stark_foot_pressure(c);
 
-        if (fp.update_cycle != last_cycle) {
-            last_cycle = fp.update_cycle;
-            printf("[%u] L:%4u %4u %4u  R:%4u %4u %4u  %s\n",
-                   (unsigned)fp.update_cycle,
+        if (fp.timestamp_us && fp.timestamp_us != last_ts) {
+            last_ts = fp.timestamp_us;
+            struct timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            printf("[%lld.%06ld] ts=%llu L:%4u %4u %4u  R:%4u %4u %4u\n",
+                   (long long)ts.tv_sec, ts.tv_nsec / 1000,
+                   (unsigned long long)fp.timestamp_us,
                    fp.left.adc[0], fp.left.adc[1], fp.left.adc[2],
-                   fp.right.adc[0], fp.right.adc[1], fp.right.adc[2],
-                   fp.timestamp_us ? "OK" : "OFFLINE");
+                   fp.right.adc[0], fp.right.adc[1], fp.right.adc[2]);
         }
-        usleep(5000);
+        usleep(1000);
     }
 }
 
