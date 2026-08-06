@@ -6,6 +6,7 @@
  */
 #include "motor/motor_init.h"
 #include "imu/imu_sensor.h"
+#include "foot_pressure/FootPressureSensor.h"
 #include "nlohmann/json.hpp"
 
 #include <cstring>
@@ -93,6 +94,17 @@ bool CanDispatcher::InitDispatcher()
         ECO_WARN_NEW("[CanDispatcher] IMU HAL init failed, running without IMU");
     }
 
+    /* 7.5 初始化足底压力传感器 */
+    if (m_foot_enabled) {
+        m_foot_sensor = std::make_unique<FootPressureSensor>();
+        if (!m_foot_sensor->Init(m_foot_uart_dev.c_str(), m_foot_baud_rate,
+                                  m_foot_timeout_ms)) {
+            ECO_WARN_NEW("[CanDispatcher] FootPressure init failed, running without it");
+        }
+    } else {
+        ECO_INFO_NEW("[CanDispatcher] FootPressure disabled (foot_pressure.enabled=false)");
+    }
+
     /* 8. 打开共享内存 */
     m_shm_mgr = stark_shm_mgr_open(m_shm_name.c_str(), true, m_shm_size_bytes);
     if (!m_shm_mgr) {
@@ -131,6 +143,12 @@ bool CanDispatcher::DestroyDispatcher()
     if (m_imu_sensor) {
         m_imu_sensor->Deinit();
         m_imu_sensor.reset();
+    }
+
+    /* 停止足底压力传感器 */
+    if (m_foot_sensor) {
+        m_foot_sensor->Deinit();
+        m_foot_sensor.reset();
     }
 
     /* 停止 recv + 销毁 HAL */
@@ -376,6 +394,15 @@ bool CanDispatcher::LoadMotorConfig()
             m_imu_gpio_chip = imu_cfg.value("gpio_chip", std::string("gpiochip4"));
             m_imu_gpio_line = imu_cfg.value("gpio_line", 6u);
             m_imu_op_mode   = imu_cfg.value("op_mode",   5);
+        }
+
+        /* 解析 foot_pressure */
+        if (cfg.contains("foot_pressure")) {
+            auto& fp = cfg["foot_pressure"];
+            m_foot_enabled   = fp.value("enabled",    true);
+            m_foot_uart_dev  = fp.value("uart_dev",   std::string("/dev/ttyS7"));
+            m_foot_baud_rate = fp.value("baud_rate",  460800);
+            m_foot_timeout_ms = fp.value("timeout_ms", 10);
         }
 
         /* 解析 report */

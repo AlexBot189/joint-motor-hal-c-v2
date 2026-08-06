@@ -80,5 +80,11 @@
     "enabled": false,
     "port": 8080,
     "push_period_ms": 5
+  },
+  "foot_pressure": {
+    "enabled": true,
+    "uart_dev": "/dev/ttyS7",
+    "baud_rate": 460800,
+    "timeout_ms": 10
   }
 }

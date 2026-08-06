@@ -486,7 +486,36 @@ static void run_report_loop(stark_client_t* c)
                (float)d->torque_feedback * 0.05f,
                (float)d->torque_feedback_left * 0.05f);
 
+        /* 足底压力 */
+        printf("FOOT L:%4u %4u %4u  R:%4u %4u %4u  ts=%llu\n",
+               d->foot_pressure.left.adc[0], d->foot_pressure.left.adc[1],
+               d->foot_pressure.left.adc[2],
+               d->foot_pressure.right.adc[0], d->foot_pressure.right.adc[1],
+               d->foot_pressure.right.adc[2],
+               (unsigned long long)d->foot_pressure.timestamp_us);
+
         printf("\n");
+    }
+}
+
+/* 足底压力数据 */
+static void run_foot_loop(stark_client_t* c)
+{
+    printf("[foot] 足底压力数据 (Ctrl+C 退出)\n");
+
+    uint32_t last_cycle = 0;
+    while (g_running) {
+        foot_pressure_data_t fp = stark_foot_pressure(c);
+
+        if (fp.update_cycle != last_cycle) {
+            last_cycle = fp.update_cycle;
+            printf("[t=%lluus] L:%4u %4u %4u  R:%4u %4u %4u  %s\n",
+                   (unsigned long long)fp.timestamp_us,
+                   fp.left.adc[0], fp.left.adc[1], fp.left.adc[2],
+                   fp.right.adc[0], fp.right.adc[1], fp.right.adc[2],
+                   fp.timestamp_us ? "OK" : "OFFLINE");
+        }
+        usleep(1000);
     }
 }
 
@@ -594,6 +623,7 @@ static void usage(void)
     printf("\n状态:\n");
     printf("  stat                  只读反馈\n");
     printf("  report                周期上报数据\n");
+    printf("  foot                  足底压力数据\n");
     printf("\n示例:\n");
     printf("  ./demo_algo torque 200            # 电流 ±200mA 正弦波\n");
     printf("  ./demo_algo speed 10              # 速度 ±10RPM 梯形波\n");
@@ -702,6 +732,11 @@ int main(int argc, char** argv)
     }
     if (strcmp(mode, "report") == 0) {
         run_report_loop(&c);
+        stark_close(&c);
+        return 0;
+    }
+    if (strcmp(mode, "foot") == 0) {
+        run_foot_loop(&c);
         stark_close(&c);
         return 0;
     }

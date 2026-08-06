@@ -31,6 +31,7 @@ extern "C" {
 
 #include "motor/motor_ctrl.h"
 #include "imu/imu_sensor.h"
+#include "foot_pressure/FootPressureSensor.h"
 #include "motor/motor_rt_worker.h"
 
 namespace stark_periph_manager_node {
@@ -53,6 +54,7 @@ public:
     stark_shm_t*     GetShm()       { return m_shm; }
     StarkMotorCtrl*  GetCtrl()      { return m_ctrl.get(); }
     ImuHALSensor*  GetImuSensor() { return m_imu_sensor.get(); }
+    FootPressureSensor* GetFootPressureSensor() { return m_foot_sensor.get(); }
 
     /* 配置 (从 config.json 读取, 或默认值) */
     const SafetyConfig& GetSafetyConfig()  { return m_safety_cfg; }
@@ -114,6 +116,13 @@ private:
     std::string  m_imu_gpio_chip  = "gpiochip4";
     unsigned int m_imu_gpio_line  = 6;
     int          m_imu_op_mode    = 5;
+
+    /* 足底压力传感器 */
+    std::unique_ptr<FootPressureSensor> m_foot_sensor;
+    bool        m_foot_enabled   = true;
+    std::string m_foot_uart_dev  = "/dev/ttyS7";
+    int         m_foot_baud_rate = 460800;
+    int         m_foot_timeout_ms = 10;
 
     /* 电机数量 (从 config.json motors 数组长度读取) */
     int          m_motor_count    = 2;

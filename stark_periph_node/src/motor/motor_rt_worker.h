@@ -29,6 +29,7 @@ namespace stark_periph_manager_node {
 
 class StarkMotorCtrl;
 class ImuHALSensor;
+class FootPressureSensor;
 
 struct SafetyConfig {
     uint32_t heartbeat_timeout_ms = 1000;
@@ -50,6 +51,7 @@ class StarkRtWorker {
 public:
     StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
                 StarkMotorCtrl* ctrl, ImuHALSensor* imu_sensor,
+                FootPressureSensor* foot_sensor,
                 int motor_count);
     ~StarkRtWorker();
 
@@ -88,10 +90,11 @@ public:
 
     void SetThreadRt();
 
-    motor_hal_t*    m_hal;
-    stark_shm_t*      m_shm;
-    StarkMotorCtrl*   m_ctrl;
-    ImuHALSensor*   m_imu_sensor;
+    motor_hal_t*        m_hal;
+    stark_shm_t*          m_shm;
+    StarkMotorCtrl*       m_ctrl;
+    ImuHALSensor*       m_imu_sensor;
+    FootPressureSensor* m_foot_sensor = nullptr;
 
     std::atomic<bool> m_running{false};
     std::thread       m_thread;
@@ -110,6 +113,8 @@ public:
     uint32_t   m_report_period_ms = 5;       /* 周期上报间隔 ms */
     DataSource m_data_source = DS_MIXED;     /* 数据来源: mixed(默认) | unified_6c0 */
     uint64_t   m_periodic_last_cycle = 0;    /* 上次上报的 RT 周期号 */
+    uint64_t   m_last_foot_cycle = 0;        /* 上次写入足底压力的 RT 周期号 */
+    int        m_foot_report_divider = 5;    /* 足底压力降采样分频 */
     uint64_t m_cycle_count;
     uint64_t m_overrun_count;
 

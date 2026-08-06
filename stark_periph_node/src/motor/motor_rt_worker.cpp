@@ -12,6 +12,7 @@
 #include "utils/latency_trace.h"
 #include "motor/motor_ctrl.h"
 #include "imu/imu_sensor.h"
+#include "foot_pressure/FootPressureSensor.h"
 #include <log_helper/LogHelper.h>
 
 #include <cstring>
@@ -35,11 +36,13 @@ namespace stark_periph_manager_node {
 
 StarkRtWorker::StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
                          StarkMotorCtrl* ctrl, ImuHALSensor* imu_sensor,
+                         FootPressureSensor* foot_sensor,
                          int motor_count)
     : m_hal(hal)
     , m_shm(shm)
     , m_ctrl(ctrl)
     , m_imu_sensor(imu_sensor)
+    , m_foot_sensor(foot_sensor)
     , m_motor_count(motor_count)
     , m_can_last_frame_us(0)
     , m_latency_idx(0)
@@ -47,6 +50,8 @@ StarkRtWorker::StarkRtWorker(motor_hal_t* hal, stark_shm_t* shm,
     , m_report_enabled(false)
     , m_report_period_ms(5)
     , m_periodic_last_cycle(0)
+    , m_last_foot_cycle(0)
+    , m_foot_report_divider(m_rt.report_divider)
     , m_cycle_count(0)
     , m_overrun_count(0)
 {
@@ -87,7 +92,8 @@ void StarkRtWorker::Stop()
 void StarkRtWorker::SetRtConfig(const RtConfig& cfg)
 {
     m_rt = cfg;
-    m_report_divider = cfg.report_divider;  /* 立即生效 */
+    m_report_divider      = cfg.report_divider;  /* 立即生效 */
+    m_foot_report_divider = cfg.report_divider;  /* 跟随 report_divider */
 }
 
 void StarkRtWorker::SetReportEnabled(bool enabled, uint32_t period_ms)
@@ -863,6 +869,19 @@ void StarkRtWorker::PublishFeedback()
 
     /* 气压计: 硬件未接入, 保持全零 */
     memset(&fb->baro, 0, sizeof(fb->baro));
+
+    /* 足底压力: 读传感器缓存, 降采样写入 SHM */
+    if (m_foot_sensor && m_foot_sensor->IsReady()) {
+        foot_pressure_data_t fp;
+        m_foot_sensor->Read(&fp);
+
+        if (m_cycle_count - m_last_foot_cycle >= (uint64_t)m_foot_report_divider) {
+            fp.update_cycle = (uint32_t)m_cycle_count;
+            fb->foot_pressure = fp;
+            fb->ts_foot_rx = fp.timestamp_us;
+            m_last_foot_cycle = m_cycle_count;
+        }
+    }
 
     /* IMU+传感器+气压计 组装完成 */
     m_tracer.mark_mock_sensor_done();

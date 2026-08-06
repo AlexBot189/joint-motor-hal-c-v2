@@ -21,6 +21,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/motor
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shm
     ${CMAKE_CURRENT_SOURCE_DIR}/src/imu
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/foot_pressure
     ${CMAKE_CURRENT_SOURCE_DIR}/src/utils
     ${CMAKE_CURRENT_SOURCE_DIR}/src/button
     ${IMU_HAL_DIR}/src/hal/gpiod/include
@@ -49,6 +50,8 @@ set(SOURCES
 
     src/imu/imu_sensor.cpp
 
+    src/foot_pressure/FootPressureSensor.cpp
+
     src/utils/latency_trace.cpp
     src/utils/factory.cpp
     src/shm/shm_mgr.cpp
@@ -68,6 +71,9 @@ set(HEADERS
     src/motor/motor_ctrl.h
 
     src/imu/imu_sensor.h
+
+    src/foot_pressure/FootPressureProtocol.h
+    src/foot_pressure/FootPressureSensor.h
 
     src/utils/rt_log.h
     src/utils/latency_trace.h

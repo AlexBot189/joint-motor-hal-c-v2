@@ -177,6 +177,15 @@ static inline barometer_data_t stark_baro(stark_client_t* c)
     return c->shm->fb_buffer[idx].baro;
 }
 
+static inline foot_pressure_data_t stark_foot_pressure(stark_client_t* c)
+{
+    foot_pressure_data_t fp = {0};
+    if (!c || !c->shm) return fp;
+
+    uint32_t idx = __atomic_load_n(&c->shm->active_idx, __ATOMIC_ACQUIRE);
+    return c->shm->fb_buffer[idx].foot_pressure;
+}
+
 /* -- 控制命令: 实时路径 (环形缓冲 mailbox, 不丢帧) ------------- */
 
 /* SPSC 环形缓冲写入, 返回槽位索引. 缓冲满时短暂自旋等待. */

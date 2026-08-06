@@ -98,6 +98,7 @@ int main(int argc, char** argv)
     g_rt_worker = new StarkRtWorker(hal, shm,
                                   g_dispatcher->GetCtrl(),
                                   g_dispatcher->GetImuSensor(),
+                                  g_dispatcher->GetFootPressureSensor(),
                                   motor_count);
 
     g_rt_worker->SetSafetyConfig(g_dispatcher->GetSafetyConfig());

@@ -93,6 +93,18 @@ typedef struct {
     uint64_t timestamp_us;      /* 采样时刻, μs                                       */
 } barometer_data_t;
 
+/* 足底压力数据 */
+typedef struct {
+    uint16_t adc[3];            /* AD值, 0~4095: 前掌/足弓/后跟 */
+} foot_pad_t;
+
+typedef struct {
+    foot_pad_t  left;           /* 左脚 */
+    foot_pad_t  right;          /* 右脚 */
+    uint32_t    update_cycle;   /* RT周期号, 比对防重复 */
+    uint64_t    timestamp_us;   /* 串口收到该帧的时刻 (CLOCK_MONOTONIC) */
+} foot_pressure_data_t;
+
 /* 反馈帧 — 写入 SHM 双 Buffer */
 typedef struct {
     motor_data_t      motor[STARK_MAX_MOTORS];   /* [0]=右髋(ID=1) [1]=左髋(ID=2)       */
@@ -112,7 +124,9 @@ typedef struct {
     uint64_t ts_frame_assembly;  /* 反馈帧组装完成 */
 
     uint64_t timestamp_us;       /* 组装时刻, μs                                        */
-    uint8_t  _pad[4];            /* 对齐到字边界                                         */
+
+    foot_pressure_data_t foot_pressure;   /* 足底压力数据 */
+    uint64_t             ts_foot_rx;      /* 串口收到足底压力帧的时刻 */
 } feedback_frame_t;
 
 /* 电机控制命令 */
@@ -288,6 +302,8 @@ typedef struct {
     uint8_t  spi_valid_left;
     uint8_t  spi_error_left;
     uint8_t  _pad_spi_l[2];
+
+    foot_pressure_data_t foot_pressure;  /* 足底压力数据 */
 } PeriodicUploadData;
 
 /* 共享内存总结构 (64KB) */
@@ -366,7 +382,7 @@ typedef struct {
     volatile uint8_t  btn_report_state;            /* 0=松开 1=按下 */
     volatile uint32_t btn_report_seq;              /* 每次按下递增, 算法比对检测边沿 */
 
-    uint8_t   _pad[3125];
+    uint8_t   _pad[3045];
 } stark_shm_t;
 
 /* 编译期校验 struct 大小, 字段变更时更新此值 */
