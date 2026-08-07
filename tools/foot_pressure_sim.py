@@ -2,14 +2,15 @@
 """
 foot_pressure_sim.py — 足底压力传感器 MCU 串口模拟器
 
-模拟 MCU 以 1000Hz 频率通过虚拟串口发送 19 字节固定帧。
-帧格式: F2 01 C0 FF EE 0C [12B 大端数据] F1
+模拟 MCU 以可配置频率通过虚拟串口发送 20 字节固定帧 (含累加和校验)。
+帧格式: F2 01 C0 FF EE 0C [12B 大端数据] CS F1
+CS = (Byte1~Byte17 求和) & 0xFF
 
 用法:
-    python3 foot_pressure_sim.py [--dev /dev/pts/1] [--rate 1000] [--csv adc.csv]
+    python3 foot_pressure_sim.py [--dev /dev/pts/1] [--rate 625] [--csv adc.csv]
 
 默认输出到 /dev/pts/1 (socat 虚拟串口对)。
-csv 文件格式: 每行 6 个 uint16 AD 值, 逗号分隔, 循环发送。
+csv 文件格式: 每行 6 个 uint16 值, 逗号分隔, 循环发送。
 无 csv 时使用正弦波模拟数据。
 """
 
@@ -22,7 +23,7 @@ import math
 import signal
 
 
-FRAME_LEN = 19
+FRAME_LEN = 20
 HEAD = 0xF2
 TAIL = 0xF1
 SRC  = 0x01
@@ -33,7 +34,7 @@ DATA_LEN = 12  # 6 * uint16
 
 
 def build_frame(adc_values):
-    """构建 19 字节帧, adc_values 为 6 个 uint16 大端值."""
+    """构建 20 字节帧 (含累加和校验), adc_values 为 6 个 uint16 大端值."""
     buf = bytearray(FRAME_LEN)
     buf[0] = HEAD
     buf[1] = SRC
@@ -46,7 +47,10 @@ def build_frame(adc_values):
         v = int(val) & 0xFFFF
         buf[6 + i * 2]     = (v >> 8) & 0xFF
         buf[6 + i * 2 + 1] = v & 0xFF
-    buf[18] = TAIL
+    # 累加和: Byte1~Byte17 求和取低 8 位
+    cs = sum(buf[1:18]) & 0xFF
+    buf[18] = cs
+    buf[19] = TAIL
     return bytes(buf)
 
 
@@ -82,8 +86,8 @@ def main():
     parser = argparse.ArgumentParser(description='Foot Pressure MCU Simulator')
     parser.add_argument('--dev', default='/dev/pts/1',
                         help='Virtual serial device (default: /dev/pts/1)')
-    parser.add_argument('--rate', type=int, default=1000,
-                        help='Frame rate in Hz (default: 1000)')
+    parser.add_argument('--rate', type=int, default=625,
+                        help='Frame rate in Hz (default: 625)')
     parser.add_argument('--csv', default=None,
                         help='CSV file with ADC values (6 per line)')
     parser.add_argument('--mode', default='sine', choices=['sine', 'static'],
