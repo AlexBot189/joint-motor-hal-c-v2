@@ -36,7 +36,7 @@ set(IH_DIR    "${SRC_ROOT}/imu_hal")
 set(LOG_DIR   "${SRC_ROOT}/log_helper")
 set(THIRD_DIR "${SRC_ROOT}/3rd_party")
 
-# ---- 头文件路径 ----
+# ---- 头文件路径 (主目标) ----
 include_directories(
 	# stark_periph 业务层
 	${SRC_ROOT}
@@ -48,20 +48,6 @@ include_directories(
 	${SRC_ROOT}/foot_pressure
 	${SRC_ROOT}/utils
 	${SRC_ROOT}/button
-	# motor_hal
-	${MH_DIR}
-	${MH_DIR}/inc
-	# imu_hal
-	${IH_DIR}
-	${IH_DIR}/inc
-	${IH_DIR}/driver
-	${IH_DIR}/driver/icm45608
-	${IH_DIR}/driver/icm45608/imu
-	${IH_DIR}/driver/Ict1531x
-	${IH_DIR}/hal
-	${IH_DIR}/hal/gpiod/include
-	${IH_DIR}/tools
-	${IH_DIR}/tools/Invn/EmbUtils
 	# 第三方头文件
 	${THIRD_DIR}
 	${THIRD_DIR}/usr/include
@@ -113,6 +99,22 @@ endif()
 
 # ════════════════════════════════════════════════════════════
 # 目标 2: libmotor_hal.so — 电机 CAN/CANopen 驱动库
+
+# add_custom_build 目标需要独立的 include 路径 (eco_build 内部可能重置)
+include_directories(
+	${MH_DIR}
+	${MH_DIR}/inc
+	${IH_DIR}
+	${IH_DIR}/inc
+	${IH_DIR}/driver
+	${IH_DIR}/driver/icm45608
+	${IH_DIR}/driver/icm45608/imu
+	${IH_DIR}/driver/Ict1531x
+	${IH_DIR}/hal
+	${IH_DIR}/hal/gpiod/include
+	${IH_DIR}/tools
+	${IH_DIR}/tools/Invn/EmbUtils
+)
 
 add_custom_build(
 	NAME motor_hal
