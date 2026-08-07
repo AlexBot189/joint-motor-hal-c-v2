@@ -17,19 +17,17 @@ TOOLS_BUILD_DIR="$PROJECT_DIR/motor_hal/tools/build"
 EXAMPLES_BUILD_DIR="$PROJECT_DIR/motor_hal/build"
 IMU_BUILD_DIR="$PROJECT_DIR/imu_hal/build"
 STARK_BUILD_DIR="$PROJECT_DIR/stark_periph_node/build"
-TEST_BUILD_DIR="$PROJECT_DIR/stark_periph_node/src/test/build"
 
 #==============================================================================
 # 清理函数
 #==============================================================================
 _clean() {
     echo "清理构建目录..."
-    rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR" "$IMU_BUILD_DIR" "$STARK_BUILD_DIR" "$TEST_BUILD_DIR"
+    rm -rf "$BUILD_DIR" "$TOOLS_BUILD_DIR" "$IMU_BUILD_DIR" "$STARK_BUILD_DIR"
     echo "  motor_hal/build/            已删除"
     echo "  motor_hal/tools/build/       已删除"
     echo "  imu_hal/build/               已删除"
     echo "  stark_periph_node/build/              已删除"
-    echo "  stark_periph_node/src/test/build/     已删除"
 }
 
 CMD="${1:-shared}"
@@ -125,35 +123,18 @@ $CMAKE -S "$PROJECT_DIR/imu_hal" -B "$IMU_BUILD_DIR" \
 $CMAKE --build "$IMU_BUILD_DIR" -j"$(nproc)"
 
 #==============================================================================
-# [5/6] 编译 stark_periph_manager_node (stark_periph_node)
+# [5/6] 编译 stark_periph_manager_node (eco_build 框架)
 #==============================================================================
 echo ""
 echo "=========================================="
 echo "  [5/6] 编译 stark_periph_manager_node"
 echo "=========================================="
 
-mkdir -p "$STARK_BUILD_DIR"
-$CMAKE -S "$PROJECT_DIR/stark_periph_node" -B "$STARK_BUILD_DIR" \
-    -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
-    -DENABLE_ROS=OFF \
-    -DENABLE_WEBSERVER=ON \
-    $SHARED_FLAG
-
-$CMAKE --build "$STARK_BUILD_DIR" -j"$(nproc)"
-
-#==============================================================================
-# [6/6] 编译测试工具 (algo_sim + perf_test)
-#==============================================================================
-echo ""
-echo "=========================================="
-echo "  [6/6] 编译测试工具"
-echo "=========================================="
-
-mkdir -p "$TEST_BUILD_DIR"
-$CMAKE -S "$PROJECT_DIR/stark_periph_node/src/test" -B "$TEST_BUILD_DIR" \
-    -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN"
-
-$CMAKE --build "$TEST_BUILD_DIR" -j"$(nproc)"
+# 使用 eco_build 框架编译, make.sh 内部自动调 cmake
+export ECO_WORKSPACE_DIR=~/workspace/project/k850/embuild
+pushd "$PROJECT_DIR/stark_periph_node" > /dev/null
+bash make.sh
+popd > /dev/null
 
 #==============================================================================
 # 结果
@@ -183,29 +164,19 @@ ls -lh "$EXAMPLES_BUILD_DIR/motor_example_single" \
         "$EXAMPLES_BUILD_DIR/hal_stress_test"
 
 echo ""
-echo "STARK_SHM_HEADER:"
-ls -lh "$PROJECT_DIR/stark_periph_node/src/stark_shm.h"
-echo ""
 echo "IMU HAL:"
 ls -lh "$IMU_BUILD_DIR/libimu_hal.so"
-echo ""
-echo "IMU 示例:"
-ls -lh "$IMU_BUILD_DIR/emd-gaf" "$IMU_BUILD_DIR/read_sensor" 2>/dev/null || true
 echo ""
 echo "工具:"
 ls -lh "$TOOLS_BUILD_DIR/motor_tool"
 
 echo ""
-echo "stark_periph_node:"
-ls -lh "$STARK_BUILD_DIR/stark_periph_manager_node" 2>/dev/null || true
+echo "stark_periph_node (eco_build 输出在 build/bin/):"
+ls -lh "$STARK_BUILD_DIR/bin/stark_periph_manager_node" 2>/dev/null || true
 
 echo ""
-echo "测试工具:"
-ls -lh "$TEST_BUILD_DIR/algo_sim" "$TEST_BUILD_DIR/perf_test" 2>/dev/null || true
-
-echo ""
-echo "调试/算法工具:"
-ls -lh "$TEST_BUILD_DIR/stark_tool" "$TEST_BUILD_DIR/demo_algo" 2>/dev/null || true
+echo "demo_algo:"
+ls -lh "$STARK_BUILD_DIR/bin/demo_algo" 2>/dev/null || true
 
 echo ""
 echo "架构信息:"
