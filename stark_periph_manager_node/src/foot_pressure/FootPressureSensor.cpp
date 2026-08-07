@@ -96,7 +96,7 @@ bool FootPressureSensor::Init(const char* uart_dev, int baud_rate, int timeout_m
 
     m_timeout_ms = timeout_ms;
 
-    /* 打开串口 */
+    /* 打开串口 (O_NONBLOCK 防止 DCD 未就绪时 open 阻塞) */
     m_fd = open(uart_dev, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (m_fd < 0) {
         ECO_ERROR_NEW("[FootPressure] open({}) failed: {}", uart_dev, strerror(errno));
@@ -107,6 +107,12 @@ bool FootPressureSensor::Init(const char* uart_dev, int baud_rate, int timeout_m
         close(m_fd);
         m_fd = -1;
         return false;
+    }
+
+    /* 配置完成后恢复阻塞模式, 让 read() 按 VTIME 超时等待 */
+    int flags = fcntl(m_fd, F_GETFL, 0);
+    if (flags >= 0) {
+        fcntl(m_fd, F_SETFL, flags & ~O_NONBLOCK);
     }
 
     ECO_INFO_NEW("[FootPressure] uart={} baud={} timeout={}ms",
