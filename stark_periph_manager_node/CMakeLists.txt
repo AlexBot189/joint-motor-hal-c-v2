@@ -48,6 +48,12 @@ include_directories(
 	${SRC_ROOT}/foot_pressure
 	${SRC_ROOT}/utils
 	${SRC_ROOT}/button
+	# motor_hal / imu_hal 头文件 (主目标也需要)
+	${MH_DIR}
+	${MH_DIR}/inc
+	${IH_DIR}
+	${IH_DIR}/inc
+	${IH_DIR}/hal/gpiod/include
 	# 第三方头文件
 	${THIRD_DIR}
 	${THIRD_DIR}/usr/include
