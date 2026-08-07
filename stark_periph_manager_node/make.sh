@@ -13,4 +13,4 @@ export ECO_WORKSPACE_DIR=~/workspace/project/k850/embuild
 export DETAILED_BUILDING_MESSAGE=true
 export ECO_PKG_PROJECT_NAME=${ECO_PROJECT_NAME}
 
-/home/exbot/build-dep/rk3576/build/sub_make.sh $@
+/home/exbot/build-dep/rv1126b/build/sub_make.sh $@

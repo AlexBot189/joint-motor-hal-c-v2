@@ -21,7 +21,7 @@ else()
 endif()
 
 include(eco_config.cmake)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} /home/exbot/build-dep/rk3576/build/config)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} /home/exbot/build-dep/rv1126b/build/config)
 include(eco_config_global)
 
 set(COMMON_INCLUDE_PATH "")

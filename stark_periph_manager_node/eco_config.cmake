@@ -63,7 +63,30 @@ set(IH_DIR "${LOCAL_SRC_PATH}/imu_hal")
 set(LOG_DIR "${LOCAL_SRC_PATH}/log_helper")
 
 # 平台配置
-if(${BUILD_PLATFORM} STREQUAL "rk3576")
+if(${BUILD_PLATFORM} STREQUAL "rv1126b")
+	set(CUSTOM_LIBRARY_PATH
+		"${LOG_DIR}/build"
+		";${IH_DIR}/hal/gpiod/lib"
+	)
+	set(CUSTOM_INLCUDE_PATH
+		"${ECO_WORKSPACE_DIR}/eros/release/include/"
+		";${LOCAL_INCLUDE_PATH}"
+		";${MH_DIR}"
+		";${MH_DIR}/inc"
+		";${IH_DIR}"
+		";${IH_DIR}/inc"
+		";${IH_DIR}/driver"
+		";${IH_DIR}/driver/icm45608"
+		";${IH_DIR}/driver/icm45608/imu"
+		";${IH_DIR}/driver/Ict1531x"
+		";${IH_DIR}/hal"
+		";${IH_DIR}/hal/gpiod/include"
+		";${IH_DIR}/tools"
+		";${IH_DIR}/tools/Invn/EmbUtils"
+		";${LOCAL_SRC_PATH}/3rd_party"
+		";${LOCAL_SRC_PATH}/3rd_party/usr/include"
+	)
+elseif(${BUILD_PLATFORM} STREQUAL "rk3576")
 	set(CUSTOM_LIBRARY_PATH
 		"${LOG_DIR}/build"
 		";${IH_DIR}/hal/gpiod/lib"
