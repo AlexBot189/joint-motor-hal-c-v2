@@ -100,22 +100,6 @@ endif()
 # ════════════════════════════════════════════════════════════
 # 目标 2: libmotor_hal.so — 电机 CAN/CANopen 驱动库
 
-# add_custom_build 目标需要独立的 include 路径 (eco_build 内部可能重置)
-include_directories(
-	${MH_DIR}
-	${MH_DIR}/inc
-	${IH_DIR}
-	${IH_DIR}/inc
-	${IH_DIR}/driver
-	${IH_DIR}/driver/icm45608
-	${IH_DIR}/driver/icm45608/imu
-	${IH_DIR}/driver/Ict1531x
-	${IH_DIR}/hal
-	${IH_DIR}/hal/gpiod/include
-	${IH_DIR}/tools
-	${IH_DIR}/tools/Invn/EmbUtils
-)
-
 add_custom_build(
 	NAME motor_hal
 	TYPE shared
@@ -134,6 +118,7 @@ add_custom_build(
 		";${MH_DIR}/motor_calib.c"
 	DEPS "pthread;m"
 )
+target_include_directories(motor_hal PRIVATE ${MH_DIR} ${MH_DIR}/inc)
 
 # ════════════════════════════════════════════════════════════
 # 目标 3: libimu_hal.so — IMU 传感器驱动库
@@ -158,6 +143,18 @@ add_custom_build(
 		";${IH_DIR}/hal/emd_hal.c"
 		";${IH_DIR}/tools/Invn/EmbUtils/Message.c"
 	DEPS "gpiod;pthread;m"
+)
+target_include_directories(imu_hal PRIVATE
+	${IH_DIR}
+	${IH_DIR}/inc
+	${IH_DIR}/driver
+	${IH_DIR}/driver/icm45608
+	${IH_DIR}/driver/icm45608/imu
+	${IH_DIR}/driver/Ict1531x
+	${IH_DIR}/hal
+	${IH_DIR}/hal/gpiod/include
+	${IH_DIR}/tools
+	${IH_DIR}/tools/Invn/EmbUtils
 )
 
 # ════════════════════════════════════════════════════════════
