@@ -358,7 +358,7 @@ void FootPressureSensor::_ReaderThread()
 
                 if (now_sec - m_fps_last_sec >= 1) {
                     if (m_fps_count > 0) {
-                        ECO_INFO_NEW("[FootPressure] FPS={} L:%4u %4u %4u  R:%4u %4u %4u",
+                        ECO_INFO_NEW("[FootPressure] FPS={} L:{} {} {}  R:{} {} {}",
                                      m_fps_count,
                                      m_fps_last_frame.left.adc[0],
                                      m_fps_last_frame.left.adc[1],
