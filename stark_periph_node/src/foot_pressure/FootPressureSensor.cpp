@@ -246,13 +246,11 @@ bool FootPressureSensor::_ParseFrame(const uint8_t* buf, size_t len,
         }
     }
 
-    /* 提取 6 个 uint16 AD 值 (大端 → 主机序) */
+    /* 提取 6 个 uint16 AD 值 (大端 → 主机序, 全 16 位不做截断) */
     const uint8_t* data = buf + 6;
     uint16_t adc[FOOT_PRESSURE_PADS];
     for (int i = 0; i < FOOT_PRESSURE_PADS; i++) {
         adc[i] = ((uint16_t)data[i * 2] << 8) | (uint16_t)data[i * 2 + 1];
-        /* AD 越界截断 */
-        if (adc[i] > 4095) adc[i] = 0;
     }
 
     /* 填充输出: 左前掌/左足弓/左后跟 | 右前掌/右足弓/右后跟 */
