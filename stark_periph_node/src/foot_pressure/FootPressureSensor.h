@@ -2,7 +2,7 @@
  * FootPressureSensor.h -- 足底压力传感器封装
  * Copyright (c) 2026 zhiqiang.yang
  *
- * MCU 通过 UART /dev/ttyS7 以 1000Hz 主动上报 19 字节固定帧。
+ * MCU 通过 UART /dev/ttyS7 以 1000Hz 主动上报 20 字节固定帧 (含 1 字节累加和校验)。
  * 内部串口线程阻塞读取 + 帧解析, 对外 Read() 非阻塞返回缓存。
  *
  * 故障不影响电机状态机: Init 失败时 IsReady()=false, Read() 返回全零。
@@ -85,9 +85,9 @@ private:
     void _ReaderThread();
 
     /*
-     * 帧解析: 移植 BatteryFrame::Unpack 模式, 无校验和
+     * 帧解析: 移植 BatteryFrame::Unpack 模式, 含累加和校验
      *
-     * 搜索 0xF2 帧头 → 帧尾 0xF1 → 帧长 19 → SRC=0x01
+     * 搜索 0xF2 帧头 → 校验和 → 帧尾 0xF1 → 帧长 20 → SRC=0x01
      * 提取 6 个 uint16 大端数据并记录 timestamp_us
      *
      * @param buf      原始缓冲区

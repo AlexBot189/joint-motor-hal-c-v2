@@ -3,7 +3,7 @@
  * Copyright (c) 2026 zhiqiang.yang
  *
  * 串口线程: 阻塞 read → 环形缓冲 → 逐帧解析 → mutex 缓存
- * 帧解析: 移植 BatteryFrame::Unpack 模式, 去掉校验和
+ * 帧解析: 移植 BatteryFrame::Unpack 模式
  */
 #include "foot_pressure/FootPressureSensor.h"
 #include "foot_pressure/FootPressureProtocol.h"
@@ -177,7 +177,7 @@ void FootPressureSensor::GetStats(uint32_t* frames, uint32_t* errors) const
     if (errors) *errors = m_error_count;
 }
 
-/* ---------- 帧解析 (移植 BatteryFrame::Unpack, 无校验和) ---------- */
+/* ---------- 帧解析 (移植 BatteryFrame::Unpack 模式, 累加和校验) ---------- */
 
 bool FootPressureSensor::_ParseFrame(const uint8_t* buf, size_t len,
                                      foot_pressure_data_t& out, size_t& consumed)
@@ -218,7 +218,7 @@ bool FootPressureSensor::_ParseFrame(const uint8_t* buf, size_t len,
         return false;
     }
 
-    /* 校验帧尾 */
+    /* 校验帧尾 (Byte 19) */
     if (buf[FOOT_PRESSURE_FRAME_LEN - 1] != FOOT_PRESSURE_FRAME_TAIL) {
         /* 帧尾不匹配, 从字节 1 重新搜索 */
         consumed = 1;
@@ -229,6 +229,21 @@ bool FootPressureSensor::_ParseFrame(const uint8_t* buf, size_t len,
     if (buf[1] != FOOT_PRESSURE_FRAME_SRC) {
         consumed = FOOT_PRESSURE_FRAME_LEN;
         return false;
+    }
+
+    /* 校验累加和: Byte1~Byte17 (SRC 到最后一个数据字节) 累加取低 8 位 */
+    {
+        uint8_t calc_cs = 0;
+        for (int i = 1; i < FOOT_PRESSURE_FRAME_CS_OFFSET; i++) {
+            calc_cs += buf[i];
+        }
+
+        uint8_t rx_cs = buf[FOOT_PRESSURE_FRAME_CS_OFFSET];
+        if (rx_cs != calc_cs) {
+            /* 校验和不匹配, 帧头误判, 从字节 1 重新搜索 */
+            consumed = 1;
+            return false;
+        }
     }
 
     /* 提取 6 个 uint16 AD 值 (大端 → 主机序) */
@@ -344,14 +359,18 @@ void FootPressureSensor::_ReaderThread()
                 if (m_fps_last_sec == 0) m_fps_last_sec = now_sec;
 
                 if (now_sec - m_fps_last_sec >= 1) {
-                    ECO_INFO_NEW("[FootPressure] FPS={} L:%4u %4u %4u  R:%4u %4u %4u",
-                                 m_fps_count,
-                                 m_fps_last_frame.left.adc[0],
-                                 m_fps_last_frame.left.adc[1],
-                                 m_fps_last_frame.left.adc[2],
-                                 m_fps_last_frame.right.adc[0],
-                                 m_fps_last_frame.right.adc[1],
-                                 m_fps_last_frame.right.adc[2]);
+                    if (m_fps_count > 0) {
+                        ECO_INFO_NEW("[FootPressure] FPS={} L:%4u %4u %4u  R:%4u %4u %4u",
+                                     m_fps_count,
+                                     m_fps_last_frame.left.adc[0],
+                                     m_fps_last_frame.left.adc[1],
+                                     m_fps_last_frame.left.adc[2],
+                                     m_fps_last_frame.right.adc[0],
+                                     m_fps_last_frame.right.adc[1],
+                                     m_fps_last_frame.right.adc[2]);
+                    } else {
+                        ECO_DEBUG_NEW("[FootPressure] no frames in last 1s");
+                    }
                     m_fps_count = 0;
                     m_fps_last_sec = now_sec;
                 }
