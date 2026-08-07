@@ -114,50 +114,58 @@ endif()
 # ════════════════════════════════════════════════════════════
 # 目标 2: libmotor_hal.so — 电机 CAN/CANopen 驱动库
 
-add_custom_build(shared motor_hal
-	"${MH_DIR}/can_driver.c"
-	";${MH_DIR}/canopen_frames.c"
-	";${MH_DIR}/sdo_client.c"
-	";${MH_DIR}/nmt_master.c"
-	";${MH_DIR}/heartbeat.c"
-	";${MH_DIR}/pdo_handler.c"
-	";${MH_DIR}/pdo_mapper.c"
-	";${MH_DIR}/feedback_parser.c"
-	";${MH_DIR}/motor_hal_startup.c"
-	";${MH_DIR}/utils.c"
-	";${MH_DIR}/motor_hal.c"
-	";${MH_DIR}/motor_calib.c"
-	"pthread;m"
+add_custom_build(
+	NAME motor_hal
+	TYPE shared
+	SRCS
+		"${MH_DIR}/can_driver.c"
+		";${MH_DIR}/canopen_frames.c"
+		";${MH_DIR}/sdo_client.c"
+		";${MH_DIR}/nmt_master.c"
+		";${MH_DIR}/heartbeat.c"
+		";${MH_DIR}/pdo_handler.c"
+		";${MH_DIR}/pdo_mapper.c"
+		";${MH_DIR}/feedback_parser.c"
+		";${MH_DIR}/motor_hal_startup.c"
+		";${MH_DIR}/utils.c"
+		";${MH_DIR}/motor_hal.c"
+		";${MH_DIR}/motor_calib.c"
+	DEPS "pthread;m"
 )
 
 # ════════════════════════════════════════════════════════════
 # 目标 3: libimu_hal.so — IMU 传感器驱动库
 
-add_custom_build(shared imu_hal
-	"${IH_DIR}/emd_gaf.c"
-	";${IH_DIR}/invn_mag_ict1531x.c"
-	";${IH_DIR}/driver/icm45608/imu/inv_imu_driver.c"
-	";${IH_DIR}/driver/icm45608/imu/inv_imu_driver_advanced.c"
-	";${IH_DIR}/driver/icm45608/imu/inv_imu_edmp.c"
-	";${IH_DIR}/driver/icm45608/imu/inv_imu_edmp_wearable.c"
-	";${IH_DIR}/driver/icm45608/imu/inv_imu_edmp_mrm.c"
-	";${IH_DIR}/driver/icm45608/imu/inv_imu_transport.c"
-	";${IH_DIR}/driver/icm45608/imu/inv_imu_i2cm.c"
-	";${IH_DIR}/driver/icm45608/imu/inv_imu_selftest.c"
-	";${IH_DIR}/driver/icm45608/imu/sif_classifier_ir.c"
-	";${IH_DIR}/driver/icm45608/imu/sif_feature_extract_ir.c"
-	";${IH_DIR}/driver/Ict1531x/Ict1531x.c"
-	";${IH_DIR}/hal/emd_hal.c"
-	";${IH_DIR}/tools/Invn/EmbUtils/Message.c"
-	"gpiod;pthread;m"
+add_custom_build(
+	NAME imu_hal
+	TYPE shared
+	SRCS
+		"${IH_DIR}/emd_gaf.c"
+		";${IH_DIR}/invn_mag_ict1531x.c"
+		";${IH_DIR}/driver/icm45608/imu/inv_imu_driver.c"
+		";${IH_DIR}/driver/icm45608/imu/inv_imu_driver_advanced.c"
+		";${IH_DIR}/driver/icm45608/imu/inv_imu_edmp.c"
+		";${IH_DIR}/driver/icm45608/imu/inv_imu_edmp_wearable.c"
+		";${IH_DIR}/driver/icm45608/imu/inv_imu_edmp_mrm.c"
+		";${IH_DIR}/driver/icm45608/imu/inv_imu_transport.c"
+		";${IH_DIR}/driver/icm45608/imu/inv_imu_i2cm.c"
+		";${IH_DIR}/driver/icm45608/imu/inv_imu_selftest.c"
+		";${IH_DIR}/driver/icm45608/imu/sif_classifier_ir.c"
+		";${IH_DIR}/driver/icm45608/imu/sif_feature_extract_ir.c"
+		";${IH_DIR}/driver/Ict1531x/Ict1531x.c"
+		";${IH_DIR}/hal/emd_hal.c"
+		";${IH_DIR}/tools/Invn/EmbUtils/Message.c"
+	DEPS "gpiod;pthread;m"
 )
 
 # ════════════════════════════════════════════════════════════
 # 目标 4: demo_algo — 调试/算法测试工具
 
-add_custom_build(bin demo_algo
-	"${SRC_ROOT}/test/demo_algo.c"
-	"rt;pthread;m"
+add_custom_build(
+	NAME demo_algo
+	TYPE bin
+	SRCS "${SRC_ROOT}/test/demo_algo.c"
+	DEPS "rt;pthread;m"
 )
 
 include(eco_install)
