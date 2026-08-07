@@ -1,13 +1,9 @@
 ##########################
 #
 #  	CMakeLists.txt
+#	version: 0.1
 #  	description: stark_periph_manager_node 编译入口
-#
-#  	编译产物:
-#  	  1. stark_periph_manager_node  (主二进制)
-#  	  2. libmotor_hal.so            (电机 CAN/CANopen 驱动)
-#  	  3. libimu_hal.so              (IMU 传感器驱动)
-#  	  4. demo_algo                  (算法/调试测试工具)
+#  	参考: stark_power_manager_node/CMakeLists.txt
 #
 ##########################
 
@@ -28,68 +24,34 @@ include(eco_config.cmake)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} /home/exbot/build-dep/rk3576/build/config)
 include(eco_config_global)
 
+set(COMMON_INCLUDE_PATH "")
+
 message("源码根目录: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-set(SRC_ROOT  "${CMAKE_CURRENT_SOURCE_DIR}/src")
-set(MH_DIR    "${SRC_ROOT}/motor_hal")
-set(IH_DIR    "${SRC_ROOT}/imu_hal")
-set(LOG_DIR   "${SRC_ROOT}/log_helper")
-set(THIRD_DIR "${SRC_ROOT}/3rd_party")
-
-# ---- 头文件路径 (主目标) ----
+# 头文件路径 (仅框架变量, 自定义全在 eco_config.cmake 的 CUSTOM_INLCUDE_PATH 中)
 include_directories(
-	# stark_periph 业务层
-	${SRC_ROOT}
-	${SRC_ROOT}/interface
-	${SRC_ROOT}/main_loop
-	${SRC_ROOT}/motor
-	${SRC_ROOT}/shm
-	${SRC_ROOT}/imu
-	${SRC_ROOT}/foot_pressure
-	${SRC_ROOT}/utils
-	${SRC_ROOT}/button
-	# motor_hal / imu_hal 头文件 (主目标也需要)
-	${MH_DIR}
-	${MH_DIR}/inc
-	${IH_DIR}
-	${IH_DIR}/inc
-	${IH_DIR}/hal/gpiod/include
-	# 第三方头文件
-	${THIRD_DIR}
-	${THIRD_DIR}/usr/include
-	# eco_build 框架路径
 	${CUSTOM_INLCUDE_PATH}
 	${EROSMSG_INCLUDE_PATH}
 	${PACKAGE_INCLUDE_PATH}
 	${COMMON_INCLUDE_PATH}
 )
 
-# ---- 库搜索路径 ----
+# 库搜索路径
 link_directories(
-	${LOG_DIR}/build
-	${IH_DIR}/hal/gpiod/lib
 	${CUSTOM_LIBRARY_PATH}
 	${PACKAGE_LIBRARY_PATH}
 	${COMMON_LIBRARY_PATH}
 )
 
 # ════════════════════════════════════════════════════════════
-# 目标 1: stark_periph_manager_node (主二进制)
-#   eco_build 自动扫描 src/ 下所有 .cpp/.c
-#   忽略目录见 eco_config.cmake
+# 主目标: stark_periph_manager_node (eco_build 自动扫描 src/)
 
 include(eco_build)
 
-target_link_libraries(${PROJECT_NAME}
-	motor_hal
-	imu_hal
-	log_helper
-	gpiod
-	pthread
-	rt
-)
+# 主目标额外系统库
+target_link_libraries(${PROJECT_NAME} gpiod)
 
-# ROS 适配器 (条件编译)
+# ROS (条件编译)
 if(ENABLE_ROS)
 	find_package(roscpp REQUIRED)
 	find_package(std_msgs REQUIRED)
@@ -98,13 +60,13 @@ if(ENABLE_ROS)
 	add_definitions(-DENABLE_ROS)
 endif()
 
-# Web 调试面板 (crow 头文件已在 include 路径)
+# Web 调试面板
 if(ENABLE_WEBSERVER)
 	add_definitions(-DENABLE_WEBSERVER)
 endif()
 
 # ════════════════════════════════════════════════════════════
-# 目标 2: libmotor_hal.so — 电机 CAN/CANopen 驱动库
+# libmotor_hal.so — 电机 CAN/CANopen 驱动
 
 add_custom_build(
 	NAME motor_hal
@@ -124,10 +86,9 @@ add_custom_build(
 		";${MH_DIR}/motor_calib.c"
 	DEPS "pthread;m"
 )
-target_include_directories(motor_hal PRIVATE ${MH_DIR} ${MH_DIR}/inc)
 
 # ════════════════════════════════════════════════════════════
-# 目标 3: libimu_hal.so — IMU 传感器驱动库
+# libimu_hal.so — IMU 传感器驱动
 
 add_custom_build(
 	NAME imu_hal
@@ -150,27 +111,18 @@ add_custom_build(
 		";${IH_DIR}/tools/Invn/EmbUtils/Message.c"
 	DEPS "gpiod;pthread;m"
 )
-target_include_directories(imu_hal PRIVATE
-	${IH_DIR}
-	${IH_DIR}/inc
-	${IH_DIR}/driver
-	${IH_DIR}/driver/icm45608
-	${IH_DIR}/driver/icm45608/imu
-	${IH_DIR}/driver/Ict1531x
-	${IH_DIR}/hal
-	${IH_DIR}/hal/gpiod/include
-	${IH_DIR}/tools
-	${IH_DIR}/tools/Invn/EmbUtils
-)
 
 # ════════════════════════════════════════════════════════════
-# 目标 4: demo_algo — 调试/算法测试工具
+# demo_algo — 调试/算法测试
 
 add_custom_build(
 	NAME demo_algo
 	TYPE bin
-	SRCS "${SRC_ROOT}/test/demo_algo.c"
+	SRCS "${LOCAL_SRC_PATH}/test/demo_algo.c"
 	DEPS "rt;pthread;m"
 )
+
+# 主目标链接 hal 库 (需要在 add_custom_build 之后)
+target_link_libraries(${PROJECT_NAME} motor_hal imu_hal)
 
 include(eco_install)

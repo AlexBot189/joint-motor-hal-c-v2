@@ -1,32 +1,29 @@
 ##########################
 #
 #  	eco_config.cmake
-#  	description: stark_periph_manager_node 统一编译配置
-#
-#  	编译目标:
-#  	  - stark_periph_manager_node  (bin, 主程序, 自动扫描 src/)
-#  	  - libmotor_hal.so            (shared, add_custom_build)
-#  	  - libimu_hal.so              (shared, add_custom_build)
-#  	  - demo_algo                  (bin, add_custom_build)
+#  	description: stark_periph_manager_node 编译配置
+#  	参考: stark_power_manager_node/eco_config.cmake
 #
 ##########################
+
+set(EROSMSG_INCLUDE_PATH ${ECO_WORKSPACE_DIR}/eros/release/include)
 
 set(PROJECT_TYPE_NAME "rk3576")
 
 add_definitions(-DMODULE_NAME="periph_node")
 
+set(NEED_ENCRYPT FALSE)
 set(NO_STRICT TRUE)
-set(NEED_SYMBOLS TRUE)
 set(MEMORY_CHECK_TYPE "no")
+set(NEED_SYMBOLS TRUE)
 
-# 主目标类型
+# 编译目标: 可执行文件
 set(COMPILE_TARGET_TYPE "bin")
 
-# 依赖 (motor_hal/immu_hal 由 add_custom_build 构建, 此处留空)
+# 依赖库
 set(DEPENDENCY_HARDWARE_LIST "")
-set(DEPENDENCY_THIRD_PARTY_LIST "")
-set(DEPENDENCY_SYSTEM_LIST "")
-
+set(DEPENDENCY_THIRD_PARTY_LIST "log_helper")
+set(DEPENDENCY_SYSTEM_LIST "pthread;rt")
 if(ENABLE_ROS)
 	set(DEPENDENCY_ROS_LIST "roscpp;std_msgs")
 else()
@@ -35,8 +32,7 @@ endif()
 
 set(PUBLIC_HEADER_FOLDER "")
 
-# 主目标忽略目录 (不参与 eco_build 自动扫描)
-# motor_hal/immu_hal 由 add_custom_build 独立编译
+# 主目标忽略目录 (由 add_custom_build 独立编译)
 set(IGNORE_SOURCES_FOLDER
 	"src/test"
 	"src/3rd_party"
@@ -57,16 +53,61 @@ set(IGNORE_SOURCES_FILES "")
 
 set(ECO_CMAKE_LOG_LEVEL 1)
 
+# 源码路径
 set(LOCAL_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(LOCAL_INCLUDE_PATH "${LOCAL_SRC_PATH}")
+
+# hal 子目录 (用于 add_custom_build 的 SRCS)
+set(MH_DIR "${LOCAL_SRC_PATH}/motor_hal")
+set(IH_DIR "${LOCAL_SRC_PATH}/imu_hal")
+set(LOG_DIR "${LOCAL_SRC_PATH}/log_helper")
 
 # 平台配置
 if(${BUILD_PLATFORM} STREQUAL "rk3576")
-	set(CUSTOM_LIBRARY_PATH "")
-	set(CUSTOM_INLCUDE_PATH "")
-	set(EROSMSG_INCLUDE_PATH "${ECO_WORKSPACE_DIR}/eros/release/include")
+	set(CUSTOM_LIBRARY_PATH
+		"${LOG_DIR}/build"
+		";${IH_DIR}/hal/gpiod/lib"
+	)
+	set(CUSTOM_INLCUDE_PATH
+		"${ECO_WORKSPACE_DIR}/eros/release/include/"
+		";${LOCAL_INCLUDE_PATH}"
+		";${MH_DIR}"
+		";${MH_DIR}/inc"
+		";${IH_DIR}"
+		";${IH_DIR}/inc"
+		";${IH_DIR}/driver"
+		";${IH_DIR}/driver/icm45608"
+		";${IH_DIR}/driver/icm45608/imu"
+		";${IH_DIR}/driver/Ict1531x"
+		";${IH_DIR}/hal"
+		";${IH_DIR}/hal/gpiod/include"
+		";${IH_DIR}/tools"
+		";${IH_DIR}/tools/Invn/EmbUtils"
+		";${LOCAL_SRC_PATH}/3rd_party"
+		";${LOCAL_SRC_PATH}/3rd_party/usr/include"
+	)
 elseif(${BUILD_PLATFORM} STREQUAL "x86")
-	set(CUSTOM_LIBRARY_PATH "")
-	set(CUSTOM_INLCUDE_PATH "/opt/ros/melodic/include")
+	set(CUSTOM_LIBRARY_PATH
+		"${LOG_DIR}/build"
+	)
+	set(CUSTOM_INLCUDE_PATH
+		"/opt/ros/melodic/include"
+		";${LOCAL_INCLUDE_PATH}"
+		";${MH_DIR}"
+		";${MH_DIR}/inc"
+		";${IH_DIR}"
+		";${IH_DIR}/inc"
+		";${IH_DIR}/driver"
+		";${IH_DIR}/driver/icm45608"
+		";${IH_DIR}/driver/icm45608/imu"
+		";${IH_DIR}/driver/Ict1531x"
+		";${IH_DIR}/hal"
+		";${IH_DIR}/hal/gpiod/include"
+		";${IH_DIR}/tools"
+		";${IH_DIR}/tools/Invn/EmbUtils"
+		";${LOCAL_SRC_PATH}/3rd_party"
+		";${LOCAL_SRC_PATH}/3rd_party/usr/include"
+	)
 endif()
 
 if(${BUILD_TYPE} STREQUAL "debug")
