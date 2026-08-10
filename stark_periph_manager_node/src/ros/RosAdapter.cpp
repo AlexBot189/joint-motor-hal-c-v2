@@ -116,11 +116,11 @@ void RosAdapter::PubFeedback(const feedback_frame_t& fb)
 
     off += snprintf(buf + off, sizeof(buf) - off,
         "],\"imu\":{\"roll\":%.2f,\"pitch\":%.2f,\"yaw\":%.2f},"
-        "\"latency\":{\"fb_avg\":%u,\"fb_max\":%u,\"ctrl_avg\":%u},"
+        "\"latency\":{\"fb_proc_avg\":%u,\"fb_proc_max\":%u,\"ctrl_cmd_avg\":%u},"
         "\"severity\":%d,\"fault\":%d}",
         (double)fb.imu.roll, (double)fb.imu.pitch, (double)fb.imu.yaw,
         (double)fb.baro.pressure_hpa, (double)fb.baro.temperature_c,
-        m_shm->fb_total_avg_us, m_shm->fb_total_max_us, m_shm->ctrl_total_avg_us,
+        m_shm->fb_proc_avg_us, m_shm->fb_proc_max_us, m_shm->ctrl_cmd_avg_us,
         (int)m_shm->motor_severity, (int)m_shm->fault_reason);
 
     std_msgs::String msg;

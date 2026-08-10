@@ -361,13 +361,16 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         "\"cmd_tq2_valid\":%d,"
         "\"btn_state\":%u,"
         "\"btn_seq\":%u,"
-        "\"fb_max\":%u,"
+        "\"can_delay_max\":%u,"
         "\"overrun\":%u,"
-        "\"fb_min\":%u,"
-        "\"fb_avg\":%u,"
-        "\"ctrl_max\":%u,"
-        "\"ctrl_avg\":%u,"
-        "\"ctrl_min\":%u,"
+        "\"can_delay_min\":%u,"
+        "\"can_delay_avg\":%u,"
+        "\"fb_proc_max\":%u,"
+        "\"fb_proc_avg\":%u,"
+        "\"fb_proc_min\":%u,"
+        "\"ctrl_cmd_max\":%u,"
+        "\"ctrl_cmd_avg\":%u,"
+        "\"ctrl_cmd_min\":%u,"
         "\"mbox_age_max\":%u,"
         "\"mbox_age_avg\":%u,"
         "\"mbox_age_min\":%u,"
@@ -435,13 +438,16 @@ static std::string serialize_to_json(stark_shm_t *shm, const WebServer::CmdTrack
         (int)track.tq_valid_m1, (int)track.tq_valid_m2,
         (unsigned)__atomic_load_n(&shm->btn_report_state, __ATOMIC_ACQUIRE),
         (unsigned)__atomic_load_n(&shm->btn_report_seq, __ATOMIC_ACQUIRE),
-        shm->fb_age_max_us,
+        shm->can_delay_max_us,
         shm->cycle_overrun_count,
-        shm->fb_age_min_us,
-        shm->fb_age_avg_us,
-        shm->ctrl_total_max_us,
-        shm->ctrl_total_avg_us,
-        shm->ctrl_total_min_us,
+        shm->can_delay_min_us,
+        shm->can_delay_avg_us,
+        shm->fb_proc_max_us,
+        shm->fb_proc_avg_us,
+        shm->fb_proc_min_us,
+        shm->ctrl_cmd_max_us,
+        shm->ctrl_cmd_avg_us,
+        shm->ctrl_cmd_min_us,
         shm->mbox_age_max_us,
         shm->mbox_age_avg_us,
         shm->mbox_age_min_us,

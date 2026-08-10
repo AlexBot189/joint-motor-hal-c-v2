@@ -429,18 +429,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <!-- latency tables -->
   <div class="perf-latency-row">
     <div class="perf-lat-table">
-      <div class="plt-header">反馈延迟</div>
-      <div class="plt-row"><span class="plt-k">Min</span><span class="plt-v" id="pm_fb_min">--</span><span class="plt-u">μs</span></div>
-      <div class="plt-row"><span class="plt-k">Avg</span><span class="plt-v" id="pm_fb_avg">--</span><span class="plt-u">μs</span></div>
-      <div class="plt-row"><span class="plt-k">Max</span><span class="plt-v" id="pm_fb_max">--</span><span class="plt-u">μs</span></div>
-      <div class="plt-row"><span class="plt-k">SHM</span><span class="plt-v" id="pm_shm_age">--</span><span class="plt-u">μs</span></div>
+      <div class="plt-header">CAN 数据到达延迟</div>
+      <div class="plt-row"><span class="plt-k">Min</span><span class="plt-v" id="pm_can_d_min">--</span><span class="plt-u">μs</span></div>
+      <div class="plt-row"><span class="plt-k">Avg</span><span class="plt-v" id="pm_can_d_avg">--</span><span class="plt-u">μs</span></div>
+      <div class="plt-row"><span class="plt-k">Max</span><span class="plt-v" id="pm_can_d_max">--</span><span class="plt-u">μs</span></div>
+      <div class="plt-header" style="margin-top:8px">反馈处理延迟 (RT线程内)</div>
+      <div class="plt-row"><span class="plt-k">Min</span><span class="plt-v" id="pm_fb_proc_min">--</span><span class="plt-u">μs</span></div>
+      <div class="plt-row"><span class="plt-k">Avg</span><span class="plt-v" id="pm_fb_proc_avg">--</span><span class="plt-u">μs</span></div>
+      <div class="plt-row"><span class="plt-k">Max</span><span class="plt-v" id="pm_fb_proc_max">--</span><span class="plt-u">μs</span></div>
     </div>
     <div class="perf-lat-table">
-      <div class="plt-header">控制延迟</div>
-      <div class="plt-row"><span class="plt-k">Min</span><span class="plt-v" id="pm_ctrl_min">--</span><span class="plt-u">μs</span></div>
-      <div class="plt-row"><span class="plt-k">Avg</span><span class="plt-v" id="pm_ctrl_avg">--</span><span class="plt-u">μs</span></div>
-      <div class="plt-row"><span class="plt-k">Max</span><span class="plt-v" id="pm_ctrl_max">--</span><span class="plt-u">μs</span></div>
-      <div class="plt-header" style="margin-top:8px">命令通道</div>
+      <div class="plt-header">控制指令下发延迟</div>
+      <div class="plt-row"><span class="plt-k">Min</span><span class="plt-v" id="pm_ctrl_cmd_min">--</span><span class="plt-u">μs</span></div>
+      <div class="plt-row"><span class="plt-k">Avg</span><span class="plt-v" id="pm_ctrl_cmd_avg">--</span><span class="plt-u">μs</span></div>
+      <div class="plt-row"><span class="plt-k">Max</span><span class="plt-v" id="pm_ctrl_cmd_max">--</span><span class="plt-u">μs</span></div>
+      <div class="plt-header" style="margin-top:8px">命令通道延迟</div>
       <div class="plt-row"><span class="plt-k">Min</span><span class="plt-v" id="pm_mbox_age_min">--</span><span class="plt-u">μs</span></div>
       <div class="plt-row"><span class="plt-k">Avg</span><span class="plt-v" id="pm_mbox_age_avg">--</span><span class="plt-u">μs</span></div>
       <div class="plt-row"><span class="plt-k">Max</span><span class="plt-v" id="pm_mbox_age_max">--</span><span class="plt-u">μs</span></div>
@@ -449,12 +452,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
   <!-- charts -->
   <div class="perf-chart-box">
-    <h4>反馈延迟趋势 (fb_max, 最近 60 帧)</h4>
-    <canvas id="perf_canvas_fb"></canvas>
+    <h4>CAN 数据到达延迟趋势 (最近 60 帧)</h4>
+    <canvas id="perf_canvas_can"></canvas>
   </div>
 
   <div class="perf-chart-box">
-    <h4>控制延迟趋势 (ctrl_max, 最近 60 帧)</h4>
+    <h4>控制指令下发延迟趋势 (最近 60 帧)</h4>
     <canvas id="perf_canvas_ctrl"></canvas>
   </div>
 
@@ -1348,7 +1351,7 @@ function clearPerfData(){
   if(oe) oe.textContent = '0';
   var or = document.getElementById('pm_overrun_rate');
   if(or) or.textContent = '0/min';
-  var ids = ['pm_fb_min','pm_fb_avg','pm_fb_max','pm_shm_age','pm_ctrl_min','pm_ctrl_avg','pm_ctrl_max','pm_mbox_age_min','pm_mbox_age_avg','pm_mbox_age_max'];
+  var ids = ['pm_can_d_min','pm_can_d_avg','pm_can_d_max','pm_fb_proc_min','pm_fb_proc_avg','pm_fb_proc_max','pm_ctrl_cmd_min','pm_ctrl_cmd_avg','pm_ctrl_cmd_max','pm_mbox_age_min','pm_mbox_age_avg','pm_mbox_age_max'];
   for(var i = 0; i < ids.length; i++){
     var el = document.getElementById(ids[i]);
     if(el) el.textContent = '--';
@@ -1376,12 +1379,12 @@ function updatePerfPanel(d){
   g_perfTotalFrames++;
 
   /* latency history (server-side authoritative values) */
-  if(d.fb_max !== undefined){
-    g_perfFbMax.push(d.fb_max);
+  if(d.can_delay_max !== undefined){
+    g_perfFbMax.push(d.can_delay_max);
     if(g_perfFbMax.length > 60) g_perfFbMax.shift();
   }
-  if(d.ctrl_max !== undefined){
-    g_perfCtrlMax.push(d.ctrl_max);
+  if(d.ctrl_cmd_max !== undefined){
+    g_perfCtrlMax.push(d.ctrl_cmd_max);
     if(g_perfCtrlMax.length > 60) g_perfCtrlMax.shift();
   }
 
@@ -1402,13 +1405,15 @@ function updatePerfPanel(d){
   if(ovRate) ovRate.textContent = g_perfOverrunRate.toFixed(1) + '/min';
 
   /* latency tables (direct from server JSON) */
-  setPV('pm_fb_min', d.fb_min);
-  setPV('pm_fb_avg', d.fb_avg);
-  setPV('pm_fb_max', d.fb_max);
-  setPV('pm_shm_age', d.shm_age);
-  setPV('pm_ctrl_min', d.ctrl_min);
-  setPV('pm_ctrl_avg', d.ctrl_avg);
-  setPV('pm_ctrl_max', d.ctrl_max);
+  setPV('pm_can_d_min', d.can_delay_min);
+  setPV('pm_can_d_avg', d.can_delay_avg);
+  setPV('pm_can_d_max', d.can_delay_max);
+  setPV('pm_fb_proc_min', d.fb_proc_min);
+  setPV('pm_fb_proc_avg', d.fb_proc_avg);
+  setPV('pm_fb_proc_max', d.fb_proc_max);
+  setPV('pm_ctrl_cmd_min', d.ctrl_cmd_min);
+  setPV('pm_ctrl_cmd_avg', d.ctrl_cmd_avg);
+  setPV('pm_ctrl_cmd_max', d.ctrl_cmd_max);
   setPV('pm_mbox_age_min', d.mbox_age_min);
   setPV('pm_mbox_age_avg', d.mbox_age_avg);
   setPV('pm_mbox_age_max', d.mbox_age_max);
@@ -1438,7 +1443,7 @@ function drawPerfCharts(){
     for(var i = 0; i < g_perfCtrlMax.length; i++) s += g_perfCtrlMax[i];
     ctrlAvg = Math.round(s / g_perfCtrlMax.length);
   }
-  drawPerfBarChart('perf_canvas_fb', g_perfFbMax, 'μs', '#0ea5e9', fbAvg);
+  drawPerfBarChart('perf_canvas_can', g_perfFbMax, 'μs', '#0ea5e9', fbAvg);
   drawPerfBarChart('perf_canvas_ctrl', g_perfCtrlMax, 'μs', '#8b5cf6', ctrlAvg);
 }
 

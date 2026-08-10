@@ -326,28 +326,29 @@ typedef struct {
     uint8_t   calib_requested;            /* 算法写: 1=请求复杂校准 (按键/命令触发)        */
     uint8_t   _pad_state[1];              /* 对齐                                         */
 
-    /* 耗时追踪 (μs) */
-    /* 反馈路径 */
-    uint16_t  fb_read_avg_us;
+    /* ── 实时耗时统计 (μs, 由 RT 线程每 1000 周期滚动统计) ── */
+    /* CAN 数据到达延迟: CAN 帧到达 SOC → RT 工作线程从 fb_cache 读到 */
+    uint16_t  can_delay_avg_us;          /* 平均: CAN 帧到达 -> RT 读到 fb_cache */
+    uint16_t  can_delay_max_us;
+    uint16_t  can_delay_min_us;
+    /* 反馈软件处理延迟: RT 线程处理反馈数据 → 写入 SHM 供算法消费 (T1→T4) */
+    uint16_t  fb_read_avg_us;            /* 子项: fb_cache 读取耗时 */
     uint16_t  fb_read_max_us;
-    uint16_t  fb_total_avg_us;       /* T1, T4 反馈总延迟 */
-    uint16_t  fb_total_max_us;
-    uint16_t  fb_total_min_us;
-    uint16_t  fb_age_max_us;        /* 反馈数据年龄 (CAN收帧→RT读) */
-    uint16_t  fb_age_avg_us;
-    uint16_t  fb_age_min_us;
-    /* 控制路径 */
-    uint16_t  ctrl_total_avg_us;     /* T5, T6 控制总延迟 */
-    uint16_t  ctrl_total_max_us;
-    uint16_t  ctrl_total_min_us;
-    /* 命令通道 */
-    uint16_t  mbox_age_max_us;       /* 算法写 mailbox → RT 读到 */
+    uint16_t  fb_proc_avg_us;            /* 合计: 读缓存+组装IMU/传感器+写SHM */
+    uint16_t  fb_proc_max_us;
+    uint16_t  fb_proc_min_us;
+    /* 控制指令下发延迟: RT 从 mailbox 读到控制命令 → PDO 帧发出 (T5→T6) */
+    uint16_t  ctrl_cmd_avg_us;
+    uint16_t  ctrl_cmd_max_us;
+    uint16_t  ctrl_cmd_min_us;
+    /* 命令通道延迟: 算法进程写 mailbox → RT 线程消费到命令 */
     uint16_t  mbox_age_avg_us;
+    uint16_t  mbox_age_max_us;
     uint16_t  mbox_age_min_us;
-    /* 统计 */
-    uint32_t  trace_cycle_count;     /* 已采样周期数 */
-    uint32_t  shm_write_avg_us;      /* SHM 写入耗时 */
-    uint16_t  cycle_overrun_count;   /* 周期超限次数 */
+    /* 周期统计 */
+    uint32_t  trace_cycle_count;         /* 已采样周期数 */
+    uint32_t  shm_write_avg_us;          /* SHM 写入耗时 */
+    uint16_t  cycle_overrun_count;       /* 周期超限次数 */
 
     /* 周期上报区 (motor_node 写, 算法/Web 读) */
     uint8_t   periodic_enabled;       /* 上报总开关: 0=关 1=开 */

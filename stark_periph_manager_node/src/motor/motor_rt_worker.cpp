@@ -897,46 +897,46 @@ void StarkRtWorker::PublishFeedback()
     /* T4: SHM 双 Buffer 切换完成 */
     m_tracer.mark_shm_write_done();
 
-    /* 填充 SHM 耗时统计 (供 perf_test 读取) */
+    /* 填充 SHM 耗时统计 (供 perf_test / Web 读取) */
     {
         latency_stats_t st = {};
         m_tracer.fill_shm_stats(st);
         m_shm->fb_read_avg_us    = (uint16_t)st.fb_read_avg;
         m_shm->fb_read_max_us    = (uint16_t)st.fb_read_max;
-        m_shm->fb_total_avg_us   = (uint16_t)st.fb_total_avg;
-        m_shm->fb_total_max_us   = (uint16_t)st.fb_total_max;
-        m_shm->fb_total_min_us   = (uint16_t)st.fb_total_min;
-        m_shm->ctrl_total_avg_us = (uint16_t)st.ctrl_total_avg;
-        m_shm->ctrl_total_min_us = (uint16_t)st.ctrl_total_min;
+        m_shm->fb_proc_avg_us    = (uint16_t)st.fb_total_avg;
+        m_shm->fb_proc_max_us    = (uint16_t)st.fb_total_max;
+        m_shm->fb_proc_min_us    = (uint16_t)st.fb_total_min;
+        m_shm->ctrl_cmd_avg_us   = (uint16_t)st.ctrl_total_avg;
+        m_shm->ctrl_cmd_min_us   = (uint16_t)st.ctrl_total_min;
         {
             static uint32_t s_ctrl_max = 0;
             if (st.ctrl_total_max > s_ctrl_max) s_ctrl_max = st.ctrl_total_max;
-            m_shm->ctrl_total_max_us = (uint16_t)(s_ctrl_max > 65535 ? 65535 : s_ctrl_max);
+            m_shm->ctrl_cmd_max_us = (uint16_t)(s_ctrl_max > 65535 ? 65535 : s_ctrl_max);
         }
 
 #if STARK_LATENCY_TRACE
-        /* 反馈数据年龄 (CAN 收帧 → RT worker 读到) */
+        /* CAN 数据到达延迟: CAN 帧时间戳 → RT worker 读到 fb_cache */
         {
-            uint32_t fb_age = 0;
+            uint32_t can_delay = 0;
             if (min_fb_ts != UINT64_MAX && read_rt_us > min_fb_ts)
-                fb_age = (uint32_t)(read_rt_us - min_fb_ts);
+                can_delay = (uint32_t)(read_rt_us - min_fb_ts);
 
             static uint32_t s_age_max = 0;
-            if (fb_age > s_age_max) s_age_max = fb_age;
-            m_shm->fb_age_max_us = (uint16_t)(s_age_max > 65535 ? 65535 : s_age_max);
+            if (can_delay > s_age_max) s_age_max = can_delay;
+            m_shm->can_delay_max_us = (uint16_t)(s_age_max > 65535 ? 65535 : s_age_max);
 
             static uint32_t s_age_sum = 0, s_age_min_win = UINT32_MAX;
             static uint16_t s_age_cnt = 0;
-            s_age_sum += fb_age;
+            s_age_sum += can_delay;
             s_age_cnt++;
-            if (fb_age < s_age_min_win) s_age_min_win = fb_age;
+            if (can_delay < s_age_min_win) s_age_min_win = can_delay;
             if (s_age_cnt >= 1000) {
                 s_age_sum = 0;
                 s_age_cnt = 0;
                 s_age_min_win = UINT32_MAX;
             }
-            m_shm->fb_age_avg_us = (uint16_t)(s_age_cnt > 0 ? s_age_sum / s_age_cnt : 0);
-            m_shm->fb_age_min_us = (uint16_t)(s_age_min_win != UINT32_MAX ? s_age_min_win : 0);
+            m_shm->can_delay_avg_us = (uint16_t)(s_age_cnt > 0 ? s_age_sum / s_age_cnt : 0);
+            m_shm->can_delay_min_us = (uint16_t)(s_age_min_win != UINT32_MAX ? s_age_min_win : 0);
         }
 #endif
         m_shm->trace_cycle_count = st.cycle_count;
