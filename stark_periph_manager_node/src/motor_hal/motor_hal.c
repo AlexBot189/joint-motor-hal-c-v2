@@ -185,6 +185,7 @@ struct motor_hal {
     bool         recv_running;
     bool         recv_rt_enable;
     int          recv_rt_priority;
+    int          recv_cpu;
 
     /* SYNC 定时器线程 */
     pthread_t    sync_thread;
@@ -1636,6 +1637,12 @@ static void* _recv_thread_fn(void *arg)
         struct sched_param sp;
         sp.sched_priority = hal->recv_rt_priority;
         pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+        if (hal->recv_cpu >= 0) {
+            cpu_set_t cpuset;
+            CPU_ZERO(&cpuset);
+            CPU_SET(hal->recv_cpu, &cpuset);
+            pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+        }
     }
 
     while (hal->recv_running) {
@@ -1668,11 +1675,12 @@ int motor_hal_recv_start(motor_hal_t *hal)
     return 0;
 }
 
-void motor_hal_recv_set_rt(motor_hal_t *hal, bool enable, int priority)
+void motor_hal_recv_set_rt(motor_hal_t *hal, bool enable, int priority, int cpu)
 {
     if (!hal) return;
     hal->recv_rt_enable   = enable;
     hal->recv_rt_priority = priority;
+    hal->recv_cpu         = cpu;
 }
 
 int motor_hal_recv_stop(motor_hal_t *hal)

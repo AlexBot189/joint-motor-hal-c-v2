@@ -73,8 +73,8 @@ bool CanDispatcher::InitDispatcher()
         ECO_INFO_NEW("[CanDispatcher] log_onoff ENABLED");
     }
 
-    /* 4. 设置接收线程实时参数 */
-    motor_hal_recv_set_rt(m_hal, m_rt_cfg.enable_rt, m_rt_cfg.recv_priority);
+    /* 4. 设置接收线程实时参数 (绑 Core 3, 与 RT worker 同核) */
+    motor_hal_recv_set_rt(m_hal, m_rt_cfg.enable_rt, m_rt_cfg.recv_priority, m_rt_cfg.enable_rt ? 3 : -1);
 
     /* 5. 启动接收线程 */
     ret = motor_hal_recv_start(m_hal);

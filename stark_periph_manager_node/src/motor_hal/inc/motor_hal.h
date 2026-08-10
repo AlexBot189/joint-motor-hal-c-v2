@@ -634,8 +634,9 @@ int motor_hal_recv_start(motor_hal_t *hal);
  * @param hal      HAL 实例
  * @param enable   是否启用实时调度
  * @param priority SCHED_FIFO 优先级 (1-99), enable=false 时忽略
+ * @param cpu      CPU 亲和性 (-1=不绑核, 0-3=绑指定核心)
  */
-void motor_hal_recv_set_rt(motor_hal_t *hal, bool enable, int priority);
+void motor_hal_recv_set_rt(motor_hal_t *hal, bool enable, int priority, int cpu);
 
 /**
  * @brief 停止接收线程
