@@ -46,10 +46,11 @@ public:
      * @param gpio_chip GPIO 芯片名，如 "gpiochip4"
      * @param gpio_line GPIO 中断线编号
      * @param op_mode   操作模式 0-9 (推荐 5: GAF 50Hz 融合)
+     * @param cpu       CPU 亲和性 (-1=不绑核)
      * @return true 成功，false 失败
      */
     bool Init(const char* i2c_dev, const char* gpio_chip,
-              unsigned int gpio_line, int op_mode);
+              unsigned int gpio_line, int op_mode, int cpu);
 
     /*
      * 反初始化

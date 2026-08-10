@@ -791,6 +791,11 @@ void motor_hal_sync(motor_hal_t *hal);
  *   motor_hal_sync_start(hal, 5000);  // 5ms = 200Hz
  *
  * @param period_us  SYNC 周期 (微秒), 推荐 1000~100000
+/** @brief 设置 SYNC 线程 CPU 亲和性 (必须在 sync_start 前调用)
+ * @param cpu  CPU 编号, -1=不绑核
+ */
+void motor_hal_sync_set_rt_cpu(motor_hal_t *hal, int cpu);
+
  * @return 0=成功; -EBUSY=已在运行; -ENODEV=CAN未初始化
  */
 int motor_hal_sync_start(motor_hal_t *hal, uint32_t period_us);

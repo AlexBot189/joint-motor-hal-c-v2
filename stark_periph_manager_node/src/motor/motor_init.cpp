@@ -73,8 +73,9 @@ bool CanDispatcher::InitDispatcher()
         ECO_INFO_NEW("[CanDispatcher] log_onoff ENABLED");
     }
 
-    /* 4. 设置接收线程实时参数 (绑 Core 3, 与 RT worker 同核) */
-    motor_hal_recv_set_rt(m_hal, m_rt_cfg.enable_rt, m_rt_cfg.recv_priority, m_rt_cfg.enable_rt ? 3 : -1);
+    /* 4. 设置接收线程实时参数 (CPU亲和性走 rt.cpu_affinity 配置) */
+    int rt_cpu = m_rt_cfg.enable_rt ? m_rt_cfg.cpu_affinity[0] : -1;
+    motor_hal_recv_set_rt(m_hal, m_rt_cfg.enable_rt, m_rt_cfg.recv_priority, rt_cpu);
 
     /* 5. 启动接收线程 */
     ret = motor_hal_recv_start(m_hal);
@@ -87,10 +88,10 @@ bool CanDispatcher::InitDispatcher()
     /* 6. 创建 StarkMotorCtrl 封装 */
     m_ctrl = std::make_unique<StarkMotorCtrl>(m_hal);
 
-    /* 7. 初始化 IMU HAL (配置已在 LoadMotorConfig 中从 config.json 读取) */
+    /* 7. 初始化 IMU HAL (CPU亲和性走 rt.cpu_affinity 配置) */
     m_imu_sensor = std::make_unique<ImuHALSensor>();
     if (!m_imu_sensor->Init(m_imu_i2c_dev.c_str(), m_imu_gpio_chip.c_str(),
-                            m_imu_gpio_line, m_imu_op_mode)) {
+                            m_imu_gpio_line, m_imu_op_mode, rt_cpu)) {
         ECO_WARN_NEW("[CanDispatcher] IMU HAL init failed, running without IMU");
     }
 
@@ -362,12 +363,6 @@ bool CanDispatcher::LoadMotorConfig()
                              kb, sizeof(stark_shm_t));
                 m_shm_size_bytes = sizeof(stark_shm_t);
             }
-        }
-
-        /* 解析 calib */
-        if (cfg.contains("calib")) {
-            auto& c = cfg["calib"];
-            m_calib_timeout_ms = c.value("timeout_ms", 10000);
         }
 
         /* 解析 sensor */

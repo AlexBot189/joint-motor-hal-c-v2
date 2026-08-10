@@ -135,6 +135,13 @@ void emd_gaf_set_raw_data_callback(emd_gaf_t *handle,
                                    emd_raw_data_cb_t cb, void *user_data);
 
 /**
+ * @brief 设置后台线程 CPU 亲和性 (必须在 start 前调用)
+ * @param handle  实例句柄
+ * @param cpu     CPU 编号, -1=不绑核 (默认)
+ */
+void emd_gaf_set_cpu(emd_gaf_t *handle, int cpu);
+
+/**
  * @brief 查询后台线程状态
  * @return 1 运行中，0 已停止
  */

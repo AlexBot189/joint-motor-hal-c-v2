@@ -50,6 +50,9 @@ struct StarkNodeContext {
     std::string  btn_report_chip;
     int          btn_report_line = -1;
 
+    /* RT 配置 (由 main.cpp 从 config.json rt.cpu_affinity 注入) */
+    int          rt_cpu = -1;               /* RT 线程 CPU 亲和性, -1=不绑核 */
+
     /* 校准后使能 */
     bool         calib_enable_after = false;  /* 校准完成后使能电机, 跟随 auto_enable */
 };

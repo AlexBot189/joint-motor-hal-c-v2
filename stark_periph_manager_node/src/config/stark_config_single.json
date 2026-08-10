@@ -35,11 +35,6 @@
     "report_divider": 5,
     "cpu_affinity": [3]
   },
-  "calib": {
-    "auto_calib": false,
-    "timeout_ms": 10000,
-    "threshold_deg": 1.0
-  },
   "sensor": {
     "period_div": 1,
     "bus_format": 3,
@@ -47,8 +42,7 @@
     "force_module": 1
   },
   "led": {
-    "motor_id": 0,
-    "init_off": true
+    "motor_id": 0
   },
   "buttons": {
     "calib":  { "gpio_chip": "gpiochip4", "line": 7 },

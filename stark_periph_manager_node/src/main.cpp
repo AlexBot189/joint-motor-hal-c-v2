@@ -136,6 +136,7 @@ int main(int argc, char** argv)
     g_node_ctx.btn_report_chip    = g_dispatcher->GetBtnReportChip();
     g_node_ctx.btn_report_line    = g_dispatcher->GetBtnReportLine();
     g_node_ctx.calib_enable_after = g_dispatcher->GetMotorAutoEnable();
+    g_node_ctx.rt_cpu = g_dispatcher->GetRtConfig().cpu_affinity[0];  /* RT CPU 亲和性 */
 
     ECO_INFO_NEW("[main] config: motor_count={} sensor_period={}ms bus_fmt={} auto_enable={} data_src={}",
                  motor_count, g_node_ctx.sensor_period_ms,

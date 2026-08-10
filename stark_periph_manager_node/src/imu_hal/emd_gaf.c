@@ -237,6 +237,9 @@ struct emd_gaf {
     /* 原始数据回调 (notify_raw_data 等价) */
     emd_raw_data_cb_t raw_data_cb;
     void              *raw_data_user;
+
+    /* RT 参数 */
+    int           rt_cpu;             /* CPU 亲和性, -1=不绑核 */
 };
 
 /* 内部函数声明 */
@@ -513,6 +516,12 @@ void emd_gaf_set_raw_data_callback(emd_gaf_t *handle,
     handle->raw_data_user = user_data;
 }
 
+void emd_gaf_set_cpu(emd_gaf_t *handle, int cpu)
+{
+    if (!handle) return;
+    handle->rt_cpu = cpu;
+}
+
 /*
  * 后台线程
  */
@@ -522,18 +531,20 @@ static void *_thread_main(void *arg)
     emd_gaf_t *g = (emd_gaf_t *)arg;
     int rc = 0;
 
-    /* 设置 RT 调度 (SCHED_FIFO 50) + 绑 Core 3, 低于 stark RT 线程的 90, 保证可抢占 */
+    /* 设置 RT 调度 (SCHED_FIFO 50) + CPU亲和性, 低于 stark RT 线程的 90, 保证可抢占 */
     {
         struct sched_param param;
         param.sched_priority = 50;
         if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &param) != 0) {
             fprintf(stderr, "[W] IMU HAL: SCHED_FIFO 50 failed (need root/CAP_SYS_NICE)\n");
         }
-        cpu_set_t cpuset;
-        CPU_ZERO(&cpuset);
-        CPU_SET(3, &cpuset);
-        if (pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset) != 0) {
-            fprintf(stderr, "[W] IMU HAL: CPU affinity failed\n");
+        if (g->rt_cpu >= 0) {
+            cpu_set_t cpuset;
+            CPU_ZERO(&cpuset);
+            CPU_SET(g->rt_cpu, &cpuset);
+            if (pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset) != 0) {
+                fprintf(stderr, "[W] IMU HAL: CPU affinity %d failed\n", g->rt_cpu);
+            }
         }
     }
 

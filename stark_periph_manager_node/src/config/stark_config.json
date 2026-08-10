@@ -40,11 +40,6 @@
     "report_divider": 1,
     "cpu_affinity": [3]
   },
-  "calib": {
-    "auto_calib": false,
-    "timeout_ms": 10000,
-    "threshold_deg": 1.0
-  },
   "imu": {
     "i2c_dev": "/dev/i2c-3",
     "gpio_chip": "gpiochip4",
@@ -63,8 +58,7 @@
     "force_module": 1
   },
   "led": {
-    "motor_id": 2,
-    "init_off": true
+    "motor_id": 2
   },
   "buttons": {
     "calib":  { "gpio_chip": "gpiochip0", "line": 5 },
