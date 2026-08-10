@@ -1,9 +1,7 @@
 ##########################
 #
-#  	CMakeLists.txt
 #	version: 0.1
-#  	description: stark_periph_manager_node 编译入口
-#  	参考: stark_power_manager_node/CMakeLists.txt
+#  	description: stark_periph_manager_node
 #
 ##########################
 
@@ -11,7 +9,7 @@ cmake_minimum_required(VERSION 2.8.12)
 project(stark_periph_manager_node)
 
 option(ENABLE_ROS       "启用 ROS 适配器"   OFF)
-option(ENABLE_WEBSERVER "启用 Web 调试面板" OFF)
+option(ENABLE_WEBSERVER "启用 Web 调试面板" ON)
 
 option(USE_CROSS_COMPILE "Use Cross-compile" ON)
 if(USE_CROSS_COMPILE)
@@ -48,10 +46,8 @@ link_directories(
 
 include(eco_build)
 
-# 主目标额外系统库
 target_link_libraries(${PROJECT_NAME} gpiod)
 
-# ROS (条件编译)
 if(ENABLE_ROS)
 	find_package(roscpp REQUIRED)
 	find_package(std_msgs REQUIRED)
@@ -60,7 +56,6 @@ if(ENABLE_ROS)
 	add_definitions(-DENABLE_ROS)
 endif()
 
-# Web 调试面板
 if(ENABLE_WEBSERVER)
 	add_definitions(-DENABLE_WEBSERVER)
 endif()
@@ -122,7 +117,6 @@ add_custom_build(
 	DEPS "rt;pthread;m"
 )
 
-# 主目标链接 hal 库 (需要在 add_custom_build 之后)
 target_link_libraries(${PROJECT_NAME} motor_hal imu_hal)
 
 include(eco_install)

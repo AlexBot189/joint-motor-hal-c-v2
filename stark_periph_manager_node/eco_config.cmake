@@ -2,7 +2,6 @@
 #
 #  	eco_config.cmake
 #  	description: stark_periph_manager_node 编译配置
-#  	参考: stark_power_manager_node/eco_config.cmake
 #
 ##########################
 
@@ -10,7 +9,7 @@ set(EROSMSG_INCLUDE_PATH ${ECO_WORKSPACE_DIR}/eros/release/include)
 
 set(PROJECT_TYPE_NAME "rk3576")
 
-add_definitions(-DMODULE_NAME="periph_node")
+add_definitions(-DMODULE_NAME="stark_periph_node")
 
 set(NEED_ENCRYPT FALSE)
 set(NO_STRICT TRUE)
@@ -57,7 +56,6 @@ set(ECO_CMAKE_LOG_LEVEL 1)
 set(LOCAL_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LOCAL_INCLUDE_PATH "${LOCAL_SRC_PATH}")
 
-# hal 子目录 (用于 add_custom_build 的 SRCS)
 set(MH_DIR "${LOCAL_SRC_PATH}/motor_hal")
 set(IH_DIR "${LOCAL_SRC_PATH}/imu_hal")
 set(LOG_DIR "${LOCAL_SRC_PATH}/log_helper")
@@ -84,7 +82,9 @@ if(${BUILD_PLATFORM} STREQUAL "rv1126b")
 		";${IH_DIR}/tools"
 		";${IH_DIR}/tools/Invn/EmbUtils"
 		";${LOCAL_SRC_PATH}/3rd_party"
-		";${LOCAL_SRC_PATH}/3rd_party/usr/include"
+		";/home/exbot/build-dep/rv1126b/0.1.8/rv1126b/usr/include"
+		";/home/exbot/ros_build_env_melodic/rk3576/ros/staging/root/opt/ros/melodic/include"
+		";/home/exbot/ros_build_env_melodic/rk3576/boost/install/root/usr/include"
 	)
 elseif(${BUILD_PLATFORM} STREQUAL "rk3576")
 	set(CUSTOM_LIBRARY_PATH

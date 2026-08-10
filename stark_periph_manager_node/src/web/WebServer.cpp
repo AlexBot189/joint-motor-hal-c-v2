@@ -11,7 +11,7 @@
  */
 
 #include "web/WebServer.h"
-#include "LogHelper.h"
+#include "log_helper/LogHelper.h"
 
 #include <cstdio>
 #include <cstring>
