@@ -1791,6 +1791,17 @@ static void* _sync_thread_fn(void *arg)
     motor_hal_t *hal = (motor_hal_t*)arg;
     uint32_t period_us = hal->sync_period_us;
 
+    /* SCHED_FIFO 80 + Core 3, 低于 stark_rt(90)/CAN(85), 高于 IMU(50) */
+    {
+        struct sched_param sp;
+        sp.sched_priority = 80;
+        pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(3, &cpuset);
+        pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+    }
+
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
 
