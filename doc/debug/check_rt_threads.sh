@@ -15,60 +15,61 @@ echo "  PID=$PID"
 echo "=========================================="
 echo ""
 
-# ── 1. 线程调度策略一览 ──
+# ── 1. ps 一览 ──
 echo "── 1. 线程调度策略 ──"
-printf "%-6s  %-20s  %-3s  %-6s  %s\n" "TID" "NAME" "CLS" "RTPRIO" "说明"
-printf "%-6s  %-20s  %-3s  %-6s  %s\n" "---" "----" "---" "------" "----"
+printf "%-6s  %-18s  %-14s  %-6s  %s\n" "TID" "NAME" "POLICY" "PRIO" "说明"
+printf "%-6s  %-18s  %-14s  %-6s  %s\n" "---" "----" "------" "----" "----"
 
-ps -eLo tid,cls,rtprio,comm | grep "$PID" | grep -v grep | sort -k2 | while read line; do
-    tid=$(echo $line | awk '{print $1}')
-    cls=$(echo $line | awk '{print $2}')
-    prio=$(echo $line | awk '{print $3}')
-    name=$(echo $line | awk '{print $4}')
+# 收集所有 TID
+TIDS=$(ls /proc/$PID/task/ | sort -n)
 
-    case "$cls" in
-        FF) cls_label="RT ✅";;
-        TS) cls_label="NRT  ";;
-        *)  cls_label="$cls";;
+for tid in $TIDS; do
+    # 线程名
+    name=$(grep "^Name:" /proc/$PID/task/$tid/status 2>/dev/null | awk '{print $2}')
+    [ -z "$name" ] && name="-"
+
+    # 调度信息 — 用 chrt, 最可靠
+    chrt_out=$(chrt -p $tid 2>/dev/null)
+    policy=$(echo "$chrt_out" | grep "scheduling policy" | sed 's/.*: //')
+    rtprio=$(echo "$chrt_out" | grep "scheduling priority" | awk '{print $NF}')
+
+    # 如果没有 chrt 或权限不够, 回退到 ps
+    if [ -z "$policy" ]; then
+        policy="-"
+        rtprio="-"
+    fi
+
+    # 标记 RT / NRT
+    case "$policy" in
+        SCHED_FIFO|SCHED_RR) tag="✅";;
+        SCHED_OTHER)         tag="  ";;
+        *)                   tag="";;
     esac
 
+    # 说明
+    desc=""
     case "$name" in
-        stark_rt)          desc="StarkRtWorker (控制+上报 1KHz)";;
-        stark_nrt)         desc="StarkRtWorker (非RT模式)";;
-        *)
-            case "$prio" in
-                85) desc="CAN 接收线程";;
-                50) desc="IMU HAL 后台采集";;
-                *)  desc="";;
-            esac
-            ;;
+        stark_rt)      desc="$tag StarkRtWorker (控制+上报 1KHz)";;
+        stark_nrt)     desc="StarkRtWorker (非RT模式)";;
     esac
+    [ -z "$desc" ] && [ "$policy" = "SCHED_FIFO" ] && desc="$tag RT线程" && rtprio_n=$rtprio
+    [ -z "$desc" ] && desc=""
 
-    printf "%-6s  %-20s  %-6s  %-6s  %s\n" "$tid" "$name" "$cls_label" "$prio" "$desc"
+    printf "%-6s  %-18s  %-14s  %-6s  %s\n" "$tid" "$name" "$policy" "$rtprio" "$desc"
 done
 
 echo ""
 
-# ── 2. /proc 详细 ──
-echo "── 2. /proc 线程详情 ──"
-for t in /proc/$PID/task/*/status; do
-    tid=$(basename $(dirname $t))
-    name=$(grep "^Name:" $t | awk '{print $2}')
-    policy_num=$(grep "^Policy:" $t | awk '{print $2}')
-    prio=$(grep "^prio:" $t | awk '{print $2}')
-
-    case $policy_num in
-        1) policy="SCHED_FIFO";;
-        0) policy="SCHED_OTHER";;
-        *) policy="unknown($policy_num)";;
-    esac
-
-    printf "  tid=%-6s  name=%-20s  %-12s  prio=%s\n" "$tid" "$name" "$policy" "$prio"
-
-    # 对 RT 线程额外显示更多信息
-    if [ "$policy" = "SCHED_FIFO" ]; then
-        cpus=$(grep "^Cpus_allowed_list:" $t | awk '{print $2}')
-        printf "    → CPU亲和性=%s\n" "$cpus"
+# ── 2. RT 线程详情 ──
+echo "── 2. RT 线程详情 (CPU亲和性) ──"
+for tid in $TIDS; do
+    policy=$(chrt -p $tid 2>/dev/null | grep "scheduling policy" | sed 's/.*: //')
+    if [ "$policy" = "SCHED_FIFO" ] || [ "$policy" = "SCHED_RR" ]; then
+        name=$(grep "^Name:" /proc/$PID/task/$tid/status | awk '{print $2}')
+        cpus=$(grep "^Cpus_allowed_list:" /proc/$PID/task/$tid/status | awk '{print $2}')
+        rtprio=$(chrt -p $tid 2>/dev/null | grep "scheduling priority" | awk '{print $NF}')
+        printf "  tid=%-6s  name=%-18s  policy=%s  prio=%s  cpu=%s\n" \
+               "$tid" "$name" "$policy" "$rtprio" "$cpus"
     fi
 done
 
@@ -77,9 +78,9 @@ echo ""
 # ── 3. 统计 ──
 rt_count=0
 nrt_count=0
-for t in /proc/$PID/task/*/status; do
-    policy=$(grep "^Policy:" $t | awk '{print $2}')
-    if [ "$policy" = "1" ]; then
+for tid in $TIDS; do
+    policy=$(chrt -p $tid 2>/dev/null | grep "scheduling policy" | sed 's/.*: //')
+    if [ "$policy" = "SCHED_FIFO" ] || [ "$policy" = "SCHED_RR" ]; then
         rt_count=$((rt_count + 1))
     else
         nrt_count=$((nrt_count + 1))
@@ -91,60 +92,46 @@ echo "── 3. 汇总 ──"
 echo "  总线程数: $total"
 echo "  RT 线程 (SCHED_FIFO): $rt_count"
 echo "  非RT线程 (SCHED_OTHER): $nrt_count"
-echo ""
-echo "  期望 RT 线程数: 3 (stark_rt=CAN=IMU)"
-echo "  期望非RT优先级: stark_rt=90, CAN=85, IMU=50"
 
-# ── 4. 关键项判断 ──
+# ── 4. 诊断 ──
 echo ""
 echo "── 4. 诊断 ──"
-
 issues=0
 
-# 检查 stark_rt 是否存在
-if ! grep -q "Name.*stark_rt" /proc/$PID/task/*/status 2>/dev/null; then
-    echo "  ⚠️  stark_rt 线程未找到 (enable_rt 可能为 false 或创建失败)"
+# 检查 stark_rt
+stark_tid=$(grep -l "Name:.*stark_rt" /proc/$PID/task/*/status 2>/dev/null | head -1 | xargs dirname | xargs basename)
+if [ -z "$stark_tid" ]; then
+    echo "  ⚠️  stark_rt 线程未找到 → enable_rt 可能为 false"
     issues=$((issues + 1))
 else
-    rt_policy=$(grep -l "Name.*stark_rt" /proc/$PID/task/*/status | xargs grep "^Policy:" | awk '{print $2}')
-    if [ "$rt_policy" != "1" ]; then
-        echo "  ❌ stark_rt 不是 SCHED_FIFO (当前 policy=$rt_policy), 可能是 root 权限不足"
+    policy=$(chrt -p $stark_tid 2>/dev/null | grep "scheduling policy" | sed 's/.*: //')
+    rtprio=$(chrt -p $stark_tid 2>/dev/null | grep "scheduling priority" | awk '{print $NF}')
+    if [ "$policy" != "SCHED_FIFO" ]; then
+        echo "  ❌ stark_rt (tid=$stark_tid) = $policy, 不是 SCHED_FIFO"
+        issues=$((issues + 1))
+    elif [ "$rtprio" != "90" ]; then
+        echo "  ⚠️  stark_rt 优先级=$rtprio (期望 90)"
         issues=$((issues + 1))
     fi
 fi
 
-# 检查 RT 线程优先级是否合理
-for t in /proc/$PID/task/*/status; do
-    name=$(grep "^Name:" $t | awk '{print $2}')
-    policy=$(grep "^Policy:" $t | awk '{print $2}')
-    prio=$(grep "^prio:" $t | awk '{print $2}')
+# 期望的 RT 线程
+expected="stark_rt 90|CAN_RECV 85|IMU_HAL 50"
+echo "  期望 RT 线程: stark_rt(90), CAN(85), IMU(50)"
+echo "  实际 RT 线程: $rt_count 个"
 
-    [ "$policy" != "1" ] && continue
-
-    case "$name" in
-        stark_rt)
-            [ "$prio" != "90" ] && echo "  ⚠️  stark_rt 优先级=$prio (期望 90)" && issues=$((issues + 1))
-            ;;
-    esac
-done
-
-# 检查 RT 预算
+# RT 预算
 rt_runtime=$(cat /proc/sys/kernel/sched_rt_runtime_us 2>/dev/null)
 if [ "$rt_runtime" = "-1" ]; then
-    echo "  ✅ RT 预算: 无限制 (sched_rt_runtime_us=-1)"
-elif [ -n "$rt_runtime" ] && [ "$rt_runtime" != "950000" ]; then
-    echo "  ℹ️  RT 预算: ${rt_runtime}μs (默认 950000=95%)"
-fi
-
-# 检查是否 root
-if [ "$(id -u)" = "0" ]; then
-    echo "  ✅ 当前用户: root"
+    echo "  ✅ RT 预算: 无限制"
 else
-    echo "  ⚠️  当前用户非 root, SCHED_FIFO 可能静默失败"
-    issues=$((issues + 1))
+    echo "  ℹ️  RT 预算: ${rt_runtime}μs (95% 后限流)"
 fi
 
-if [ $issues -eq 0 ]; then
+# root
+[ "$(id -u)" = "0" ] && echo "  ✅ root" || echo "  ⚠️  非root"
+
+if [ $issues -eq 0 ] && [ $rt_count -ge 3 ]; then
     echo "  ✅ 所有检查通过"
 fi
 
