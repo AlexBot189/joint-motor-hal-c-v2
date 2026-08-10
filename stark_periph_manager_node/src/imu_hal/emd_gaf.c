@@ -10,6 +10,8 @@
  * Copyright (c) 2026 zhiqiang.yang
  */
 
+#define _GNU_SOURCE   /* CPU_SET, pthread_setaffinity_np */
+
 #include "emd_gaf.h"
 
 #include <stdio.h>
