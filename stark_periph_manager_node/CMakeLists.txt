@@ -60,6 +60,9 @@ if(ENABLE_WEBSERVER)
 	add_definitions(-DENABLE_WEBSERVER)
 endif()
 
+# 统一 C/C++ 编译: GNU 扩展 (CPU_SET, pthread_setaffinity_np, mlockall)
+add_definitions(-D_GNU_SOURCE)
+
 # ════════════════════════════════════════════════════════════
 # libmotor_hal.so — 电机 CAN/CANopen 驱动
 
