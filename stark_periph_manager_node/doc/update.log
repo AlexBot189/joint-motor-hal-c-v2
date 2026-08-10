@@ -1,0 +1,15 @@
+{
+    "date": "to_be_set",
+    "influence": "to_be_set",
+    "eros_msg": {
+        "involved": true,
+        "autoupdate": true,
+        "branch": "stark",
+        "commit": "496296bb42f05126175828e36ed8400d23fa79e1"
+    },
+    "content": [
+        "1. add your log here!",
+        "2. this is the second log",
+        "3. this is the last log"
+    ]
+}
