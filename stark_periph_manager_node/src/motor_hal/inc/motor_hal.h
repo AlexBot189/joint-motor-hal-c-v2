@@ -796,6 +796,16 @@ void motor_hal_sync(motor_hal_t *hal);
  */
 void motor_hal_sync_set_rt_cpu(motor_hal_t *hal, int cpu);
 
+/** @brief 设置 SYNC 线程 SCHED_FIFO 优先级
+ *
+ * 必须在 motor_hal_sync_start() 之前调用。
+ * 如未调用, 默认使用优先级 80。
+ *
+ * @param hal      实例句柄
+ * @param priority SCHED_FIFO 优先级 (1-99)
+ */
+void motor_hal_sync_set_rt_priority(motor_hal_t *hal, int priority);
+
  * @return 0=成功; -EBUSY=已在运行; -ENODEV=CAN未初始化
  */
 int motor_hal_sync_start(motor_hal_t *hal, uint32_t period_us);

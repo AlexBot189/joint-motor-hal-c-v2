@@ -52,6 +52,7 @@ struct StarkNodeContext {
 
     /* RT 配置 (由 main.cpp 从 config.json rt.cpu_affinity 注入) */
     int          rt_cpu = -1;               /* RT 线程 CPU 亲和性, -1=不绑核 */
+    uint32_t     sync_period_us = 1000;     /* SYNC 帧周期, µs */
 
     /* 校准后使能 */
     bool         calib_enable_after = false;  /* 校准完成后使能电机, 跟随 auto_enable */

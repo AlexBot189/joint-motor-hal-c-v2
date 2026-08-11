@@ -41,7 +41,10 @@ struct SafetyConfig {
 struct RtConfig {
     int      priority         = 90;
     int      recv_priority    = 85;
+    int      sync_priority    = 80;
+    int      imu_priority     = 55;
     uint32_t period_us        = 1000;
+    uint32_t sync_period_us   = 1000;
     int      report_divider   = 5;     /* 5周期 ,  200Hz */
     int      cpu_affinity[2]  = {3, -1}; /* 只绑 core 3, core 2 留给算法进程 */
     bool     enable_rt        = true;  /* true=SCHED_FIFO, false=SCHED_OTHER */

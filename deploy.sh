@@ -55,11 +55,31 @@ esac
 _clean
 mkdir -p "$DEPLOY_LIB" "$DEPLOY_BIN"
 
-BUILD_DIR="$PROJECT_DIR/motor_hal/build"
-TOOLS_DIR="$PROJECT_DIR/motor_hal/tools/build"
-IMU_DIR="$PROJECT_DIR/imu_hal/build"
-STARK_DIR="$PROJECT_DIR/stark_periph_node/build"
-TEST_DIR="$PROJECT_DIR/stark_periph_node/src/test/build"
+# ══════════════════════════════════════════════════════════════════
+# 编译产物查找 (2026-08-11 修复: 适配 bb7dba1 重构后的新路径)
+#   motor_hal/imu_hal 源码已移入 stark_periph_manager_node/src/
+#   由 add_custom_build 统一编译, 输出在 CMake 构建目录的子目录中
+# ══════════════════════════════════════════════════════════════════
+MGMT_DIR="$PROJECT_DIR/stark_periph_manager_node"
+
+# 优先从 stark_periph_manager_node 的构建目录查找
+BUILD_DIR="$MGMT_DIR/build/motor_hal"
+TOOLS_DIR="$MGMT_DIR/build/motor_hal/tools"
+IMU_DIR="$MGMT_DIR/build/imu_hal"
+STARK_DIR="$MGMT_DIR/build"
+TEST_DIR="$MGMT_DIR/build/test"
+
+# 兼容: 如果新路径没找到, 回退到旧路径 (重构前的目录结构)
+_fallback_paths() {
+    [ -f "$BUILD_DIR/libmotor_hal.so" ] || BUILD_DIR="$PROJECT_DIR/motor_hal/build"
+    [ -f "$IMU_DIR/libimu_hal.so" ]       || IMU_DIR="$PROJECT_DIR/imu_hal/build"
+    [ -f "$STARK_DIR/stark_periph_manager_node" ] || {
+        STARK_DIR="$PROJECT_DIR/stark_periph_node/build"
+        [ -f "$STARK_DIR/stark_periph_manager_node" ] || \
+            STARK_DIR="$MGMT_DIR"  # 最后一招: find 查找
+    }
+}
+_fallback_paths
 
 echo "=========================================="
 echo "  stark 部署打包"

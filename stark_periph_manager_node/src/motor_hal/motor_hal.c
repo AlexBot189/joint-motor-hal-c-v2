@@ -192,6 +192,7 @@ struct motor_hal {
     bool         sync_running;
     uint32_t     sync_period_us;
     int          sync_cpu;           /* CPU 亲和性, -1=不绑核 (默认) */
+    int          sync_priority;      /* SCHED_FIFO 优先级, 默认 80 */
 
     pthread_mutex_t lock;
     motor_node_t    motors[MOTOR_HAL_MAX_MOTORS];
@@ -1792,10 +1793,10 @@ static void* _sync_thread_fn(void *arg)
     motor_hal_t *hal = (motor_hal_t*)arg;
     uint32_t period_us = hal->sync_period_us;
 
-    /* SCHED_FIFO 80 + Core 亲和性走 sync_cpu 配置, 低于 stark_rt(90)/CAN(85), 高于 IMU(50) */
+    /* SCHED_FIFO + CPU 亲和性, 优先级走 sync_priority 配置, 低于 stark_rt(90)/CAN(85), 高于 IMU(55) */
     {
         struct sched_param sp;
-        sp.sched_priority = 80;
+        sp.sched_priority = (hal->sync_priority > 0) ? hal->sync_priority : 80;
         pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
         if (hal->sync_cpu >= 0) {
             cpu_set_t cpuset;
@@ -1857,6 +1858,13 @@ void motor_hal_sync_set_rt_cpu(motor_hal_t *hal, int cpu)
 {
     if (!hal) return;
     hal->sync_cpu = cpu;
+}
+
+void motor_hal_sync_set_rt_priority(motor_hal_t *hal, int priority)
+{
+    if (!hal) return;
+    if (priority < 1 || priority > 99) return;
+    hal->sync_priority = priority;
 }
 
 bool motor_hal_sync_is_running(motor_hal_t *hal)

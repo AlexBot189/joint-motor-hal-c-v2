@@ -215,7 +215,7 @@ static void poll_booting(stark_shm_t* shm, int motor_count,
         motor_hal_t* hal = g_ctx->hal;
         if (hal) {
             motor_hal_sync_set_rt_cpu(hal, g_ctx->rt_cpu);  /* CPU 亲和性走配置 */
-            int ret = motor_hal_sync_start(hal, 1000);  /* 1ms = 1KHz, 对齐用户要求 */
+            int ret = motor_hal_sync_start(hal, g_ctx->sync_period_us);
             if (ret == 0) {
                 sync_started = true;
                 if (!g_sdo_telemetry_started) {

@@ -142,6 +142,13 @@ void emd_gaf_set_raw_data_callback(emd_gaf_t *handle,
 void emd_gaf_set_cpu(emd_gaf_t *handle, int cpu);
 
 /**
+ * @brief 设置后台线程 SCHED_FIFO 优先级 (必须在 start 前调用)
+ * @param handle   实例句柄
+ * @param priority SCHED_FIFO 优先级 (1-99), 默认 50
+ */
+void emd_gaf_set_priority(emd_gaf_t *handle, int priority);
+
+/**
  * @brief 查询后台线程状态
  * @return 1 运行中，0 已停止
  */

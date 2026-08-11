@@ -240,6 +240,7 @@ struct emd_gaf {
 
     /* RT 参数 */
     int           rt_cpu;             /* CPU 亲和性, -1=不绑核 */
+    int           rt_priority;        /* SCHED_FIFO 优先级, 默认 50 */
 };
 
 /* 内部函数声明 */
@@ -522,6 +523,13 @@ void emd_gaf_set_cpu(emd_gaf_t *handle, int cpu)
     handle->rt_cpu = cpu;
 }
 
+void emd_gaf_set_priority(emd_gaf_t *handle, int priority)
+{
+    if (!handle) return;
+    if (priority < 1 || priority > 99) return;
+    handle->rt_priority = priority;
+}
+
 /*
  * 后台线程
  */
@@ -531,12 +539,12 @@ static void *_thread_main(void *arg)
     emd_gaf_t *g = (emd_gaf_t *)arg;
     int rc = 0;
 
-    /* 设置 RT 调度 (SCHED_FIFO 50) + CPU亲和性, 低于 stark RT 线程的 90, 保证可抢占 */
+    /* 设置 RT 调度 (SCHED_FIFO) + CPU亲和性, 优先级走 rt_priority 配置, 低于 stark RT 线程 */
     {
         struct sched_param param;
-        param.sched_priority = 50;
+        param.sched_priority = (g->rt_priority > 0) ? g->rt_priority : 50;
         if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &param) != 0) {
-            fprintf(stderr, "[W] IMU HAL: SCHED_FIFO 50 failed (need root/CAP_SYS_NICE)\n");
+            fprintf(stderr, "[W] IMU HAL: SCHED_FIFO %d failed (need root/CAP_SYS_NICE)\n", param.sched_priority);
         }
         if (g->rt_cpu >= 0) {
             cpu_set_t cpuset;

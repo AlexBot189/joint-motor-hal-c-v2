@@ -36,6 +36,9 @@
     "enable_rt": true,
     "control_priority": 90,
     "recv_priority": 85,
+    "sync_priority": 80,
+    "imu_priority": 55,
+    "sync_period_us": 1000,
     "control_period_us": 1000,
     "report_divider": 1,
     "cpu_affinity": [3]

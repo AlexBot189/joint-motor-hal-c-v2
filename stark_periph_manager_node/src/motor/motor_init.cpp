@@ -77,6 +77,9 @@ bool CanDispatcher::InitDispatcher()
     int rt_cpu = m_rt_cfg.enable_rt ? m_rt_cfg.cpu_affinity[0] : -1;
     motor_hal_recv_set_rt(m_hal, m_rt_cfg.enable_rt, m_rt_cfg.recv_priority, rt_cpu);
 
+    /* 4.5 设置 SYNC 线程优先级 (必须在 sync_start 前) */
+    motor_hal_sync_set_rt_priority(m_hal, m_rt_cfg.sync_priority);
+
     /* 5. 启动接收线程 */
     ret = motor_hal_recv_start(m_hal);
     if (ret < 0) {
@@ -91,7 +94,8 @@ bool CanDispatcher::InitDispatcher()
     /* 7. 初始化 IMU HAL (CPU亲和性走 rt.cpu_affinity 配置) */
     m_imu_sensor = std::make_unique<ImuHALSensor>();
     if (!m_imu_sensor->Init(m_imu_i2c_dev.c_str(), m_imu_gpio_chip.c_str(),
-                            m_imu_gpio_line, m_imu_op_mode, rt_cpu)) {
+                            m_imu_gpio_line, m_imu_op_mode, rt_cpu,
+                            m_rt_cfg.imu_priority)) {
         ECO_WARN_NEW("[CanDispatcher] IMU HAL init failed, running without IMU");
     }
 
@@ -342,7 +346,10 @@ bool CanDispatcher::LoadMotorConfig()
             auto& r = cfg["rt"];
             m_rt_cfg.priority      = r.value("control_priority",  90);
             m_rt_cfg.recv_priority  = r.value("recv_priority",     85);
+            m_rt_cfg.sync_priority  = r.value("sync_priority",     80);
+            m_rt_cfg.imu_priority   = r.value("imu_priority",      55);
             m_rt_cfg.period_us     = r.value("control_period_us", 1000u);
+            m_rt_cfg.sync_period_us = r.value("sync_period_us",   1000u);
             m_rt_cfg.report_divider = r.value("report_divider",    5);
             m_rt_cfg.enable_rt     = r.value("enable_rt", true);
             if (r.contains("cpu_affinity") && r["cpu_affinity"].is_array()

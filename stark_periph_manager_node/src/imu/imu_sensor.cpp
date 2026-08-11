@@ -42,7 +42,8 @@ void ImuHALSensor::_RawDataCb(const emd_raw_sensor_t *data, void *user_data)
 }
 
 bool ImuHALSensor::Init(const char* i2c_dev, const char* gpio_chip,
-                         unsigned int gpio_line, int op_mode, int cpu)
+                         unsigned int gpio_line, int op_mode, int cpu,
+                         int priority)
 {
     if (m_handle) {
         return true; /* 已初始化 */
@@ -65,8 +66,9 @@ bool ImuHALSensor::Init(const char* i2c_dev, const char* gpio_chip,
         return false;
     }
 
-    /* 2.5 设置 CPU 亲和性 (必须在 start 前) */
+    /* 2.5 设置 CPU 亲和性 + RT 优先级 (必须在 start 前) */
     emd_gaf_set_cpu((emd_gaf_t*)m_handle, cpu);
+    emd_gaf_set_priority((emd_gaf_t*)m_handle, priority);
 
     /* 3. 启动后台采集线程 */
     ret = emd_gaf_start((emd_gaf_t*)m_handle);
