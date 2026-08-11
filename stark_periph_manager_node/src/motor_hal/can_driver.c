@@ -14,20 +14,18 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <errno.h>
-#include <pthread.h>
 
 /* =====================================================
  * 内部数据结构
  * ===================================================== */
 
 typedef struct {
-    char           iface[16];
-    int            sock_fd;
-    pthread_mutex_t tx_lock;    /* 序列化 write() 调用, 防止 RT/非RT 线程并发写 socket */
-    uint64_t       tx_count;
-    uint64_t       rx_count;
-    uint64_t       tx_err;
-    uint64_t       rx_err;
+    char     iface[16];
+    int      sock_fd;
+    uint64_t tx_count;
+    uint64_t rx_count;
+    uint64_t tx_err;
+    uint64_t rx_err;
 } can_driver_t;
 
 /* =====================================================
@@ -104,10 +102,6 @@ int can_driver_open(const char *iface, uint32_t arb_bitrate __attribute__((unuse
     }
 
     drv->sock_fd = fd;
-
-    /* 初始化发送锁 (PREEMPT_RT 下自动变 rt_mutex) */
-    pthread_mutex_init(&drv->tx_lock, NULL);
-
     return 0;
 }
 
@@ -118,25 +112,12 @@ void can_driver_close(can_driver_t *drv)
         close(drv->sock_fd);
         drv->sock_fd = -1;
     }
-    pthread_mutex_destroy(&drv->tx_lock);
     free(drv);
 }
 
 int can_driver_send(can_driver_t *drv, const canfd_frame_t *frame)
 {
     if (!drv || drv->sock_fd < 0) return -ENODEV;
-
-    /*
-     * 必须持锁序列化 socket write().
-     *
-     * 背景: PREEMPT_RT 内核下, can_send() → __dev_queue_xmit() →
-     * local_bh_disable() 持有 per-CPU rt_spinlock. 如果 RT 线程和非 RT 线程
-     * 同时 write() 同一个 CAN socket, 内核的锁状态可能损坏, 导致 rt_mutex
-     * 野指针 → kernel oops.
-     *
-     * pthread_mutex_t 在 PREEMPT_RT 上自动变成 rt_mutex, 支持优先级继承.
-     */
-    pthread_mutex_lock(&drv->tx_lock);
 
     struct canfd_frame cfd;
     memset(&cfd, 0, sizeof(cfd));
@@ -147,9 +128,6 @@ int can_driver_send(can_driver_t *drv, const canfd_frame_t *frame)
     memcpy(cfd.data, frame->data, frame->dlc);
 
     int n = write(drv->sock_fd, &cfd, sizeof(cfd));
-
-    pthread_mutex_unlock(&drv->tx_lock);
-
     if (n < 0) { drv->tx_err++; return -errno; }
     drv->tx_count++;
     return n;
